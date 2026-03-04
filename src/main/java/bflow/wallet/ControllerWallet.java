@@ -3,6 +3,7 @@ package bflow.wallet;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.common.response.ApiResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,7 +17,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import lombok.AllArgsConstructor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-
+import org.springframework.data.domain.Pageable;
 import java.net.URI;
 import java.util.UUID;
 
@@ -30,6 +31,41 @@ public class ControllerWallet {
 
     /** The service handling wallet business logic. */
     private final ServiceWallet objServiceW;
+
+    /**
+     * Retrieves all wallets for the authenticated user.
+     * @param authentication the authenticated user's principal.
+     * @param pageable the pagination information.
+     * @param request the HTTP request for path information.
+     * @return a ResponseEntity containing paginated wallet data.
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<WalletResponse>>> getUserWallets(
+            final Authentication authentication,
+            final Pageable pageable,
+            final HttpServletRequest request
+    ) {
+        // Extract user UUID from JWT token (principal)
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = UUID.fromString(authentication.getName());
+
+        // Retrieve wallet with access validation
+        Page<WalletResponse> wallets = objServiceW
+                .getUserWallets(userId, pageable);
+
+        // Return success response
+        ApiResponse<Page<WalletResponse>> response = ApiResponse.success(
+                "Wallets retrieved successfully",
+                wallets,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
 
     /**
      * Retrieves a wallet by its UUID.

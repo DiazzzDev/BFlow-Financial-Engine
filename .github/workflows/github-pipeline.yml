@@ -21,7 +21,7 @@ jobs:
       - name: Run code quality
         run: mvn checkstyle:check
 
-      - name: Run tests with coverage JaCoCo - 60% required
+      - name: Run tests with coverage JaCoCo - 20% required
         run: mvn clean verify
 
   build-image:

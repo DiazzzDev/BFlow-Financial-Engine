@@ -59,7 +59,7 @@ public class ServiceIncome {
      * @param request the income request containing income details
      * @param userId the unique identifier of the authenticated user
      * @return the created income as an IncomeResponse
-     * @throws AccessDeniedException if the user does not have access to
+     * @throws WalletAccessDeniedException if the user does not have access to
      *         the wallet
      */
     public IncomeResponse newIncome(
@@ -166,8 +166,8 @@ public class ServiceIncome {
 
             // Different wallet → full transfer logic using service methods
 
-            // Remove old impact
-            serviceWallet.reverseTransactionImpact(oldWallet, oldAmount);
+            // Remove old balance
+            serviceWallet.subtractBalance(oldWallet, oldAmount);
 
             // Apply new impact
             serviceWallet.addBalance(newWallet, newAmount);

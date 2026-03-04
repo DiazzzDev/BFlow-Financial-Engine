@@ -11,7 +11,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.UUID;
@@ -25,13 +26,28 @@ import java.util.UUID;
 public class ServiceWallet {
 
     /** The repository for wallet database operations. */
-    private final RepositoryWallet objRepoW;
+    private final RepositoryWallet repositoryWallet;
 
     /** The repository for wallet-user relationship operations. */
-    private final RepositoryWalletUser objRepoWalletUser;
+    private final RepositoryWalletUser repositoryWalletUser;
 
     /** The repository for user database operations. */
-    private final RepositoryUser objRepoUser;
+    private final RepositoryUser repositoryUser;
+
+    /**
+     * Retrieves all wallets for a user with pagination.
+     * @param userId the user ID.
+     * @param pageable the pagination information.
+     * @return a page of wallet responses.
+     */
+    public Page<WalletResponse> getUserWallets(
+            final UUID userId,
+            final Pageable pageable
+    ) {
+        Page<WalletUser> page = repositoryWalletUser
+                .findByUserId(userId, pageable);
+        return page.map(this::convertToDTO);
+    }
 
     /**
      * Retrieves a wallet by its UUID for an authenticated user.
@@ -46,7 +62,7 @@ public class ServiceWallet {
             final UUID userId
     ) {
         // Validate access: check if user is linked to this wallet
-        WalletUser walletUser = objRepoWalletUser
+        WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
                         "User does not have access to this wallet"
@@ -80,7 +96,7 @@ public class ServiceWallet {
             final UUID userId
     ) {
         // Retrieve authenticated user
-        User user = objRepoUser.findById(userId)
+        User user = repositoryUser.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "User not found"
                 ));
@@ -98,7 +114,7 @@ public class ServiceWallet {
         wallet.setBalance(initialValue);
 
         // Save Wallet
-        Wallet savedWallet = objRepoW.save(wallet);
+        Wallet savedWallet = repositoryWallet.save(wallet);
 
         // Create WalletUser relationship with OWNER role
         WalletUser walletUser = new WalletUser();
@@ -107,7 +123,7 @@ public class ServiceWallet {
         walletUser.setRole(WalletRole.OWNER);
 
         // Save WalletUser
-        objRepoWalletUser.save(walletUser);
+        repositoryWalletUser.save(walletUser);
 
         // Map Wallet entity to WalletResponse DTO
         return WalletResponse.builder()
@@ -119,6 +135,28 @@ public class ServiceWallet {
                 .initialValue(savedWallet.getInitialValue())
                 .createdAt(savedWallet.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Converts a WalletUser entity to a WalletResponse DTO.
+     * @param walletUser the wallet-user relationship.
+     * @return the wallet response DTO.
+     */
+    private WalletResponse convertToDTO(final WalletUser walletUser) {
+
+        Wallet wallet = walletUser.getWallet();
+
+        WalletResponse dto = new WalletResponse();
+        dto.setId(wallet.getId());
+        dto.setName(wallet.getName());
+        dto.setDescription(wallet.getDescription());
+        dto.setCurrency(wallet.getCurrency());
+        dto.setBalance(wallet.getBalance());
+        dto.setRole(walletUser.getRole());
+        dto.setInitialValue(wallet.getInitialValue());
+        dto.setCreatedAt(wallet.getCreatedAt());
+
+        return dto;
     }
 
     /**

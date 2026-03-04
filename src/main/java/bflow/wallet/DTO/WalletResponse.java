@@ -1,5 +1,6 @@
 package bflow.wallet.DTO;
 
+import bflow.wallet.enums.WalletRole;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import bflow.wallet.enums.Currency;
 import lombok.AllArgsConstructor;
@@ -43,6 +44,8 @@ public final class WalletResponse {
     private BigDecimal initialValue;
 
     /** The timestamp when the wallet was created. */
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Instant createdAt;
+
+    /** The role of the current user in this wallet. */
+    private WalletRole role;
 }
