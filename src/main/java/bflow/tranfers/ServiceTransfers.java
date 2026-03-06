@@ -1,5 +1,6 @@
 package bflow.tranfers;
 
+import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
@@ -12,6 +13,8 @@ import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +42,15 @@ public class ServiceTransfers {
 
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
+    
+    public Page<TransferenceResponse> getUserTransfers(
+            final UUID userId,
+            final Pageable pageable
+    ) {
+        Page<Transfer> page = repositoryTransfers
+                .findByUserId(userId, pageable);
+        return page.map(this::mapToResponse);
+    }
 
     /**
      * Processes a transfer between two wallets.
@@ -46,11 +58,17 @@ public class ServiceTransfers {
      * @param userId the user ID.
      * @return the transfer response.
      */
-    public TransferenceResponse transfer(
+    public TransferenceResponse saveTransfer(
             final TransferenceRequest request,
             final UUID userId
     ) {
         final BigDecimal amount = request.getAmount();
+
+        // Retrieve authenticated user
+        User user = repositoryUser.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User not found"
+                ));
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalStateException("Amount must be greater than zero");
@@ -86,7 +104,10 @@ public class ServiceTransfers {
         serviceWallet.subtractBalance(fromWallet, amount);
         serviceWallet.addBalance(toWallet, amount);
 
-        Transfer transfer = buildTransfer(fromWallet, toWallet, request);
+        Transfer transfer = buildTransfer(
+                fromWallet, toWallet, request, user
+        );
+
         repositoryTransfers.save(transfer);
 
         return mapToResponse(transfer);
@@ -102,13 +123,15 @@ public class ServiceTransfers {
     private Transfer buildTransfer(
             final Wallet fromWallet,
             final Wallet toWallet,
-            final TransferenceRequest request
-    ) {
+            final TransferenceRequest request,
+            final User user
+            ) {
         Transfer transfer = new Transfer();
         transfer.setFromWalletId(fromWallet);
         transfer.setToWalletId(toWallet);
         transfer.setAmount(request.getAmount());
         transfer.setDescription(request.getDescription());
+        transfer.setUser(user);
         transfer.setStatus(TransferStatus.COMPLETED);
         return transfer;
     }
@@ -135,5 +158,4 @@ public class ServiceTransfers {
 
         return response;
     }
-
 }

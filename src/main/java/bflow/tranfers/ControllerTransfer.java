@@ -3,15 +3,16 @@ package bflow.tranfers;
 import bflow.common.response.ApiResponse;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
+import bflow.wallet.DTO.WalletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -26,6 +27,34 @@ import java.util.UUID;
 public class ControllerTransfer {
     /** The service handling transfer business logic. */
     private final ServiceTransfers serviceTransfers;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>> getUserWallets(
+            final Authentication authentication,
+            final Pageable pageable,
+            final HttpServletRequest request
+    ) {
+        // Extract user UUID from JWT token (principal)
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = UUID.fromString(authentication.getName());
+
+        // Retrieve wallet with access validation
+        Page<TransferenceResponse> transfers = serviceTransfers
+                .getUserTransfers(userId, pageable);
+
+        // Return success response
+        ApiResponse<Page<TransferenceResponse>> response = ApiResponse.success(
+                "Transfers retrieved successfully",
+                transfers,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
 
     /**
      * Processes a transfer request between two wallets.
@@ -45,7 +74,7 @@ public class ControllerTransfer {
         UUID userId = UUID.fromString(authentication.getName());
 
         TransferenceResponse transferResponse =
-                serviceTransfers.transfer(request, userId);
+                serviceTransfers.saveTransfer(request, userId);
 
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()

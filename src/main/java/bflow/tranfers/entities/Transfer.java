@@ -1,5 +1,6 @@
 package bflow.tranfers.entities;
 
+import bflow.auth.entities.User;
 import bflow.tranfers.enums.TransferStatus;
 import bflow.wallet.entities.Wallet;
 import jakarta.persistence.Column;
@@ -54,6 +55,11 @@ public class Transfer {
     /** The transfer status. */
     @Enumerated(EnumType.STRING)
     private TransferStatus status;
+
+    /** The user associated with this record. */
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     /** The timestamp when the transfer was created. */
     @CreationTimestamp
