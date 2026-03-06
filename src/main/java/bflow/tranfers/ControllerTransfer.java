@@ -28,6 +28,32 @@ public class ControllerTransfer {
     /** The service handling transfer business logic. */
     private final ServiceTransfers serviceTransfers;
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<TransferenceResponse>> getWalletById(
+            @PathVariable final UUID id,
+            final Authentication authentication,
+            final HttpServletRequest request
+    ) {
+        // Extract user UUID from JWT token (principal)
+        String userIdString = (String) authentication.getPrincipal();
+        UUID userId = UUID.fromString(userIdString);
+
+        // Retrieve wallet with access validation
+        TransferenceResponse transfer = serviceTransfers
+                .getTransferById(id, userId);
+
+        // Return success response
+        ApiResponse<TransferenceResponse> response = ApiResponse.success(
+                "Transfer retrieved successfully",
+                transfer,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TransferenceResponse>>> getUserWallets(
             final Authentication authentication,

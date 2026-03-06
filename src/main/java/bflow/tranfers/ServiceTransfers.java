@@ -2,6 +2,7 @@ package bflow.tranfers;
 
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
+import bflow.common.exception.ResourceNotFoundException;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
 import bflow.tranfers.entities.Transfer;
@@ -42,7 +43,17 @@ public class ServiceTransfers {
 
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
-    
+
+    public TransferenceResponse getTransferById(
+            final UUID transferId,
+            final UUID userId
+    ) {
+        Transfer transfer = repositoryTransfers
+                .findByIdAndUserId(transferId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transferencia no encontrada o no autorizada"));
+        return mapToResponse(transfer);
+    }
+
     public Page<TransferenceResponse> getUserTransfers(
             final UUID userId,
             final Pageable pageable

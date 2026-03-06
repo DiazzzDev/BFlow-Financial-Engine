@@ -3,6 +3,7 @@ package bflow.wallet;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.common.response.ApiResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +27,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/v1/wallets")
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ControllerWallet {
 
     /** The service handling wallet business logic. */
