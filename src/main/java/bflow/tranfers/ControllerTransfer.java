@@ -29,7 +29,7 @@ public class ControllerTransfer {
     private final ServiceTransfers serviceTransfers;
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TransferenceResponse>> getWalletById(
+    public ResponseEntity<ApiResponse<TransferenceResponse>> getTransferById(
             @PathVariable final UUID id,
             final Authentication authentication,
             final HttpServletRequest request
@@ -55,20 +55,42 @@ public class ControllerTransfer {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>> getUserWallets(
+    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>> getUserTransfers(
             final Authentication authentication,
             final Pageable pageable,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
         UUID userId = UUID.fromString(authentication.getName());
 
         // Retrieve wallet with access validation
         Page<TransferenceResponse> transfers = serviceTransfers
                 .getUserTransfers(userId, pageable);
+
+        // Return success response
+        ApiResponse<Page<TransferenceResponse>> response = ApiResponse.success(
+                "Transfers retrieved successfully",
+                transfers,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @GetMapping("/wallet/{walletId}")
+    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>>
+        getUserTransfersByWalletId(
+            @PathVariable final UUID walletId,
+            final Authentication authentication,
+            final Pageable pageable,
+            final HttpServletRequest request
+    ) {
+        UUID userId = UUID.fromString(authentication.getName());
+
+        // Retrieve wallet with access validation
+        Page<TransferenceResponse> transfers = serviceTransfers
+                .getUserTransfersByWalletId(userId, walletId, pageable);
 
         // Return success response
         ApiResponse<Page<TransferenceResponse>> response = ApiResponse.success(

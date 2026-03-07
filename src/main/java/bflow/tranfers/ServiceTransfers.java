@@ -63,6 +63,18 @@ public class ServiceTransfers {
         return page.map(this::mapToResponse);
     }
 
+    public Page<TransferenceResponse> getUserTransfersByWalletId(
+            final UUID userId,
+            final UUID walletId,
+            final Pageable pageable
+    ) {
+
+        Page<Transfer> page = repositoryTransfers
+                .findTransfersByWallet(userId, walletId, pageable);
+
+        return page.map(this::mapToResponse);
+    }
+
     /**
      * Processes a transfer between two wallets.
      * @param request the transfer request.
