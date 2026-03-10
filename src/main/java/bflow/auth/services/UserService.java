@@ -1,5 +1,7 @@
 package bflow.auth.services;
 
+import bflow.auth.DTO.user.UpdateUserProfileRequest;
+import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
 import java.util.UUID;
@@ -35,4 +37,10 @@ public interface UserService {
             String providerId,
             AuthProvider provider
     );
+
+    UserProfileResponse getProfile(UUID userId);
+
+    UserProfileResponse updateProfile(UUID userId, UpdateUserProfileRequest request);
+
+    void softDelete(UUID userId);
 }

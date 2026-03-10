@@ -4,6 +4,7 @@ import bflow.auth.DTO.AuthRegisterRequest;
 import bflow.auth.entities.AuthAccount;
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
+import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.AuthService;
@@ -43,7 +44,7 @@ class AuthServiceTest {
                 .id(UUID.randomUUID())
                 .email("test@test.com")
                 .roles(Set.of("USER"))
-                .enabled(true)
+                .status(UserStatus.ACTIVE)
                 .build();
 
         AuthAccount account = AuthAccount.builder()

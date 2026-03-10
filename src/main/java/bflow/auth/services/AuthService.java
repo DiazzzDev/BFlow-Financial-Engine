@@ -4,6 +4,7 @@ import bflow.auth.DTO.AuthRegisterRequest;
 import bflow.auth.entities.AuthAccount;
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
+import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
 import bflow.common.exception.InvalidCredentialsException;
@@ -83,8 +84,8 @@ public class AuthService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setProvider(AuthProvider.LOCAL);
-        user.setRoles(Set.of("USER"));
-        user.setEnabled(true);
+        user.setRoles(Set.of("ROLE_USER"));
+        user.setStatus(UserStatus.ACTIVE);
 
         userRepository.save(user);
 

@@ -1,8 +1,11 @@
 package bflow.auth.services;
 
+import bflow.auth.DTO.user.UpdateUserProfileRequest;
+import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.entities.AuthAccount;
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
+import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
 import jakarta.transaction.Transactional;
@@ -21,6 +24,7 @@ public class UserServiceImpl implements UserService {
 
     /** Repository for user core data. */
     private final RepositoryUser userRepository;
+
     /** Repository for authentication account mapping. */
     private final RepositoryAuthAccount authAccountRepository;
 
@@ -70,9 +74,9 @@ public class UserServiceImpl implements UserService {
     ) {
         User user = User.builder()
                 .email(email)
-                .enabled(true)
+                .status(UserStatus.ACTIVE)
                 .provider(provider)
-                .roles(Set.of("USER"))
+                .roles(Set.of("ROLE_USER"))
                 .build();
 
         userRepository.save(user);
@@ -106,8 +110,8 @@ public class UserServiceImpl implements UserService {
                         User.builder()
                                 .email(email)
                                 .provider(provider)
-                                .roles(Set.of("USER"))
-                                .enabled(true)
+                                .roles(Set.of("ROLE_USER"))
+                                .status(UserStatus.ACTIVE)
                                 .build()
                 ));
     }
@@ -122,5 +126,64 @@ public class UserServiceImpl implements UserService {
     public User findById(final UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("User not found"));
+    }
+
+    @Override
+    public UserProfileResponse updateProfile(
+            UUID userId,
+            UpdateUserProfileRequest request
+    ) {
+
+        //Check if user has an active account
+        validateUserActive(userId);
+
+        User user = findById(userId);
+
+        if (request.getEmail() != null) {
+            user.setEmail(request.getEmail().trim());
+        }
+
+        userRepository.save(user);
+
+        return getProfile(userId);
+    }
+
+    @Override
+    public void softDelete(UUID userId) {
+
+        //Check if user has an active account
+        validateUserActive(userId);
+
+        User user = findById(userId);
+
+        user.setStatus(UserStatus.DELETED);
+
+        userRepository.save(user);
+    }
+
+    //Util method
+    public void validateUserActive(UUID userId) {
+
+        User user = findById(userId);
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalStateException("User account is not active");
+        }
+    }
+
+    @Override
+    public UserProfileResponse getProfile(UUID userId) {
+
+        //Check if user has an active account
+        validateUserActive(userId);
+
+        User user = findById(userId);
+
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .roles(user.getRoles())
+                .status(user.getStatus())
+                .build();
     }
 }

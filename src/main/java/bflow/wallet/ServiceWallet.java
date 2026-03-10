@@ -1,5 +1,7 @@
 package bflow.wallet;
 
+import bflow.auth.services.UserService;
+import bflow.auth.services.UserServiceImpl;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.wallet.entities.Wallet;
@@ -35,6 +37,8 @@ public class ServiceWallet {
     /** The repository for user database operations. */
     private final RepositoryUser repositoryUser;
 
+    private final UserServiceImpl userService;
+
     /**
      * Retrieves all wallets for a user with pagination.
      * @param userId the user ID.
@@ -45,6 +49,9 @@ public class ServiceWallet {
             final UUID userId,
             final Pageable pageable
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         Page<WalletUser> page = repositoryWalletUser
                 .findByUserId(userId, pageable);
         return page.map(this::convertToDTO);
@@ -62,6 +69,9 @@ public class ServiceWallet {
             final UUID walletId,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         // Validate access: check if user is linked to this wallet
         WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
@@ -96,6 +106,9 @@ public class ServiceWallet {
             final WalletRequest request,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         // Retrieve authenticated user
         User user = repositoryUser.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -135,6 +148,8 @@ public class ServiceWallet {
             @Valid final WalletRequest request,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
 
         // Retrieve wallet
         WalletUser walletUser = repositoryWalletUser

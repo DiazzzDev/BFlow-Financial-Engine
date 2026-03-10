@@ -8,12 +8,17 @@ services:
       - "8080:8080"
     environment:
       PORT: 8080
-      DB_URL: jdbc:postgresql://db:5432/postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: postgres
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_DRIVER: org.postgresql.Driver
+      DB_SSL_MODE: disable
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
     depends_on:
       db:
         condition: service_healthy

@@ -2,6 +2,7 @@ package bflow.tranfers;
 
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
+import bflow.auth.services.UserServiceImpl;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
@@ -44,10 +45,15 @@ public class ServiceTransfers {
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
 
+    private final UserServiceImpl userService;
+
     public TransferenceResponse getTransferById(
             final UUID transferId,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         Transfer transfer = repositoryTransfers
                 .findByIdAndUserId(transferId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transferencia no encontrada o no autorizada"));
@@ -58,6 +64,9 @@ public class ServiceTransfers {
             final UUID userId,
             final Pageable pageable
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         Page<Transfer> page = repositoryTransfers
                 .findByUserId(userId, pageable);
         return page.map(this::mapToResponse);
@@ -68,6 +77,8 @@ public class ServiceTransfers {
             final UUID walletId,
             final Pageable pageable
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
 
         Page<Transfer> page = repositoryTransfers
                 .findTransfersByWallet(userId, walletId, pageable);
@@ -85,6 +96,9 @@ public class ServiceTransfers {
             final TransferenceRequest request,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         final BigDecimal amount = request.getAmount();
 
         // Retrieve authenticated user

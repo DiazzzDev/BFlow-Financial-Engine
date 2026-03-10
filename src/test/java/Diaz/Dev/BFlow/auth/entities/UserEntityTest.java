@@ -2,6 +2,7 @@ package Diaz.Dev.BFlow.auth.entities;
 
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
+import bflow.auth.enums.UserStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -18,12 +19,12 @@ class UserEntityTest {
         user.setEmail("test@example.com");
         user.setProvider(AuthProvider.LOCAL);
         user.setRoles(Set.of("USER"));
-        user.setEnabled(true);
+        user.setStatus(UserStatus.ACTIVE);
 
         assertNotNull(user.getId());
         assertEquals("test@example.com", user.getEmail());
         assertEquals(AuthProvider.LOCAL, user.getProvider());
-        assertTrue(user.isEnabled());
+        assertEquals(UserStatus.ACTIVE, user.getStatus());
         assertTrue(user.getRoles().contains("USER"));
     }
 

@@ -1,6 +1,7 @@
 package bflow.auth.entities;
 
 import bflow.auth.enums.AuthProvider;
+import bflow.auth.enums.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -57,7 +58,8 @@ public class User {
     private Set<String> roles = Set.of("ROLE_USER");
 
     /** Indicates whether the user account is active. */
-    @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private boolean enabled = true;
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 }

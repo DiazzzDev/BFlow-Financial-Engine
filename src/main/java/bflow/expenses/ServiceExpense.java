@@ -2,6 +2,7 @@ package bflow.expenses;
 
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
+import bflow.auth.services.UserServiceImpl;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.expenses.DTO.ExpenseRequest;
@@ -48,6 +49,8 @@ public class ServiceExpense {
      */
     private final ServiceWallet serviceWallet;
 
+    private final UserServiceImpl userService;
+
     /**
      * Creates a new expense entry for the specified wallet and user.
      *
@@ -61,6 +64,8 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
 
         // Validate wallet access
         WalletUser walletUser = repositoryWalletUser
@@ -108,6 +113,9 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
+
         Expense expense = repositoryExpense.findById(expenseId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Expense not found")
@@ -196,6 +204,8 @@ public class ServiceExpense {
             final UUID expenseId,
             final UUID userId
     ) {
+        //Check if user has an active account
+        userService.validateUserActive(userId);
 
         Expense expense = repositoryExpense.findById(expenseId)
                 .orElseThrow(() ->
