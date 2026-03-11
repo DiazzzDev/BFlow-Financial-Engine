@@ -3,7 +3,6 @@ package bflow.tranfers;
 import bflow.common.response.ApiResponse;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
-import bflow.wallet.DTO.WalletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -20,14 +24,22 @@ import java.util.UUID;
 
 /**
  * Controller for managing transfer operations between wallets.
+ * Provides REST endpoints for retrieving transfer information.
  */
 @RestController
 @RequestMapping("/api/v1/tranfers")
 @RequiredArgsConstructor
-public class ControllerTransfer {
+public final class ControllerTransfer {
     /** The service handling transfer business logic. */
     private final ServiceTransfers serviceTransfers;
 
+    /**
+     * Retrieves a transfer by its unique identifier.
+     * @param id the transfer UUID.
+     * @param authentication the current user's authentication object.
+     * @param request the HTTP request for path information.
+     * @return a ResponseEntity containing the transfer response.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<TransferenceResponse>> getTransferById(
             @PathVariable final UUID id,
@@ -54,8 +66,16 @@ public class ControllerTransfer {
                 .body(response);
     }
 
+    /**
+     * Retrieves all transfers for the authenticated user.
+     * @param authentication the current user's authentication object.
+     * @param pageable the pagination information.
+     * @param request the HTTP request for path information.
+     * @return a ResponseEntity containing paginated transfer responses.
+     */
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>> getUserTransfers(
+    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>>
+        getUserTransfers(
             final Authentication authentication,
             final Pageable pageable,
             final HttpServletRequest request
@@ -78,6 +98,14 @@ public class ControllerTransfer {
                 .body(response);
     }
 
+    /**
+     * Retrieves transfers for a specific wallet by wallet ID.
+     * @param walletId the wallet UUID to retrieve transfers for.
+     * @param authentication the current user's authentication object.
+     * @param pageable the pagination information.
+     * @param request the HTTP request for path information.
+     * @return a ResponseEntity containing paginated transfer responses.
+     */
     @GetMapping("/wallet/{walletId}")
     public ResponseEntity<ApiResponse<Page<TransferenceResponse>>>
         getUserTransfersByWalletId(

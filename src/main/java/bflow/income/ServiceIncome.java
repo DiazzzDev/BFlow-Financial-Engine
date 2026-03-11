@@ -54,6 +54,9 @@ public class ServiceIncome {
      */
     private final ServiceWallet serviceWallet;
 
+    /**
+     * Service for user business logic operations.
+     */
     private final UserServiceImpl userService;
 
     /**

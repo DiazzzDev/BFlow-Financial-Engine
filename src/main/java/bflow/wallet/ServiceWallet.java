@@ -1,6 +1,5 @@
 package bflow.wallet;
 
-import bflow.auth.services.UserService;
 import bflow.auth.services.UserServiceImpl;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
@@ -22,6 +21,7 @@ import java.util.UUID;
 
 /**
  * Service class for managing wallet business logic and transactions.
+ * Handles wallet operations, balance management, and user access control.
  */
 @Service
 @Transactional
@@ -37,6 +37,7 @@ public class ServiceWallet {
     /** The repository for user database operations. */
     private final RepositoryUser repositoryUser;
 
+    /** Service for user business logic operations. */
     private final UserServiceImpl userService;
 
     /**
@@ -143,6 +144,15 @@ public class ServiceWallet {
         return convertToDTO(walletUser);
     }
 
+    /**
+     * Updates an existing wallet with new information.
+     * Only the wallet owner can update wallet details.
+     * @param walletId the unique identifier of the wallet to update.
+     * @param request the wallet update request containing new values.
+     * @param userId the unique identifier of the authenticated user.
+     * @return the updated wallet response.
+     * @throws AccessDeniedException if the user is not the wallet owner.
+     */
     public WalletResponse patchWallet(
             final UUID walletId,
             @Valid final WalletRequest request,
@@ -161,7 +171,8 @@ public class ServiceWallet {
         Wallet wallet = walletUser.getWallet();
 
         if (walletUser.getRole() != WalletRole.OWNER) {
-            throw new AccessDeniedException("Only owners can update the wallet");
+            String errorMessage = "Only owners can update the wallet";
+            throw new AccessDeniedException(errorMessage);
         }
 
         // Update fields

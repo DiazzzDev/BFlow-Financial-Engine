@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Implementation of the {@link UserService}.
+ * Handles all user-related business logic and operations.
  */
 @Service
 @RequiredArgsConstructor
@@ -130,8 +131,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse updateProfile(
-            UUID userId,
-            UpdateUserProfileRequest request
+            final UUID userId,
+            final UpdateUserProfileRequest request
     ) {
 
         //Check if user has an active account
@@ -148,8 +149,12 @@ public class UserServiceImpl implements UserService {
         return getProfile(userId);
     }
 
+    /**
+     * Performs a soft delete of a user account by changing their status.
+     * @param userId the unique identifier of the user to delete.
+     */
     @Override
-    public void softDelete(UUID userId) {
+    public void softDelete(final UUID userId) {
 
         //Check if user has an active account
         validateUserActive(userId);
@@ -161,8 +166,12 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    //Util method
-    public void validateUserActive(UUID userId) {
+    /**
+     * Validates that a user account is active.
+     * @param userId the unique identifier of the user.
+     * @throws IllegalStateException if the user account is not active.
+     */
+    public void validateUserActive(final UUID userId) {
 
         User user = findById(userId);
 
@@ -171,8 +180,13 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /**
+     * Retrieves the user profile information.
+     * @param userId the unique identifier of the user.
+     * @return the user profile response.
+     */
     @Override
-    public UserProfileResponse getProfile(UUID userId) {
+    public UserProfileResponse getProfile(final UUID userId) {
 
         //Check if user has an active account
         validateUserActive(userId);

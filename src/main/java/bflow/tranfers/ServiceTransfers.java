@@ -25,6 +25,7 @@ import java.util.UUID;
 
 /**
  * Service class for managing transfer operations between wallets.
+ * Handles transfer retrieval, creation, and validation logic.
  */
 @Service
 @Transactional
@@ -32,9 +33,6 @@ import java.util.UUID;
 public class ServiceTransfers {
     /** The repository for transfer database operations. */
     private final RepositoryTransfers repositoryTransfers;
-
-    /** The repository for wallet database operations. */
-    private final RepositoryWallet repositoryWallet;
 
     /** The repository for wallet-user relationship operations. */
     private final RepositoryWalletUser repositoryWalletUser;
@@ -45,8 +43,16 @@ public class ServiceTransfers {
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
 
+    /** The service for user business logic. */
     private final UserServiceImpl userService;
 
+    /**
+     * Retrieves a transfer by its ID, validating user authorization.
+     * @param transferId the unique identifier of the transfer.
+     * @param userId the unique identifier of the user making the request.
+     * @return the transfer response data.
+     * @throws ResourceNotFoundException if transfer not found or unauthorized.
+     */
     public TransferenceResponse getTransferById(
             final UUID transferId,
             final UUID userId
@@ -56,10 +62,18 @@ public class ServiceTransfers {
 
         Transfer transfer = repositoryTransfers
                 .findByIdAndUserId(transferId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transferencia no encontrada o no autorizada"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Transferencia no encontrada o no autorizada"
+                ));
         return mapToResponse(transfer);
     }
 
+    /**
+     * Retrieves all transfers for a user with pagination.
+     * @param userId the unique identifier of the user.
+     * @param pageable the pagination information.
+     * @return a page of transfer responses.
+     */
     public Page<TransferenceResponse> getUserTransfers(
             final UUID userId,
             final Pageable pageable
@@ -72,6 +86,13 @@ public class ServiceTransfers {
         return page.map(this::mapToResponse);
     }
 
+    /**
+     * Retrieves transfers for a specific wallet, validating user authorization.
+     * @param userId the unique identifier of the user.
+     * @param walletId the unique identifier of the wallet.
+     * @param pageable the pagination information.
+     * @return a page of transfer responses.
+     */
     public Page<TransferenceResponse> getUserTransfersByWalletId(
             final UUID userId,
             final UUID walletId,
@@ -155,6 +176,7 @@ public class ServiceTransfers {
      * @param fromWallet the source wallet.
      * @param toWallet the destination wallet.
      * @param request the transfer request.
+     * @param user the user executing the transfer.
      * @return the transfer entity.
      */
     private Transfer buildTransfer(

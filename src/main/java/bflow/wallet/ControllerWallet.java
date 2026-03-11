@@ -3,27 +3,33 @@ package bflow.wallet;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.common.response.ApiResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.Authentication;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import lombok.AllArgsConstructor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.UUID;
 
 /**
  * Controller for managing wallet-related operations.
+ * Provides REST endpoints for wallet CRUD operations and access control.
  */
 @RestController
 @RequestMapping("/api/v1/wallets")
 @RequiredArgsConstructor
-public class ControllerWallet {
+public final class ControllerWallet {
 
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
@@ -142,6 +148,14 @@ public class ControllerWallet {
                 .body(response);
     }
 
+    /**
+     * Updates an existing wallet for the authenticated user.
+     * @param id the wallet UUID to update.
+     * @param request the wallet update request.
+     * @param authentication the authenticated user's principal.
+     * @param httpRequest the HTTP request for path information.
+     * @return a ResponseEntity containing the updated wallet response.
+     */
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<WalletResponse>> patchWallet(
             @PathVariable final UUID id,
