@@ -109,6 +109,15 @@ public final class ControllerWallet {
                 .body(response);
     }
 
+    /**
+    * Retrieves all expenses associated with a wallet.
+    *
+    * @param id the wallet identifier.
+    * @param pageable pagination configuration.
+    * @param authentication the authenticated user.
+    * @param request the HTTP request context.
+    * @return a paginated list of wallet expenses.
+    */
     @GetMapping("/{id}/expenses")
     public ResponseEntity<ApiResponse<Page<ExpenseResponse>>> getWalletExpenses(
             @PathVariable final UUID id,
@@ -136,6 +145,15 @@ public final class ControllerWallet {
                 .body(response);
     }
 
+    /**
+    * Retrieves all incomes associated with a wallet.
+    *
+    * @param id the wallet identifier.
+    * @param pageable pagination configuration.
+    * @param authentication the authenticated user.
+    * @param request the HTTP request context.
+    * @return a paginated list of wallet incomes.
+    */
     @GetMapping("/{id}/incomes")
     public ResponseEntity<ApiResponse<Page<IncomeResponse>>> getWalletIncomes(
             @PathVariable final UUID id,

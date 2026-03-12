@@ -2,11 +2,19 @@ package bflow.wallet.entities;
 
 import bflow.auth.entities.User;
 import bflow.wallet.enums.WalletRole;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Index;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,7 +24,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "wallet_users",
         indexes = {
-                @Index(name = "idx_wallet_user", columnList = "wallet_id,user_id")
+                @Index(name = "idx_wallet_user",
+                columnList = "wallet_id,user_id")
         }
 )
 @Getter

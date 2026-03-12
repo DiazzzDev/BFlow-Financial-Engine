@@ -12,6 +12,13 @@ import java.util.UUID;
 
 @Repository
 public interface RepositoryWallet extends JpaRepository<Wallet, UUID> {
+    /**
+    * Retrieves a wallet with a pessimistic write lock.
+    * Used to avoid concurrent balance modifications.
+    *
+    * @param id the wallet identifier.
+    * @return an optional containing the locked wallet.
+    */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM Wallet w WHERE w.id = :id")
     Optional<Wallet> findByIdForUpdate(UUID id);

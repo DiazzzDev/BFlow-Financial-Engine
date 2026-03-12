@@ -10,7 +10,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.PrePersist;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

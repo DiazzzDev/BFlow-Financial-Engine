@@ -67,10 +67,12 @@ public class User {
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
+    /** Timestamp when the user account was created. */
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Timestamp when the user account was last updated. */
     @UpdateTimestamp
     @Column(nullable = false)
     private Instant updatedAt;

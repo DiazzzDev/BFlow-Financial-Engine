@@ -46,8 +46,10 @@ public class ServiceWallet {
     /** Service for user business logic operations. */
     private final UserServiceImpl userService;
 
+    /** Repository for expense persistence operations. */
     private final RepositoryExpense repositoryExpense;
 
+    /** Repository for income persistence operations. */
     private final RepositoryIncome repositoryIncome;
 
     /**
@@ -105,6 +107,16 @@ public class ServiceWallet {
                 .build();
     }
 
+    /**
+    * Retrieves all expenses associated with a specific wallet.
+    * Validates that the authenticated user has access to the wallet.
+    *
+    * @param walletId the wallet unique identifier.
+    * @param userId the authenticated user identifier.
+    * @param pageable pagination configuration.
+    * @return a page containing expense responses.
+    * @throws AccessDeniedException if the user has no access to the wallet.
+    */
     public Page<ExpenseResponse> getWalletExpenses(
             final UUID walletId,
             final UUID userId,
@@ -127,6 +139,16 @@ public class ServiceWallet {
         return expenses.map(this::toExpenseResponse);
     }
 
+    /**
+     * Retrieves all incomes associated with a specific wallet.
+     * Validates that the authenticated user has access to the wallet.
+     *
+     * @param walletId the wallet unique identifier.
+     * @param userId the authenticated user identifier.
+     * @param pageable pagination configuration.
+     * @return a page containing income responses.
+     * @throws AccessDeniedException if the user has no access to the wallet.
+    */
     public Page<IncomeResponse> getWalletIncomes(
             final UUID walletId,
             final UUID userId,
@@ -359,7 +381,14 @@ public class ServiceWallet {
         wallet.setBalance(newBalance);
     }
 
-    public ExpenseResponse toExpenseResponse(Expense expense) {
+
+    /**
+    * Converts an Expense entity into an ExpenseResponse DTO.
+    *
+    * @param expense the expense entity to convert.
+    * @return the mapped expense response DTO.
+    */
+    public ExpenseResponse toExpenseResponse(final Expense expense) {
         ExpenseResponse dto = new ExpenseResponse();
         dto.setId(expense.getId().toString());
         dto.setTitle(expense.getTitle());
@@ -378,7 +407,12 @@ public class ServiceWallet {
         return dto;
     }
 
-    public IncomeResponse toIncomeResponse(Income income) {
+    /**
+    * Converts an Income entity into an IncomeResponse DTO.
+    * @param income the income entity to convert.
+    * @return the mapped income response DTO.
+    */
+    public IncomeResponse toIncomeResponse(final Income income) {
         IncomeResponse dto = new IncomeResponse();
         dto.setId(income.getId().toString());
         dto.setTitle(income.getTitle());

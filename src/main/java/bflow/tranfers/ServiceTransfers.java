@@ -37,6 +37,7 @@ public class ServiceTransfers {
     /** The repository for wallet-user relationship operations. */
     private final RepositoryWalletUser repositoryWalletUser;
 
+    /** Repository for wallet persistence operations. */
     private final RepositoryWallet repositoryWallet;
 
     /** The repository for user database operations. */
@@ -150,11 +151,15 @@ public class ServiceTransfers {
 
         Wallet fromWallet = repositoryWallet
                 .findByIdForUpdate(originWallet.getWallet().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Origin wallet not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Origin wallet not found"
+                ));
 
         Wallet toWallet = repositoryWallet
                 .findByIdForUpdate(destinationWallet.getWallet().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Destination wallet not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Destination wallet not found"
+                ));
 
         if (fromWallet.getId().equals(toWallet.getId())) {
             throw new IllegalStateException(
