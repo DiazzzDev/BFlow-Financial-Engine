@@ -2,14 +2,7 @@ package bflow.wallet.entities;
 
 import bflow.auth.entities.User;
 import bflow.wallet.enums.WalletRole;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,7 +12,11 @@ import java.util.UUID;
  * Mapping entity between Wallets and Users.
  */
 @Entity
-@Table(name = "wallet_users")
+@Table(name = "wallet_users",
+        indexes = {
+                @Index(name = "idx_wallet_user", columnList = "wallet_id,user_id")
+        }
+)
 @Getter
 @Setter
 public class WalletUser {

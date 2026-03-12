@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * Entity representing a financial wallet.
@@ -61,10 +62,11 @@ public class Wallet {
 
     /** The timestamp when the wallet was created. */
     @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     /** The timestamp when the wallet was updated. */
-    @CreationTimestamp
+    @UpdateTimestamp
     private Instant updatedAt;
 
 }

@@ -8,6 +8,7 @@ import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
 import bflow.tranfers.entities.Transfer;
 import bflow.tranfers.enums.TransferStatus;
+import bflow.wallet.RepositoryWallet;
 import bflow.wallet.RepositoryWalletUser;
 import bflow.wallet.ServiceWallet;
 import bflow.wallet.entities.Wallet;
@@ -35,6 +36,8 @@ public class ServiceTransfers {
 
     /** The repository for wallet-user relationship operations. */
     private final RepositoryWalletUser repositoryWalletUser;
+
+    private final RepositoryWallet repositoryWallet;
 
     /** The repository for user database operations. */
     private final RepositoryUser repositoryUser;
@@ -145,13 +148,22 @@ public class ServiceTransfers {
                         "User does not have access to this wallet"
                 ));
 
-        Wallet fromWallet = originWallet.getWallet();
-        Wallet toWallet = destinationWallet.getWallet();
+        Wallet fromWallet = repositoryWallet
+                .findByIdForUpdate(originWallet.getWallet().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Origin wallet not found"));
+
+        Wallet toWallet = repositoryWallet
+                .findByIdForUpdate(destinationWallet.getWallet().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Destination wallet not found"));
 
         if (fromWallet.getId().equals(toWallet.getId())) {
             throw new IllegalStateException(
                     "Cannot transfer to the same wallet"
             );
+        }
+
+        if (!fromWallet.getCurrency().equals(toWallet.getCurrency())) {
+            throw new IllegalStateException();
         }
 
         if (fromWallet.getBalance().compareTo(amount) < 0) {
