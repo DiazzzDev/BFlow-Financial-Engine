@@ -16,6 +16,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -60,14 +63,12 @@ public class AuthAccount {
     private boolean enabled = true;
 
     /** Timestamp of when the account was first created. */
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    /**
-     * Automatically sets the creation timestamp before persisting.
-     */
-    @PrePersist
-    void onCreate() {
-        this.createdAt = Instant.now();
-    }
+    /** The timestamp when the wallet was updated. */
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private Instant updatedAt;
 }

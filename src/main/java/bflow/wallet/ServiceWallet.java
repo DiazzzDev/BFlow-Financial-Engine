@@ -1,6 +1,12 @@
 package bflow.wallet;
 
 import bflow.auth.services.UserServiceImpl;
+import bflow.expenses.DTO.ExpenseResponse;
+import bflow.expenses.RepositoryExpense;
+import bflow.expenses.entity.Expense;
+import bflow.income.DTO.IncomeResponse;
+import bflow.income.RepositoryIncome;
+import bflow.income.entity.Income;
 import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.wallet.entities.Wallet;
@@ -39,6 +45,10 @@ public class ServiceWallet {
 
     /** Service for user business logic operations. */
     private final UserServiceImpl userService;
+
+    private final RepositoryExpense repositoryExpense;
+
+    private final RepositoryIncome repositoryIncome;
 
     /**
      * Retrieves all wallets for a user with pagination.
@@ -93,6 +103,50 @@ public class ServiceWallet {
                 .initialValue(wallet.getInitialValue())
                 .createdAt(wallet.getCreatedAt())
                 .build();
+    }
+
+    public Page<ExpenseResponse> getWalletExpenses(
+            final UUID walletId,
+            final UUID userId,
+            final Pageable pageable
+    ) {
+        // Check if user has an active account
+        userService.validateUserActive(userId);
+
+        // Validate wallet access
+        repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "User does not have access to this wallet"
+                ));
+
+        Page<Expense> expenses = repositoryExpense
+                .findByWalletId(walletId, pageable);
+
+        // Map to DTO
+        return expenses.map(this::toExpenseResponse);
+    }
+
+    public Page<IncomeResponse> getWalletIncomes(
+            final UUID walletId,
+            final UUID userId,
+            final Pageable pageable
+    ) {
+        // Check if user has an active account
+        userService.validateUserActive(userId);
+
+        // Validate wallet access
+        repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "User does not have access to this wallet"
+                ));
+
+        Page<Income> incomes = repositoryIncome
+                .findByWalletId(walletId, pageable);
+
+        // Map to DTO
+        return incomes.map(this::toIncomeResponse);
     }
 
     /**
@@ -303,5 +357,40 @@ public class ServiceWallet {
         // Add back the amount since we're reversing an expense
         BigDecimal newBalance = wallet.getBalance().add(amount);
         wallet.setBalance(newBalance);
+    }
+
+    public ExpenseResponse toExpenseResponse(Expense expense) {
+        ExpenseResponse dto = new ExpenseResponse();
+        dto.setId(expense.getId().toString());
+        dto.setTitle(expense.getTitle());
+        dto.setDescription(expense.getDescription());
+        dto.setAmount(expense.getAmount());
+        dto.setDate(expense.getDate());
+        dto.setExpenseType(expense.getType().toString());
+        dto.setTaxDeductible(expense.getTaxDeductible());
+        dto.setRecurring(expense.getRecurring());
+        dto.setReimbursable(expense.getReimbursable());
+        dto.setWalletId(expense.getWallet().getId().toString());
+        dto.setWalletName(expense.getWallet().getName());
+        dto.setContributorId(expense.getContributor().getId().toString());
+        dto.setContributorName(expense.getContributor().getEmail());
+        dto.setCreatedAt(expense.getCreatedAt());
+        return dto;
+    }
+
+    public IncomeResponse toIncomeResponse(Income income) {
+        IncomeResponse dto = new IncomeResponse();
+        dto.setId(income.getId().toString());
+        dto.setTitle(income.getTitle());
+        dto.setDescription(income.getDescription());
+        dto.setAmount(income.getAmount());
+        dto.setDate(income.getDate());
+        dto.setIncomeType(income.getType().toString());
+        dto.setWalletId(income.getWallet().getId().toString());
+        dto.setWalletName(income.getWallet().getName());
+        dto.setContributorId(income.getContributor().getId().toString());
+        dto.setContributorName(income.getContributor().getEmail());
+        dto.setCreatedAt(income.getCreatedAt());
+        return dto;
     }
 }

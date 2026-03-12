@@ -66,7 +66,4 @@ public class Transfer {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
-
-    @UpdateTimestamp
-    private Instant updatedAt;
 }

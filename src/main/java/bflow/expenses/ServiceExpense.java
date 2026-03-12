@@ -283,7 +283,7 @@ public class ServiceExpense {
      * @param expense the expense entity to map
      * @return the mapped ExpenseResponse
      */
-    private ExpenseResponse mapToResponse(final Expense expense) {
+    public ExpenseResponse mapToResponse(final Expense expense) {
 
         ExpenseResponse response = new ExpenseResponse();
 

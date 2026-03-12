@@ -5,7 +5,9 @@ import bflow.wallet.enums.WalletRole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -39,4 +41,9 @@ public class WalletUser {
     /** The role the user has in this wallet. */
     @Enumerated(EnumType.STRING)
     private WalletRole role; // OWNER, MEMBER
+
+    /** The timestamp when the wallet was created. */
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 }
