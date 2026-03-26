@@ -22,9 +22,13 @@ public class ControllerBudget {
 
     @GetMapping("/wallet/{walletId}")
     public ResponseEntity<ApiResponse<List<BudgetResponse>>> getBudgetsByWallet(
-            @PathVariable UUID walletId) {
+            @PathVariable UUID walletId,
+            final Authentication authentication) {
 
-        List<BudgetResponse> budgets = budgetService.getBudgetsByWallet(walletId);
+        String userIdString = (String) authentication.getPrincipal();
+        UUID userId = UUID.fromString(userIdString);
+
+        List<BudgetResponse> budgets = budgetService.getBudgetsByWallet(walletId, userId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -37,9 +41,13 @@ public class ControllerBudget {
 
     @GetMapping("/{id}/status")
     public ResponseEntity<ApiResponse<BudgetResponse>> getBudgetStatus(
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            final Authentication authentication) {
 
-        BudgetResponse response = budgetService.getBudgetStatus(id);
+        String userIdString = (String) authentication.getPrincipal();
+        UUID userId = UUID.fromString(userIdString);
+
+        BudgetResponse response = budgetService.getBudgetStatus(id, userId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(

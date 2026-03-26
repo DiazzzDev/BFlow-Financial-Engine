@@ -2,44 +2,42 @@ package bflow.budget.services;
 
 import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.enums.BudgetStatus;
+import bflow.notifications.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class BudgetAlertService {
-    public void evaluate(BudgetResponse budgetResponse) {
+    private final NotificationService notificationService;
+
+    public void evaluate(BudgetResponse budgetResponse, UUID userId) {
         if (budgetResponse == null || budgetResponse.getStatus() == null) {
             return;
         }
 
-        BudgetStatus status = budgetResponse.getStatus();
+        switch (budgetResponse.getStatus()) {
+            case WARNING ->
+                    notificationService.sendBudgetWarning(
+                            userId,
+                            budgetResponse
+                    );
 
-        switch (status) {
-            case WARNING:
-                log.warn("[BUDGET WARNING] Wallet {} in {}%",
-                        budgetResponse.getWalletId(),
-                        budgetResponse.getPercentage());
-                break;
+            case CRITICAL ->
+                    notificationService.sendBudgetCritical(
+                            userId,
+                            budgetResponse
+                    );
 
-            case CRITICAL:
-                log.error("[BUDGET CRITICAL] Wallet {} in {}%",
-                        budgetResponse.getWalletId(),
-                        budgetResponse.getPercentage());
-                break;
-
-            case EXCEEDED:
-                log.error("[BUDGET EXCEEDED] Wallet {} exceeded budget ({}%)",
-                        budgetResponse.getWalletId(),
-                        budgetResponse.getPercentage());
-                break;
-
-            default:
-                log.debug("[BUDGET OK] Wallet {} in {}%",
-                        budgetResponse.getWalletId(),
-                        budgetResponse.getPercentage());
+            case EXCEEDED ->
+                    notificationService.sendBudgetExceeded(
+                            userId,
+                            budgetResponse
+                    );
         }
     }
 }
