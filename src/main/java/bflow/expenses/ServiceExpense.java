@@ -3,6 +3,7 @@ package bflow.expenses;
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserServiceImpl;
+import bflow.budget.services.BudgetService;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
 import bflow.category.RepositoryCategory;
@@ -69,6 +70,8 @@ public class ServiceExpense {
      */
     private final CategoryValidator categoryValidator;
 
+    private final BudgetService serviceBudget;
+
     /**
      * Creates a new expense entry for the specified wallet and user.
      *
@@ -111,6 +114,9 @@ public class ServiceExpense {
         serviceWallet.subtractBalance(wallet, expense.getAmount());
 
         Expense savedExpense = repositoryExpense.saveAndFlush(expense);
+
+        serviceBudget.evaluateBudgetsForWallet(
+                savedExpense.getWallet().getId());
 
         return mapToResponse(savedExpense);
     }
