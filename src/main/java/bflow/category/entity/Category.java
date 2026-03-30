@@ -15,6 +15,8 @@ import lombok.Setter;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 @Entity
 @Table(name = "categories")
 @Getter
@@ -59,7 +61,8 @@ public class Category {
     /**
      * Timestamp when this category was created.
      */
-    @Column(nullable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
 }
