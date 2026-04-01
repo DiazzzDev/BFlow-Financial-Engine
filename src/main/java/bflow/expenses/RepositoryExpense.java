@@ -42,6 +42,14 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
             LocalDate end
     );
 
+    /**
+     * Sum expenses for a category within a date range.
+     *
+     * @param categoryId the category ID
+     * @param start the start date
+     * @param end the end date
+     * @return the sum of expenses
+     */
     @Query("""
         SELECT COALESCE(SUM(e.amount), 0)
         FROM Expense e

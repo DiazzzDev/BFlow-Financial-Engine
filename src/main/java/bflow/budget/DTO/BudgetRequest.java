@@ -1,4 +1,3 @@
-
 package bflow.budget.DTO;
 
 import bflow.budget.enums.BudgetScope;
@@ -64,6 +63,11 @@ public class BudgetRequest {
     private LocalDate startDate;
 
     /**
+     * The category ID (required if scope is CATEGORY).
+     */
+    private UUID categoryId;
+
+    /**
      * The warning threshold percentage.
      */
     @Min(1)
@@ -77,7 +81,8 @@ public class BudgetRequest {
     @Max(THRESHOLD_MAX)
     private Integer thresholdCritical = CRITICAL_THRESHOLD_DEFAULT;
 
+    /**
+     * The budget scope (WALLET or CATEGORY).
+     */
     private BudgetScope scope;
-    private UUID categoryId;
-
 }

@@ -4,6 +4,7 @@ import bflow.auth.entities.User;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserServiceImpl;
+import bflow.budget.services.BudgetService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.RepositoryExpense;
@@ -66,6 +67,9 @@ class ServiceExpenseTest {
 
     @Mock
     private UserServiceImpl userService;
+
+    @Mock
+    private BudgetService serviceBudget;
 
     @InjectMocks
     private ServiceExpense serviceExpense;

@@ -48,6 +48,9 @@ public class BudgetService {
      */
     private final UserServiceImpl userService;
 
+    /**
+     * Service for notification operations.
+     */
     private final NotificationService notificationService;
 
     /**
@@ -114,7 +117,9 @@ public class BudgetService {
 
         if (request.getScope() == BudgetScope.CATEGORY
                 && request.getCategoryId() == null) {
-            throw new IllegalArgumentException("Category budget requires categoryId");
+            throw new IllegalArgumentException(
+                    "Category budget requires categoryId"
+            );
         }
 
         budget.setWallet(wallet);
@@ -190,8 +195,8 @@ public class BudgetService {
             boolean periodEnded = today.isAfter(end);
 
             if (periodEnded) {
-
-                BudgetResponse endResponse = calculationService.calculate(budget);
+                BudgetResponse endResponse =
+                        calculationService.calculate(budget);
 
                 if (endResponse.getStatus() != BudgetStatus.EXCEEDED) {
                     notificationService.sendBudgetSuccess(
@@ -227,7 +232,12 @@ public class BudgetService {
         }
     }
 
-    private void resetBudgetPeriod(Budget budget) {
+    /**
+     * Reset budget period to start from today.
+     *
+     * @param budget the budget to reset
+     */
+    private void resetBudgetPeriod(final Budget budget) {
 
         LocalDate newStart = LocalDate.now();
 
@@ -235,6 +245,13 @@ public class BudgetService {
         budget.setLastAlertStatus(BudgetStatus.OK);
     }
 
+    /**
+     * Get budget summary for a wallet.
+     *
+     * @param walletId the wallet ID
+     * @param userId the user ID
+     * @return the budget summary response
+     */
     public BudgetSummaryResponse getBudgetSummary(
             final UUID walletId,
             final UUID userId
@@ -274,13 +291,15 @@ public class BudgetService {
                 case WARNING -> warning++;
                 case CRITICAL -> critical++;
                 case EXCEEDED -> exceeded++;
+                default -> {
+                }
             }
 
             totalBudget = totalBudget.add(b.getBudgetLimit());
             totalSpent = totalSpent.add(b.getSpent());
 
-            if (highest == null ||
-                    b.getPercentage() > highest.getPercentage()) {
+            if (highest == null
+                    || b.getPercentage() > highest.getPercentage()) {
                 highest = b;
             }
         }

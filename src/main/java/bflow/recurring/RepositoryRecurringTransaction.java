@@ -9,15 +9,32 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Repository interface for RecurringTransaction entities.
+ */
 @Repository
-public interface RepositoryRecurringTransaction extends JpaRepository<RecurringTransaction, UUID> {
-    @Query("""
-       SELECT r
-       FROM RecurringTransaction r
-       WHERE r.active = true
-       AND r.nextExecutionDate <= :today
-       """)
-    List<RecurringTransaction> findDueTransactions(LocalDate today);
+public interface RepositoryRecurringTransaction
+        extends JpaRepository<RecurringTransaction, UUID> {
 
+    /**
+     * Find all active recurring transactions that are due for execution.
+     *
+     * @param dueDate the date to check for due transactions
+     * @return list of due recurring transactions
+     */
+    @Query("""
+        SELECT r FROM RecurringTransaction r
+        WHERE r.active = true
+        AND r.nextExecutionDate <= :dueDate
+        AND (r.endDate IS NULL OR r.endDate >= :dueDate)
+    """)
+    List<RecurringTransaction> findDueTransactions(LocalDate dueDate);
+
+    /**
+     * Find all recurring transactions for a specific user.
+     *
+     * @param userId the user ID
+     * @return list of recurring transactions
+     */
     List<RecurringTransaction> findByUserId(UUID userId);
 }

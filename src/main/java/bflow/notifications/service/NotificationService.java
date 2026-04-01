@@ -136,7 +136,16 @@ public final class NotificationService {
         repository.save(notification);
     }
 
-    public void sendBudgetSuccess(UUID userId, BudgetResponse budget) {
+    /**
+     * Send a success notification about completing a budget period.
+     *
+     * @param userId the user ID
+     * @param budget the budget response
+     */
+    public void sendBudgetSuccess(
+            final UUID userId,
+            final BudgetResponse budget
+    ) {
         create(
                 userId,
                 NotificationType.BUDGET_SUCCESS,

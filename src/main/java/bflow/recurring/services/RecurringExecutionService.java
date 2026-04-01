@@ -20,28 +20,51 @@ import bflow.wallet.entities.WalletUser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Service for executing and managing recurring transactions.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class RecurringExecutionService {
+    /**
+     * Repository for recurring transaction persistence.
+     */
     private final RepositoryRecurringTransaction repository;
+    /**
+     * Service for expense operations.
+     */
     private final ServiceExpense serviceExpense;
+    /**
+     * Service for income operations.
+     */
     private final ServiceIncome serviceIncome;
+    /**
+     * Service for user validation.
+     */
     private final UserServiceImpl userService;
+    /**
+     * Repository for category persistence.
+     */
     private final RepositoryCategory repositoryCategory;
+    /**
+     * Repository for wallet user associations.
+     */
     private final RepositoryWalletUser repositoryWalletUser;
 
+    /**
+     * Execute all due recurring transactions on the current date.
+     */
     public void executeDueTransactions() {
-
         List<RecurringTransaction> due =
                 repository.findDueTransactions(LocalDate.now());
 
         for (RecurringTransaction recurring : due) {
-
             if (recurring.getType() == RecurringType.EXPENSE) {
                 createExpense(recurring);
             } else {
@@ -52,19 +75,32 @@ public class RecurringExecutionService {
         }
     }
 
-    public List<RecurringResponse> getUserRecurring(UUID userId) {
-
+    /**
+     * Get all recurring transactions for a user.
+     *
+     * @param userId the user ID
+     * @return list of recurring transaction responses
+     */
+    public List<RecurringResponse> getUserRecurring(
+            final UUID userId
+    ) {
         return repository.findByUserId(userId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
+    /**
+     * Create a new recurring transaction.
+     *
+     * @param request the recurring transaction request
+     * @param userId the user ID
+     * @return the created recurring transaction response
+     */
     public RecurringResponse createRecurring(
-            RecurringRequest request,
-            UUID userId
+            final RecurringRequest request,
+            final UUID userId
     ) {
-
         userService.validateUserActive(userId);
 
         WalletUser walletUser = repositoryWalletUser
@@ -108,7 +144,13 @@ public class RecurringExecutionService {
         return mapToResponse(saved);
     }
 
-    private RecurringResponse mapToResponse(RecurringTransaction req) {
+    /**
+     * Map recurring transaction entity to response DTO.
+     *
+     * @param req the recurring transaction entity
+     * @return the recurring transaction response
+     */
+    private RecurringResponse mapToResponse(final RecurringTransaction req) {
         RecurringResponse res = new RecurringResponse();
         res.setId(req.getId());
         res.setTitle(req.getTitle());
@@ -123,8 +165,12 @@ public class RecurringExecutionService {
         return res;
     }
 
-    private void createExpense(RecurringTransaction recurring) {
-
+    /**
+     * Create an expense from a recurring transaction.
+     *
+     * @param recurring the recurring transaction
+     */
+    private void createExpense(final RecurringTransaction recurring) {
         ExpenseRequest request = new ExpenseRequest();
 
         request.setTitle(recurring.getTitle());
@@ -142,8 +188,12 @@ public class RecurringExecutionService {
         );
     }
 
-    private void createIncome(RecurringTransaction recurring) {
-
+    /**
+     * Create an income from a recurring transaction.
+     *
+     * @param recurring the recurring transaction
+     */
+    private void createIncome(final RecurringTransaction recurring) {
         IncomeRequest request = new IncomeRequest();
 
         request.setTitle(recurring.getTitle());
@@ -161,8 +211,18 @@ public class RecurringExecutionService {
         );
     }
 
-    public void toggleRecurring(UUID id, UUID userId, boolean active) {
-
+    /**
+     * Toggle the active status of a recurring transaction.
+     *
+     * @param id the recurring transaction ID
+     * @param userId the user ID
+     * @param active the new active status
+     */
+    public void toggleRecurring(
+            final UUID id,
+            final UUID userId,
+            final boolean active
+    ) {
         RecurringTransaction recurring = repository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Recurring not found")
@@ -175,21 +235,44 @@ public class RecurringExecutionService {
         recurring.setActive(active);
     }
 
-    private void updateNextExecution(RecurringTransaction recurring) {
-
+    /**
+     * Update the next execution date for a recurring transaction.
+     *
+     * @param recurring the recurring transaction
+     */
+    private void updateNextExecution(
+            final RecurringTransaction recurring
+    ) {
         LocalDate next = recurring.getNextExecutionDate();
+        LocalDate nextDate = next;
 
         switch (recurring.getFrequency()) {
-            case DAILY -> next = next.plusDays(recurring.getIntervalValue());
-            case WEEKLY -> next = next.plusWeeks(recurring.getIntervalValue());
-            case MONTHLY -> next = next.plusMonths(recurring.getIntervalValue());
+            case DAILY:
+                nextDate = next.plusDays(recurring.getIntervalValue());
+                break;
+            case WEEKLY:
+                nextDate = next.plusWeeks(recurring.getIntervalValue());
+                break;
+            case MONTHLY:
+                nextDate = next.plusMonths(recurring.getIntervalValue());
+                break;
+            default:
+                break;
         }
 
-        recurring.setNextExecutionDate(next);
+        recurring.setNextExecutionDate(nextDate);
     }
 
-    public void deleteRecurring(UUID id, UUID userId) {
-
+    /**
+     * Delete a recurring transaction.
+     *
+     * @param id the recurring transaction ID
+     * @param userId the user ID
+     */
+    public void deleteRecurring(
+            final UUID id,
+            final UUID userId
+    ) {
         RecurringTransaction recurring = repository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Recurring not found")

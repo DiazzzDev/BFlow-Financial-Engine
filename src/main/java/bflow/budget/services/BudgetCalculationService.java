@@ -56,7 +56,7 @@ public final class BudgetCalculationService {
 
         BigDecimal spent;
 
-        if (budget.getScope() == BudgetScope.WALLET){
+        if (budget.getScope() == BudgetScope.WALLET) {
             spent = repositoryExpense.sumExpensesByWalletAndDateRange(
                     budget.getWallet().getId(),
                     start,

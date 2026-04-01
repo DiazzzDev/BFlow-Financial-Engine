@@ -27,6 +27,7 @@ public final class BudgetAlertService {
      *
      * @param budgetResponse the budget response
      * @param userId the user ID
+     * @param budget the budget entity
      */
     public void evaluate(
             final BudgetResponse budgetResponse,
@@ -50,20 +51,28 @@ public final class BudgetAlertService {
 
         if (last == BudgetStatus.OK && current == BudgetStatus.CRITICAL) {
             notificationService.sendBudgetCritical(userId, budgetResponse);
-        }
-        else if (last == BudgetStatus.OK && current == BudgetStatus.EXCEEDED) {
+        } else if (last == BudgetStatus.OK
+                && current == BudgetStatus.EXCEEDED) {
             notificationService.sendBudgetExceeded(userId, budgetResponse);
-        }
-        else {
+        } else {
             switch (current) {
                 case WARNING ->
-                        notificationService.sendBudgetWarning(userId, budgetResponse);
+                        notificationService.sendBudgetWarning(
+                                userId,
+                                budgetResponse
+                        );
 
                 case CRITICAL ->
-                        notificationService.sendBudgetCritical(userId, budgetResponse);
+                        notificationService.sendBudgetCritical(
+                                userId,
+                                budgetResponse
+                        );
 
                 case EXCEEDED ->
-                        notificationService.sendBudgetExceeded(userId, budgetResponse);
+                        notificationService.sendBudgetExceeded(
+                                userId,
+                                budgetResponse
+                        );
 
                 default -> { }
             }

@@ -82,9 +82,15 @@ public final class Budget {
      */
     private LocalDate startDate;
 
+    /**
+     * The budget scope (WALLET or CATEGORY).
+     */
     @Enumerated(EnumType.STRING)
     private BudgetScope scope;
 
+    /**
+     * The category ID (if scope is CATEGORY).
+     */
     private UUID categoryId;
 
     /**

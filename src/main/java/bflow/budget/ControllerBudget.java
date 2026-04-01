@@ -106,9 +106,16 @@ public final class ControllerBudget {
                         "/api/v1/budgets"));
     }
 
+    /**
+     * Get budget summary for a specific wallet.
+     *
+     * @param walletId the wallet ID
+     * @param authentication the authentication object
+     * @return response containing budget summary
+     */
     @GetMapping("/wallet/{walletId}/summary")
     public ResponseEntity<ApiResponse<BudgetSummaryResponse>> getSummary(
-            @PathVariable UUID walletId,
+            @PathVariable final UUID walletId,
             final Authentication authentication
     ) {
 
