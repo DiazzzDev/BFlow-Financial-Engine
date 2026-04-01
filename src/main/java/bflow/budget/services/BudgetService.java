@@ -4,6 +4,7 @@ import bflow.auth.entities.User;
 import bflow.auth.services.UserServiceImpl;
 import bflow.budget.DTO.BudgetRequest;
 import bflow.budget.DTO.BudgetResponse;
+import bflow.budget.DTO.BudgetSummaryResponse;
 import bflow.budget.RepositoryBudget;
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
@@ -15,6 +16,8 @@ import bflow.wallet.entities.Wallet;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -230,5 +233,71 @@ public class BudgetService {
 
         budget.setStartDate(newStart);
         budget.setLastAlertStatus(BudgetStatus.OK);
+    }
+
+    public BudgetSummaryResponse getBudgetSummary(
+            final UUID walletId,
+            final UUID userId
+    ) {
+
+        userService.validateUserActive(userId);
+
+        repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() ->
+                        new WalletAccessDeniedException(
+                                "You do not have access to this wallet"
+                        )
+                );
+
+        List<BudgetResponse> budgets =
+                getBudgetsByWallet(walletId, userId);
+
+        BudgetSummaryResponse summary = new BudgetSummaryResponse();
+
+        summary.setTotal(budgets.size());
+
+        int ok = 0;
+        int warning = 0;
+        int critical = 0;
+        int exceeded = 0;
+
+        BigDecimal totalBudget = BigDecimal.ZERO;
+        BigDecimal totalSpent = BigDecimal.ZERO;
+
+        BudgetResponse highest = null;
+
+        for (BudgetResponse b : budgets) {
+
+            switch (b.getStatus()) {
+                case OK -> ok++;
+                case WARNING -> warning++;
+                case CRITICAL -> critical++;
+                case EXCEEDED -> exceeded++;
+            }
+
+            totalBudget = totalBudget.add(b.getBudgetLimit());
+            totalSpent = totalSpent.add(b.getSpent());
+
+            if (highest == null ||
+                    b.getPercentage() > highest.getPercentage()) {
+                highest = b;
+            }
+        }
+
+        summary.setOk(ok);
+        summary.setWarning(warning);
+        summary.setCritical(critical);
+        summary.setExceeded(exceeded);
+
+        summary.setTotalBudget(totalBudget);
+        summary.setTotalSpent(totalSpent);
+        summary.setTotalRemaining(
+                totalBudget.subtract(totalSpent)
+        );
+
+        summary.setHighestUsage(highest);
+
+        return summary;
     }
 }

@@ -2,6 +2,7 @@ package bflow.budget;
 
 import bflow.budget.DTO.BudgetRequest;
 import bflow.budget.DTO.BudgetResponse;
+import bflow.budget.DTO.BudgetSummaryResponse;
 import bflow.budget.services.BudgetService;
 import bflow.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -103,5 +104,25 @@ public final class ControllerBudget {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 ApiResponse.success("Budget created successfully", response,
                         "/api/v1/budgets"));
+    }
+
+    @GetMapping("/wallet/{walletId}/summary")
+    public ResponseEntity<ApiResponse<BudgetSummaryResponse>> getSummary(
+            @PathVariable UUID walletId,
+            final Authentication authentication
+    ) {
+
+        UUID userId = UUID.fromString(authentication.getName());
+
+        BudgetSummaryResponse summary =
+                budgetService.getBudgetSummary(walletId, userId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Budget summary retrieved successfully",
+                        summary,
+                        "/api/v1/budgets/wallet/" + walletId + "/summary"
+                )
+        );
     }
 }

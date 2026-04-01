@@ -3,6 +3,8 @@ package bflow.auth.security.jwt;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -21,8 +23,12 @@ public class JwtKeyConfig {
      */
     @Bean
     RSAPrivateKey rsaPrivateKey(final RSAKeyLoader loader) throws Exception {
-        InputStream is = new ClassPathResource("keys/private.pem")
-                .getInputStream();
+        String path = System.getenv("PRIVATE_KEY_PATH");
+
+        InputStream is = (path != null)
+                ? new FileInputStream(path)
+                : new ClassPathResource("keys/private.pem").getInputStream();
+
         return loader.loadPrivateKey(is);
     }
 
@@ -34,8 +40,12 @@ public class JwtKeyConfig {
      */
     @Bean
     RSAPublicKey rsaPublicKey(final RSAKeyLoader loader) throws Exception {
-        InputStream is = new ClassPathResource("keys/public.pem")
-                .getInputStream();
+        String path = System.getenv("PUBLIC_KEY_PATH");
+
+        InputStream is = (path != null)
+                ? new FileInputStream(path)
+                : new ClassPathResource("keys/public.pem").getInputStream();
+
         return loader.loadPublicKey(is);
     }
 }

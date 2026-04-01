@@ -23,7 +23,9 @@ public class CorsConfig {
 
         configuration.setAllowCredentials(true); //Enable cookies
 
-        configuration.addAllowedOrigin("http://127.0.0.1:5501");
+        configuration.addAllowedOrigin("http://localhost:5173");
+        configuration.addAllowedOrigin("http://127.0.0.1:5173");
+        configuration.addAllowedOrigin("https://*.onrender.com");
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
