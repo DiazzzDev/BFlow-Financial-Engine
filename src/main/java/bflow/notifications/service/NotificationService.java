@@ -1,6 +1,8 @@
 package bflow.notifications.service;
 
+import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
+import bflow.common.aws.service.SesEmailService;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
@@ -17,7 +19,10 @@ public final class NotificationService {
     /**
      * Repository for notification operations.
      */
-    private final NotificationRepository repository;
+    private final NotificationRepository Notificationrepository;
+
+    private final SesEmailService emailService;
+    private final RepositoryUser repositoryUser;
 
     /**
      * Send a warning notification about budget usage.
@@ -25,14 +30,21 @@ public final class NotificationService {
      * @param userId the user ID
      * @param budget the budget response
      */
-    public void sendBudgetWarning(final UUID userId,
-            final BudgetResponse budget) {
+    public void sendBudgetWarning(
+            final UUID userId,
+            final BudgetResponse budget
+    ) {
+        String message =
+                "You have used " + budget.getPercentage() + "% of your budget";
+
         create(
                 userId,
                 NotificationType.BUDGET_WARNING,
                 "Budget warning",
                 "You have used " + budget.getPercentage() + "% of your budget"
         );
+
+        sendEmail(userId, "Budget Warning", message);
     }
 
     /**
@@ -41,14 +53,21 @@ public final class NotificationService {
      * @param userId the user ID
      * @param budget the budget response
      */
-    public void sendBudgetCritical(final UUID userId,
-            final BudgetResponse budget) {
+    public void sendBudgetCritical(
+            final UUID userId,
+            final BudgetResponse budget
+    ) {
+        String message =
+                "You have used " + budget.getPercentage() + "% of your budget";
+
         create(
                 userId,
                 NotificationType.BUDGET_CRITICAL,
                 "Budget critical",
                 "You have used " + budget.getPercentage() + "% of your budget"
         );
+
+        sendEmail(userId, "Budget Critical", message);
     }
 
     /**
@@ -57,14 +76,20 @@ public final class NotificationService {
      * @param userId the user ID
      * @param budget the budget response
      */
-    public void sendBudgetExceeded(final UUID userId,
-            final BudgetResponse budget) {
+    public void sendBudgetExceeded(
+            final UUID userId,
+            final BudgetResponse budget
+    ) {
+        String message = "You exceeded your budget";
+
         create(
                 userId,
                 NotificationType.BUDGET_EXCEEDED,
                 "Budget exceeded",
                 "You exceeded your budget"
         );
+
+        sendEmail(userId, "Budget Exceeded", message);
     }
 
     /**
@@ -88,7 +113,7 @@ public final class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
 
-        repository.save(notification);
+        Notificationrepository.save(notification);
     }
 
     /**
@@ -99,7 +124,7 @@ public final class NotificationService {
      */
     public List<NotificationResponse> getUserNotifications(final UUID userId) {
 
-        return repository
+        return Notificationrepository
                 .findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toResponse)
@@ -113,7 +138,7 @@ public final class NotificationService {
      * @return count of unread notifications
      */
     public Long getUnreadCount(final UUID userId) {
-        return repository.countByUserIdAndReadFalse(userId);
+        return Notificationrepository.countByUserIdAndReadFalse(userId);
     }
 
     /**
@@ -125,7 +150,7 @@ public final class NotificationService {
     public void markAsRead(final UUID notificationId,
             final UUID userId) {
 
-        Notification notification = repository.findById(notificationId)
+        Notification notification = Notificationrepository.findById(notificationId)
                 .orElseThrow();
 
         if (!notification.getUserId().equals(userId)) {
@@ -133,7 +158,7 @@ public final class NotificationService {
         }
 
         notification.setRead(true);
-        repository.save(notification);
+        Notificationrepository.save(notification);
     }
 
     /**
@@ -146,6 +171,9 @@ public final class NotificationService {
             final UUID userId,
             final BudgetResponse budget
     ) {
+        String message =
+                "You successfully stayed within your budget";
+
         create(
                 userId,
                 NotificationType.BUDGET_SUCCESS,
@@ -153,7 +181,7 @@ public final class NotificationService {
                 "You successfully stayed within your budget"
         );
 
-        //emailService.sendBudgetSuccessEmail(userId, budget);
+        sendEmail(userId, "Budget Completed", message);
     }
 
     /**
@@ -174,5 +202,20 @@ public final class NotificationService {
         r.setCreatedAt(n.getCreatedAt());
 
         return r;
+    }
+
+    private void sendEmail(
+            final UUID userId,
+            final String subject,
+            final String message
+    ) {
+        repositoryUser.findById(userId)
+                .ifPresent(user ->
+                        emailService.sendEmail(
+                                user.getEmail(),
+                                subject,
+                                message
+                        )
+                );
     }
 }
