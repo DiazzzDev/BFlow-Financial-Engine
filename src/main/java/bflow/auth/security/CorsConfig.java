@@ -23,9 +23,13 @@ public class CorsConfig {
 
         configuration.setAllowCredentials(true); //Enable cookies
 
+        //Development
         configuration.addAllowedOrigin("http://localhost:5173");
         configuration.addAllowedOrigin("http://127.0.0.1:5173");
-        configuration.addAllowedOrigin("https://*.onrender.com");
+
+        //Production
+        configuration.addAllowedOrigin("https://bflow-2why.onrender.com");
+        configuration.addAllowedOrigin("https://www.bflow-studio.com/");
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
