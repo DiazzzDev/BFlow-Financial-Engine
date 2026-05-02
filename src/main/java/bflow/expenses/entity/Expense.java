@@ -11,7 +11,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(name = "Expenses")
+@Table(name = "expenses")
 @Getter
 @Setter
 @ToString
@@ -43,4 +43,9 @@ public class Expense extends Transaction {
     @Column(nullable = false)
     private Boolean reimbursable = false;
 
+    /**
+     * Indicates if this is a default expense.
+     */
+    @Column(nullable = false)
+    private Boolean isDefault = false;
 }

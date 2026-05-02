@@ -19,9 +19,16 @@ public final class NotificationService {
     /**
      * Repository for notification operations.
      */
-    private final NotificationRepository Notificationrepository;
+    private final NotificationRepository notificationRepository;
 
+    /**
+     * Service for sending emails via AWS SES.
+     */
     private final SesEmailService emailService;
+
+    /**
+     * Repository for user operations.
+     */
     private final RepositoryUser repositoryUser;
 
     /**
@@ -113,7 +120,7 @@ public final class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
 
-        Notificationrepository.save(notification);
+        notificationRepository.save(notification);
     }
 
     /**
@@ -124,7 +131,7 @@ public final class NotificationService {
      */
     public List<NotificationResponse> getUserNotifications(final UUID userId) {
 
-        return Notificationrepository
+        return notificationRepository
                 .findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toResponse)
@@ -138,7 +145,7 @@ public final class NotificationService {
      * @return count of unread notifications
      */
     public Long getUnreadCount(final UUID userId) {
-        return Notificationrepository.countByUserIdAndReadFalse(userId);
+        return notificationRepository.countByUserIdAndReadFalse(userId);
     }
 
     /**
@@ -150,15 +157,15 @@ public final class NotificationService {
     public void markAsRead(final UUID notificationId,
             final UUID userId) {
 
-        Notification notification = Notificationrepository.findById(notificationId)
-                .orElseThrow();
+        Notification notification = notificationRepository.findById(
+                notificationId).orElseThrow();
 
         if (!notification.getUserId().equals(userId)) {
             throw new RuntimeException("Access denied");
         }
 
         notification.setRead(true);
-        Notificationrepository.save(notification);
+        notificationRepository.save(notification);
     }
 
     /**

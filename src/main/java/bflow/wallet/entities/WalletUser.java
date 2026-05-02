@@ -2,16 +2,18 @@ package bflow.wallet.entities;
 
 import bflow.auth.entities.User;
 import bflow.wallet.enums.WalletRole;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.Index;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -22,10 +24,17 @@ import java.util.UUID;
  * Mapping entity between Wallets and Users.
  */
 @Entity
-@Table(name = "wallet_users",
+@Table(
+        name = "wallet_users",
         indexes = {
                 @Index(name = "idx_wallet_user",
                 columnList = "wallet_id,user_id")
+        },
+        //Prevent duplicate members
+        uniqueConstraints = {
+                @UniqueConstraint(
+                columnNames = {"wallet_id", "user_id"}
+            )
         }
 )
 @Getter
@@ -34,7 +43,7 @@ public class WalletUser {
 
     /** Unique identifier for the relationship record. */
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /** The wallet associated with this record. */

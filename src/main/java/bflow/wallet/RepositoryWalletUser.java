@@ -1,6 +1,7 @@
 package bflow.wallet;
 
 import bflow.wallet.entities.WalletUser;
+import bflow.wallet.enums.WalletRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -25,4 +26,16 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID> {
      * @return a page of wallet-user relationships.
      */
     Page<WalletUser> findByUserId(UUID userId, Pageable pageable);
+
+    /**
+     * Find the first wallet-user relationship for a user with a specific role.
+     *
+     * @param userId the user UUID
+     * @param role the wallet role
+     * @return optional wallet-user relationship
+     */
+    Optional<WalletUser> findFirstByUserIdAndRole(
+            UUID userId,
+            WalletRole role
+    );
 }
