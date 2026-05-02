@@ -5,17 +5,38 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.*;
+import software.amazon.awssdk.services.ses.model.Body;
+import software.amazon.awssdk.services.ses.model.Content;
+import software.amazon.awssdk.services.ses.model.Destination;
+import software.amazon.awssdk.services.ses.model.Message;
+import software.amazon.awssdk.services.ses.model.SendEmailRequest;
 
+/**
+ * Service for sending emails using AWS SES.
+ */
 @Service
 @RequiredArgsConstructor
-public class SesEmailService {
+public final class SesEmailService {
+    /**
+     * AWS SES client instance.
+     */
     private final SesClient sesClient;
 
+    /**
+     * Sender email address from configuration.
+     */
     @Value("${aws.ses.from}")
     private String from;
 
-    public void sendEmail(String to, String subject, String body) {
+    /**
+     * Send an email via AWS SES.
+     *
+     * @param to the recipient email address
+     * @param subject the email subject
+     * @param body the email body
+     */
+    public void sendEmail(final String to, final String subject,
+            final String body) {
         SendEmailRequest request = SendEmailRequest.builder()
                 .source(from)
                 .destination(Destination.builder()

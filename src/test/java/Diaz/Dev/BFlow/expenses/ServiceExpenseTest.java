@@ -8,7 +8,7 @@ import bflow.budget.services.BudgetService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.RepositoryExpense;
-import bflow.expenses.ServiceExpense;
+import bflow.expenses.services.ServiceExpense;
 import bflow.expenses.entity.Expense;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;

@@ -1,4 +1,4 @@
-package bflow.expenses;
+package bflow.expenses.services;
 
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
@@ -13,6 +13,7 @@ import bflow.common.exception.WalletAccessDeniedException;
 import bflow.common.financial.TransactionMapper;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
+import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
 import bflow.wallet.RepositoryWallet;
 import bflow.wallet.RepositoryWalletUser;

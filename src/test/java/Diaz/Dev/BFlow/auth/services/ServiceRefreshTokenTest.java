@@ -2,7 +2,6 @@ package Diaz.Dev.BFlow.auth.services;
 
 import bflow.auth.DTO.Record.RefreshRotationResult;
 import bflow.auth.entities.RefreshToken;
-import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryRefreshToken;
 import bflow.auth.services.ServiceRefreshToken;
 import org.junit.jupiter.api.BeforeEach;

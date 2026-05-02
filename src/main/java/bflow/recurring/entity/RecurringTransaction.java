@@ -9,15 +9,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -31,14 +31,6 @@ import java.util.UUID;
 @Setter
 public final class RecurringTransaction {
 
-    /**
-     * Minimum interval value.
-     */
-    private static final int MIN_INTERVAL = 1;
-    /**
-     * Maximum title length.
-     */
-    private static final int MAX_TITLE_LENGTH = 255;
     /**
      * Maximum description length.
      */
@@ -60,7 +52,7 @@ public final class RecurringTransaction {
      * The recurring transaction ID.
      */
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**

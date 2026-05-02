@@ -17,7 +17,7 @@ import java.util.List;
  * Provides endpoints for creating and retrieving categories.
  */
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
 public class ControllerCategory {
 

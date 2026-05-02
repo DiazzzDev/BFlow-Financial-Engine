@@ -18,7 +18,7 @@ public final class RecurringScheduler {
     /**
      * Execute due recurring transactions every 10 seconds.
      */
-    @Scheduled(cron = "*/10 * * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     public void runRecurring() {
         recurringExecutionService.executeDueTransactions();
     }

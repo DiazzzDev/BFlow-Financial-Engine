@@ -6,7 +6,7 @@ import bflow.category.entity.Category;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.expenses.DTO.ExpenseRequest;
-import bflow.expenses.ServiceExpense;
+import bflow.expenses.services.ServiceExpense;
 import bflow.income.DTO.IncomeRequest;
 import bflow.income.ServiceIncome;
 import bflow.recurring.DTO.RecurringRequest;
