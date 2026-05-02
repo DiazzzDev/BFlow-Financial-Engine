@@ -77,7 +77,8 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.startsWith("/v3/api-docs")
                 || path.equals("/actuator/info")
                 || path.equals("/actuator/health")
-                || path.equals("/.well-known/jwks.json");
+                || path.equals("/.well-known/jwks.json")
+                || path.equals("/api/v1/legal/**");
     }
 
     /**
