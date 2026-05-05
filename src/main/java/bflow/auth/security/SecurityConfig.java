@@ -1,6 +1,7 @@
 package bflow.auth.security;
 
 import bflow.auth.security.jwt.JwtAuthenticationFilter;
+import bflow.rate_limit.filter.RateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     /** Handler for OAuth2 success events. */
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final RateLimitFilter rateLimitFilter;
 
     /**
      * Configures the security filter chain.
@@ -73,6 +75,9 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
+
+                .addFilterBefore(rateLimitFilter,
+                        JwtAuthenticationFilter.class)
                 .build();
     }
 }
