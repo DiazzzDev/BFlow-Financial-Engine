@@ -69,7 +69,7 @@ public class AuthService {
      * Registers a new user and creates a local auth account.
      * @param dto the registration data.
      */
-    public void register(@Valid final AuthRegisterRequest dto) {
+    public User register(@Valid final AuthRegisterRequest dto) {
 
         boolean exists = authAccountRepository
                 .existsByProviderAndProviderUserId(
@@ -97,6 +97,8 @@ public class AuthService {
         account.setEnabled(true);
 
         authAccountRepository.save(account);
+
+        return user;
     }
 
     /**

@@ -4,11 +4,13 @@ import bflow.rate_limit.policy.RateLimitPolicy;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@Slf4j
 public class InMemoryBucketStorageService implements BucketStorageService {
     private record Entry(Bucket bucket, long lastAccess, long ttlMillis) {}
 
@@ -59,9 +61,10 @@ public class InMemoryBucketStorageService implements BucketStorageService {
         );
 
         long after = storage.size();
+        long removed = before - after;
 
-        System.out.println(
-                "RateLimit cleanup: before=" + before + " after=" + after
-        );
+        if (removed > 0 && log.isDebugEnabled()) {
+            log.debug("RateLimit cleanup: removed={}, remaining={}", removed, after);
+        }
     }
 }

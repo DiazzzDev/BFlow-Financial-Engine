@@ -56,12 +56,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String bucketKey = resolveBucketKey(request);
 
-        System.out.println("---- RATE LIMIT DEBUG ----");
-        System.out.println("Path: " + request.getRequestURI());
-        System.out.println("Policy: " + policyKey);
-        System.out.println("BucketKey: " + bucketKey);
-        System.out.println("--------------------------");
-
         ConsumptionProbe probe =
                 rateLimitService.tryConsume(bucketKey, policy);
 
