@@ -1,6 +1,6 @@
 package bflow.legal.service;
 
-import bflow.legal.DTO.LegalDocumentResponse;
+import bflow.legal.dto.LegalDocumentResponse;
 
 public interface LegalService {
     /**

@@ -1,6 +1,6 @@
 package bflow.legal.controller;
 
-import bflow.legal.DTO.LegalDocumentResponse;
+import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.service.LegalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

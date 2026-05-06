@@ -1,4 +1,4 @@
 /**
  * Data Transfer Objects for legal document operations.
  */
-package bflow.legal.DTO;
+package bflow.legal.dto;

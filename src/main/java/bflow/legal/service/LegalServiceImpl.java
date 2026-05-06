@@ -1,6 +1,6 @@
 package bflow.legal.service;
 
-import bflow.legal.DTO.LegalDocumentResponse;
+import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.enums.LegalDocumentType;
 import bflow.legal.exception.LegalDocumentNotFoundException;
 import lombok.extern.slf4j.Slf4j;

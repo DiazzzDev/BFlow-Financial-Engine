@@ -1,4 +1,4 @@
-package bflow.legal.DTO;
+package bflow.legal.dto;
 
 import lombok.Getter;
 import lombok.Setter;
