@@ -10,7 +10,7 @@ public class RateLimitPolicyRegistry {
     private final Map<String, RateLimitPolicy> policies = Map.of(
 
             "LOGIN",
-            new RateLimitPolicy(5, Duration.ofMinutes(1)),
+            new RateLimitPolicy(5, Duration.ofMinutes(5)),
 
             "REGISTER",
             new RateLimitPolicy(3, Duration.ofMinutes(10)),
@@ -19,7 +19,7 @@ public class RateLimitPolicyRegistry {
             new RateLimitPolicy(3, Duration.ofMinutes(15)),
 
             "AUTHENTICATED_API",
-            new RateLimitPolicy(100, Duration.ofMinutes(1))
+            new RateLimitPolicy(100, Duration.ofMinutes(3))
     );
 
     public RateLimitPolicy getPolicy(String key) {

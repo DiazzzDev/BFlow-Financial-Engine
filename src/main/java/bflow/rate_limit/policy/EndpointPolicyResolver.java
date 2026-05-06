@@ -9,7 +9,7 @@ public class EndpointPolicyResolver {
 
         String path = request.getRequestURI();
 
-        if (path.startsWith("/api/auth/login")) {
+        if (path.equals("/api/auth/login")) {
             return "LOGIN";
         }
 

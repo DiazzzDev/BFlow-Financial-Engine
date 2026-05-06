@@ -1,5 +1,4 @@
 package bflow.rate_limit.filter;
-
 import bflow.rate_limit.policy.EndpointPolicyResolver;
 import bflow.rate_limit.policy.RateLimitPolicy;
 import bflow.rate_limit.policy.RateLimitPolicyRegistry;
@@ -12,13 +11,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -49,11 +45,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        String policyKey =
-                endpointPolicyResolver.resolve(request);
+        String policyKey = endpointPolicyResolver.resolve(request);
 
-        RateLimitPolicy policy =
-                policyRegistry.getPolicy(policyKey);
+        RateLimitPolicy policy = policyRegistry.getPolicy(policyKey);
 
         if (policy == null) {
             filterChain.doFilter(request, response);
@@ -61,6 +55,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String bucketKey = resolveBucketKey(request);
+
+        System.out.println("---- RATE LIMIT DEBUG ----");
+        System.out.println("Path: " + request.getRequestURI());
+        System.out.println("Policy: " + policyKey);
+        System.out.println("BucketKey: " + bucketKey);
+        System.out.println("--------------------------");
 
         ConsumptionProbe probe =
                 rateLimitService.tryConsume(bucketKey, policy);
@@ -70,47 +70,35 @@ public class RateLimitFilter extends OncePerRequestFilter {
             response.setHeader("X-Rate-Limit-Remaining", "0");
             response.setHeader(
                     "X-Rate-Limit-Retry-After",
-                    String.valueOf(probe.getNanosToWaitForRefill() / 1_000_000_000)
+                    String.valueOf(
+                            probe.getNanosToWaitForRefill() / 1_000_000_000
+                    )
             );
 
             RateLimitResponseUtil.writeExceededResponse(response);
             return;
         }
 
-        // valid request
         response.setHeader(
                 "X-Rate-Limit-Remaining",
                 String.valueOf(probe.getRemainingTokens())
         );
-        /*
-        if (!allowed) {
-            RateLimitResponseUtil
-                    .writeExceededResponse(response);
-            return;
-        }*/
 
         filterChain.doFilter(request, response);
     }
 
-    private String resolveBucketKey(
-            HttpServletRequest request
-    ) {
+    private String resolveBucketKey(HttpServletRequest request) {
 
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        Authentication auth =
+                SecurityContextHolder.getContext().getAuthentication();
 
         boolean authenticated =
-                authentication != null
-                        && authentication.isAuthenticated()
-                        && !(authentication instanceof AnonymousAuthenticationToken);
+                auth != null
+                        && auth.isAuthenticated()
+                        && !(auth instanceof AnonymousAuthenticationToken);
 
         if (authenticated) {
-
-            String userKey =
-                    userKeyResolver.resolve(request);
-
+            String userKey = userKeyResolver.resolve(request);
             if (userKey != null) {
                 return userKey;
             }

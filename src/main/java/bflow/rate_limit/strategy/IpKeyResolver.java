@@ -11,9 +11,6 @@ public class IpKeyResolver implements KeyResolver {
 
     @Override
     public String resolve(HttpServletRequest request) {
-
-        String ip = ClientIpUtil.extract(request);
-
-        return "ip:" + ip;
+        return "ip:" + ClientIpUtil.extract(request);
     }
 }

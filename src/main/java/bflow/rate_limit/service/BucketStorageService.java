@@ -5,4 +5,6 @@ import io.github.bucket4j.Bucket;
 
 public interface BucketStorageService {
     Bucket resolveBucket(String key, RateLimitPolicy policy);
+
+    void cleanup();
 }
