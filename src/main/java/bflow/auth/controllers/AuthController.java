@@ -137,7 +137,7 @@ public class AuthController {
 
         String rawRefreshToken = UUID.randomUUID().toString();
         serviceRefreshToken.create(user.getId(), rawRefreshToken);
-        long COOKIE_MAX_AGE = MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
+        long cookieMaxAge = (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
 
         setCookie(response,
                 "access_token",
@@ -147,7 +147,7 @@ public class AuthController {
         setCookie(response,
                 "refresh_token",
                 rawRefreshToken,
-                COOKIE_MAX_AGE);
+                cookieMaxAge);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
