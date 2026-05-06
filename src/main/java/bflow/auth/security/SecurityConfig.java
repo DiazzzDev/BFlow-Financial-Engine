@@ -27,6 +27,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     /** Handler for OAuth2 success events. */
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    /** Filter for rate limiting requests. */
     private final RateLimitFilter rateLimitFilter;
 
     /**

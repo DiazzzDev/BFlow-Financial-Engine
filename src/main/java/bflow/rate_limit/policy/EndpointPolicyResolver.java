@@ -4,10 +4,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
 @Component
-public class EndpointPolicyResolver {
-    public String resolve(HttpServletRequest request) {
+public final class EndpointPolicyResolver {
+    /**
+     * Resolves the rate limiting policy key for a given request.
+     * @param request the HTTP request to resolve the policy for.
+     * @return the policy key for rate limiting.
+     */
+    public String resolve(final HttpServletRequest request) {
 
-        String path = request.getRequestURI();
+        final String path = request.getRequestURI();
 
         if (path.equals("/api/auth/login")) {
             return "LOGIN";
@@ -24,7 +29,12 @@ public class EndpointPolicyResolver {
         return "AUTHENTICATED_API";
     }
 
-    public boolean shouldSkip(String path) {
+    /**
+     * Determines if rate limiting should be skipped for the given path.
+     * @param path the request path to check.
+     * @return true if rate limiting should be skipped, false otherwise.
+     */
+    public boolean shouldSkip(final String path) {
 
         return path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")

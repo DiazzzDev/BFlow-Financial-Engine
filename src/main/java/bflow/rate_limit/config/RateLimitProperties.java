@@ -8,5 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 @ConfigurationProperties(prefix = "app.rate-limit")
 public class RateLimitProperties {
+    /** Whether rate limiting is enabled. */
     private boolean enabled = true;
 }

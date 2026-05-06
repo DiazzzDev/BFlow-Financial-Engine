@@ -7,26 +7,40 @@ import org.springframework.http.MediaType;
 
 import java.io.IOException;
 
-public class RateLimitResponseUtil {
+/**
+ * Utility class for handling rate limit error responses.
+ */
+public final class RateLimitResponseUtil {
 
-    private static final ObjectMapper mapper =
+    /** HTTP status code for rate limit exceeded (429). */
+    private static final int RATE_LIMIT_STATUS = 429;
+    /** JSON object mapper for serialization. */
+    private static final ObjectMapper MAPPER =
             new ObjectMapper();
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
     private RateLimitResponseUtil() {
     }
 
+    /**
+     * Writes a rate limit exceeded error response.
+     * @param response the HTTP response to write to.
+     * @throws IOException if writing to response fails.
+     */
     public static void writeExceededResponse(
-            HttpServletResponse response
+            final HttpServletResponse response
     ) throws IOException {
 
-        response.setStatus(429);
+        response.setStatus(RATE_LIMIT_STATUS);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        mapper.writeValue(
+        MAPPER.writeValue(
                 response.getWriter(),
                 new RateLimitErrorResponse(
                         "Rate limit exceeded",
-                        429
+                        RATE_LIMIT_STATUS
                 )
         );
     }

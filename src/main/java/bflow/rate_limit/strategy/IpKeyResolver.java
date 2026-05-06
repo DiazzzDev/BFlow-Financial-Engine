@@ -7,10 +7,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class IpKeyResolver implements KeyResolver {
+public final class IpKeyResolver implements KeyResolver {
 
+    /**
+     * Resolves a rate limiting key based on client IP address.
+     * @param request the HTTP request to extract the IP from.
+     * @return a unique key for rate limiting based on IP.
+     */
     @Override
-    public String resolve(HttpServletRequest request) {
+    public String resolve(final HttpServletRequest request) {
         return "ip:" + ClientIpUtil.extract(request);
     }
 }

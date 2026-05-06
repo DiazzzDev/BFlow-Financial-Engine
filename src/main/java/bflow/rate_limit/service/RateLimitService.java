@@ -8,15 +8,22 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class RateLimitService {
+public final class RateLimitService {
 
+    /** Service for managing bucket storage. */
     private final BucketStorageService bucketStorageService;
 
+    /**
+     * Attempts to consume a token from the rate limit bucket.
+     * @param key the unique key for the bucket.
+     * @param policy the rate limiting policy.
+     * @return a probe indicating whether the token was consumed.
+     */
     public ConsumptionProbe tryConsume(
-            String key,
-            RateLimitPolicy policy
+            final String key,
+            final RateLimitPolicy policy
     ) {
-        Bucket bucket =
+        final Bucket bucket =
                 bucketStorageService.resolveBucket(key, policy);
 
         return bucket.tryConsumeAndReturnRemaining(1);

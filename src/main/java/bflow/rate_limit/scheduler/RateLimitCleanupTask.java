@@ -7,11 +7,23 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class RateLimitCleanupTask {
+public final class RateLimitCleanupTask {
 
+    /** Initial delay in minutes for cleanup task. */
+    private static final long INITIAL_DELAY_MINUTES = 5;
+    /** Delay in seconds for cleanup task. */
+    private static final long DELAY_SECONDS = 60;
+    /** Conversion factor from seconds to milliseconds. */
+    private static final long SECONDS_TO_MILLIS = 1000;
+
+    /** Service for managing bucket storage. */
     private final BucketStorageService storageService;
 
-    @Scheduled(fixedRate = 5 * 60 * 1000)
+    /**
+     * Scheduled cleanup task for removing expired rate limit buckets.
+     */
+    @Scheduled(fixedRate = INITIAL_DELAY_MINUTES * DELAY_SECONDS
+            * SECONDS_TO_MILLIS)
     public void cleanup() {
         storageService.cleanup();
     }

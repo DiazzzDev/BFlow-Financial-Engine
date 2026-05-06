@@ -178,6 +178,12 @@ public final class GlobalExceptionHandler {
                 .body(response);
     }
 
+    /**
+     * Handles 404 not found exceptions.
+     * @param ex the exception.
+     * @param request the current request.
+     * @return error response with NOT_FOUND status.
+     */
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoHandlerFound(
             final NoHandlerFoundException ex,
@@ -191,6 +197,11 @@ public final class GlobalExceptionHandler {
                 ));
     }
 
+    /**
+     * Handles HTTP method not supported exceptions.
+     * @param request the current request.
+     * @return error response with METHOD_NOT_ALLOWED status.
+     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(
             final HttpServletRequest request

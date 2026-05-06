@@ -13,8 +13,9 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 @Slf4j
-public class LegalServiceImpl implements LegalService {
+public final class LegalServiceImpl implements LegalService {
 
+    /** Base path for legal document resources. */
     private static final String BASE_PATH = "legal/";
 
     @Override

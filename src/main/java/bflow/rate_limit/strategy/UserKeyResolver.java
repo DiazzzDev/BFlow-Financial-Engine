@@ -6,19 +6,25 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class UserKeyResolver implements KeyResolver {
+public final class UserKeyResolver implements KeyResolver {
 
+    /**
+     * Resolves a rate limiting key based on the authenticated user.
+     * @param request the HTTP request containing authentication info.
+     * @return a unique key for rate limiting based on user, or null if not
+     * authenticated.
+     */
     @Override
-    public String resolve(HttpServletRequest request) {
+    public String resolve(final HttpServletRequest request) {
 
-        Authentication authentication =
+        final Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
         }
 
-        Object principal = authentication.getPrincipal();
+        final Object principal = authentication.getPrincipal();
 
         /*
          * Replace this with your actual JWT principal implementation.

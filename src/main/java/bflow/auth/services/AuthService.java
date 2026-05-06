@@ -68,6 +68,7 @@ public class AuthService {
     /**
      * Registers a new user and creates a local auth account.
      * @param dto the registration data.
+     * @return the newly created user entity.
      */
     public User register(@Valid final AuthRegisterRequest dto) {
 

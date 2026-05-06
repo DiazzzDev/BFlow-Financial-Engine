@@ -22,20 +22,37 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class RateLimitFilter extends OncePerRequestFilter {
+public final class RateLimitFilter extends OncePerRequestFilter {
 
+    /** Nanoseconds to milliseconds conversion factor. */
+    private static final long NANOS_TO_MILLIS = 1_000_000_000;
+
+    /** Resolver for rate limiting policies based on endpoints. */
     private final EndpointPolicyResolver endpointPolicyResolver;
+    /** Registry of rate limiting policies. */
     private final RateLimitPolicyRegistry policyRegistry;
+    /** Service for rate limit consumption management. */
     private final RateLimitService rateLimitService;
 
+    /** Resolver for IP-based rate limiting keys. */
     private final IpKeyResolver ipKeyResolver;
+    /** Resolver for user-based rate limiting keys. */
     private final UserKeyResolver userKeyResolver;
 
+    /**
+     * Processes incoming requests to apply rate limiting based on
+     * configured policies.
+     * @param request the HTTP request.
+     * @param response the HTTP response.
+     * @param filterChain the filter chain to continue processing.
+     * @throws ServletException if servlet processing fails.
+     * @throws IOException if I/O fails.
+     */
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
+            final HttpServletRequest request,
+            final HttpServletResponse response,
+            final FilterChain filterChain
     ) throws ServletException, IOException {
 
         String path = request.getRequestURI();
@@ -65,7 +82,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             response.setHeader(
                     "X-Rate-Limit-Retry-After",
                     String.valueOf(
-                            probe.getNanosToWaitForRefill() / 1_000_000_000
+                            probe.getNanosToWaitForRefill() / NANOS_TO_MILLIS
                     )
             );
 
@@ -81,7 +98,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String resolveBucketKey(HttpServletRequest request) {
+    /**
+     * Resolves the bucket key for rate limiting based on the request.
+     * @param request the HTTP request.
+     * @return the bucket key for this request.
+     */
+    private String resolveBucketKey(final HttpServletRequest request) {
 
         Authentication auth =
                 SecurityContextHolder.getContext().getAuthentication();
