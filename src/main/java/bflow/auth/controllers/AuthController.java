@@ -116,18 +116,40 @@ public class AuthController {
     /**
      * Registers a new user account.
      * @param request the registration details.
-     * @param httpRequest the servlet request for path metadata.
+     * @param response the servlet request for path metadata.
      * @return an ApiResponse indicating status.
      */
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(
+    public ResponseEntity<Void> register(
             @Valid @RequestBody final AuthRegisterRequest request,
-            final HttpServletRequest httpRequest
+            final HttpServletResponse response
     ) {
-        authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.success("User registered successfully",
-                    null, httpRequest.getRequestURI()));
+
+        User user = authService.register(request);
+
+        List<String> roles = authService.getRoles(user);
+
+        String accessToken = jwtService.generateToken(
+                user.getId(),
+                user.getEmail(),
+                roles
+        );
+
+        String rawRefreshToken = UUID.randomUUID().toString();
+        serviceRefreshToken.create(user.getId(), rawRefreshToken);
+        long cookieMaxAge = (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
+
+        setCookie(response,
+                "access_token",
+                accessToken,
+                jwtService.getAccessTokenTtlSeconds());
+
+        setCookie(response,
+                "refresh_token",
+                rawRefreshToken,
+                cookieMaxAge);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     /**

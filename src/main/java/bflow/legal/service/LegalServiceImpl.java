@@ -1,6 +1,6 @@
 package bflow.legal.service;
 
-import bflow.legal.DTO.LegalDocumentResponse;
+import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.enums.LegalDocumentType;
 import bflow.legal.exception.LegalDocumentNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +13,9 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 @Slf4j
-public class LegalServiceImpl implements LegalService {
+public final class LegalServiceImpl implements LegalService {
 
+    /** Base path for legal document resources. */
     private static final String BASE_PATH = "legal/";
 
     @Override

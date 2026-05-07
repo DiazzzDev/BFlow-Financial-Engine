@@ -1,6 +1,6 @@
 package bflow.legal.controller;
 
-import bflow.legal.DTO.LegalDocumentResponse;
+import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.service.LegalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,13 +13,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RestController
 @RequestMapping("/api/v1/legal")
 @RequiredArgsConstructor
-public class LegalController {
+public final class LegalController {
 
+    /** The legal service for retrieving legal documents. */
     private final LegalService legalService;
 
+    /**
+     * Retrieves a legal document of the specified type.
+     * @param documentType the type of legal document to retrieve.
+     * @param lang the language of the document (defaults to "en").
+     * @return a response entity containing the legal document.
+     */
     @GetMapping("/{documentType}")
     public ResponseEntity<LegalDocumentResponse> getDocument(
-            @PathVariable String documentType,
+            @PathVariable final String documentType,
             @RequestParam(defaultValue = "en") final String lang
     ) {
 
