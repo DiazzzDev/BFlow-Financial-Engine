@@ -10,13 +10,6 @@ import java.util.UUID;
  * Service interface for managing user profiles and OAuth resolution.
  */
 public interface UserService {
-    /**
-     * Finds a user by email or creates a new one for OAuth providers.
-     * @param email user email.
-     * @param authProvider provider type.
-     * @return the existing or new User.
-     */
-    User findOrCreateOAuthUser(String email, AuthProvider authProvider);
 
     /**
      * Retrieves a user by their unique identifier.

@@ -50,6 +50,9 @@ public class AuthController {
     private static final int SECONDS_IN_A_DAY = 86400;
     /** Maximum validity of a cookie in days. */
     private static final int MAX_COOKIE_DAYS = 14;
+    /** Refresh token Time To Live. */
+    private static final long REFRESH_COOKIE_MAX_AGE =
+            (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
 
     /**
      * Authenticates a user and sets session cookies.
@@ -86,7 +89,7 @@ public class AuthController {
         setCookie(response,
                 "refresh_token",
                 rawRefreshToken,
-                MAX_COOKIE_DAYS * SECONDS_IN_A_DAY,
+                REFRESH_COOKIE_MAX_AGE,
                 "/");
 
         return ResponseEntity.ok().build();
@@ -138,7 +141,6 @@ public class AuthController {
 
         String rawRefreshToken = UUID.randomUUID().toString();
         serviceRefreshToken.create(user.getId(), rawRefreshToken);
-        long cookieMaxAge = (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
 
         setCookie(response,
                 "access_token",
@@ -148,7 +150,7 @@ public class AuthController {
         setCookie(response,
                 "refresh_token",
                 rawRefreshToken,
-                cookieMaxAge,
+                REFRESH_COOKIE_MAX_AGE,
                 "/");
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -221,7 +223,7 @@ public class AuthController {
         setCookie(response,
                 "refresh_token",
                 result.newRefreshToken(),
-                MAX_COOKIE_DAYS * SECONDS_IN_A_DAY,
+                REFRESH_COOKIE_MAX_AGE,
                 "/");
 
         return ResponseEntity.ok().build();

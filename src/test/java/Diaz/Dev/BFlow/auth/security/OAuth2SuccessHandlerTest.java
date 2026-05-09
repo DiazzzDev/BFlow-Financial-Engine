@@ -110,8 +110,11 @@ class OAuth2SuccessHandlerTest {
 
             @Override
             public void setAuthenticated(
-                    final boolean isAuthenticated
+                final boolean isAuthenticated
             ) throws IllegalArgumentException {
+                throw new UnsupportedOperationException(
+                "Not required for this test"
+                );
             }
 
             @Override

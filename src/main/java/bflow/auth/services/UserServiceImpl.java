@@ -23,6 +23,9 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class UserServiceImpl implements UserService {
 
+    /** Roles in access token. */
+    private static final String ROLE_USER = "ROLE_USER";
+
     /** Repository for user core data. */
     private final RepositoryUser userRepository;
 
@@ -74,58 +77,11 @@ public class UserServiceImpl implements UserService {
 
         User user = User.builder()
                 .email(email)
-                .roles(Set.of("ROLE_USER"))
+                .roles(Set.of(ROLE_USER))
                 .status(UserStatus.ACTIVE)
                 .build();
 
         return userRepository.save(user);
-    }
-
-    private User createOAuth2User(
-            final String email,
-            final String providerId,
-            final AuthProvider provider
-    ) {
-        User user = User.builder()
-                .email(email)
-                .status(UserStatus.ACTIVE)
-                .roles(Set.of("ROLE_USER"))
-                .build();
-
-        userRepository.save(user);
-
-        AuthAccount account = AuthAccount.builder()
-                .user(user)
-                .provider(provider)
-                .providerUserId(providerId)
-                .build();
-
-        authAccountRepository.save(account);
-
-        return user;
-    }
-
-    /**
-     * Finds an existing OAuth2 user by email or creates a new one.
-     * This method ensures that a user account exists in the system.
-     * @param email the user's email address.
-     * @param provider the authentication provider.
-     * @return the existing or newly created User entity.
-     */
-    @Override
-    public User findOrCreateOAuthUser(
-            final String email,
-            final AuthProvider provider
-    ) {
-
-        return userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email(email)
-                                .roles(Set.of("ROLE_USER"))
-                                .status(UserStatus.ACTIVE)
-                                .build()
-                ));
     }
 
     /**
