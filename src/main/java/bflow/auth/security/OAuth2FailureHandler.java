@@ -9,22 +9,33 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * Handler for OAuth2 authentication failures.
+ * Redirects to the frontend login page when OAuth2 authentication fails.
+ */
 @Component
-public class OAuth2FailureHandler
+public final class OAuth2FailureHandler
         implements AuthenticationFailureHandler {
 
+    /** The frontend URL for redirecting on authentication failure. */
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    /**
+     * Handles OAuth2 authentication failure by redirecting to the frontend
+     * login page.
+     * @param request the HTTP servlet request.
+     * @param response the HTTP servlet response.
+     * @param exception the authentication exception.
+     * @throws IOException if an I/O error occurs.
+     */
     @Override
     public void onAuthenticationFailure(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationException exception
+            final HttpServletRequest request,
+            final HttpServletResponse response,
+            final AuthenticationException exception
     ) throws IOException {
-
-        response.sendRedirect(
-                frontendUrl + "/login?error=oauth2"
-        );
+        String redirectUrl = frontendUrl + "/login?error=oauth2";
+        response.sendRedirect(redirectUrl);
     }
 }

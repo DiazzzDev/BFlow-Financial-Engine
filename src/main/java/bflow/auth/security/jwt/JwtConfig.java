@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 @RequiredArgsConstructor
 public class JwtConfig {
 
+    /** The base URL of the application for JWT JWKS endpoint. */
     @Value("${app.base-url}")
     private String baseUrl;
 

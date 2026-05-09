@@ -30,8 +30,10 @@ public final class OAuth2SuccessHandler
     /** Service for User persistence logic. */
     private final UserService userService;
 
+    /** Service for refresh token operations. */
     private final ServiceRefreshToken serviceRefreshToken;
 
+    /** The frontend URL for redirecting on successful authentication. */
     @Value("${app.frontend-url}")
     private String frontendUrl;
 

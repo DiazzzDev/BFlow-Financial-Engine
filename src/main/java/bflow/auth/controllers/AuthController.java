@@ -247,11 +247,12 @@ public class AuthController {
     }
 
     /**
-     * Internal utility to set an HTTP-only cookie.
+     * Internal utility to set a cookie on the response.
      * @param res servlet response.
      * @param name cookie name.
      * @param value cookie value.
-     * @param maxAge cookie expiry.
+     * @param maxAge max age in seconds.
+     * @param path cookie path.
      */
     private void setCookie(
             final HttpServletResponse res,
@@ -274,6 +275,7 @@ public class AuthController {
      * Internal utility to clear a specific cookie.
      * @param res servlet response.
      * @param name cookie name.
+     * @param path cookie path.
      */
     private void clearCookie(
             final HttpServletResponse res,

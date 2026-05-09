@@ -29,6 +29,7 @@ public class UserServiceImpl implements UserService {
     /** Repository for authentication account mapping. */
     private final RepositoryAuthAccount authAccountRepository;
 
+    /** Service for refresh token operations. */
     private final ServiceRefreshToken serviceRefreshToken;
 
     /**

@@ -1,6 +1,5 @@
 package bflow.auth.entities;
 
-import bflow.auth.enums.AuthProvider;
 import bflow.auth.enums.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -56,6 +55,7 @@ public class User {
     @Builder.Default
     private Set<String> roles = Set.of("ROLE_USER");
 
+    /** Indicates whether the user email is verified. */
     @Column(nullable = false)
     private boolean emailVerified;
 
