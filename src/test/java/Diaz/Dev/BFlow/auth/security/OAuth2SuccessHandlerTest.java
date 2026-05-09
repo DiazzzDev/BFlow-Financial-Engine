@@ -16,6 +16,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,8 @@ class OAuth2SuccessHandlerTest {
                 userService,
                 serviceRefreshToken
         );
+
+        ReflectionTestUtils.setField(handler, "frontendUrl", "http://localhost:3000");
     }
 
     @Test
