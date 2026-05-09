@@ -84,7 +84,6 @@ public class AuthService {
 
         User user = new User();
         user.setEmail(dto.getEmail());
-        user.setProvider(AuthProvider.LOCAL);
         user.setRoles(Set.of("ROLE_USER"));
         user.setStatus(UserStatus.ACTIVE);
 

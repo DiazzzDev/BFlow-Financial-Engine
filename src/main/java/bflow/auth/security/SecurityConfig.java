@@ -27,6 +27,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     /** Handler for OAuth2 success events. */
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
+    /** Handler for OAuth2 failure events. */
+    private final OAuth2FailureHandler oAuth2FailureHandler;
     /** Filter for rate limiting requests. */
     private final RateLimitFilter rateLimitFilter;
 
@@ -72,7 +75,9 @@ public class SecurityConfig {
                     .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 ->
-                        oauth2.successHandler(oAuth2SuccessHandler)
+                        oauth2
+                                .successHandler(oAuth2SuccessHandler)
+                                .failureHandler(oAuth2FailureHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)

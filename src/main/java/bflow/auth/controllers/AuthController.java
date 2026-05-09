@@ -50,6 +50,9 @@ public class AuthController {
     private static final int SECONDS_IN_A_DAY = 86400;
     /** Maximum validity of a cookie in days. */
     private static final int MAX_COOKIE_DAYS = 14;
+    /** Refresh token Time To Live. */
+    private static final long REFRESH_COOKIE_MAX_AGE =
+            (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
 
     /**
      * Authenticates a user and sets session cookies.
@@ -81,12 +84,13 @@ public class AuthController {
         setCookie(response,
                 "access_token",
                 accessToken,
-                jwtService.getAccessTokenTtlSeconds());
+                jwtService.getAccessTokenTtlSeconds(), "/");
 
         setCookie(response,
                 "refresh_token",
                 rawRefreshToken,
-                MAX_COOKIE_DAYS * SECONDS_IN_A_DAY);
+                REFRESH_COOKIE_MAX_AGE,
+                "/");
 
         return ResponseEntity.ok().build();
     }
@@ -107,8 +111,8 @@ public class AuthController {
             serviceRefreshToken.validateAndRotate(refreshToken);
         }
 
-        clearCookie(response, "access_token");
-        clearCookie(response, "refresh_token");
+        clearCookie(response, "access_token", "/");
+        clearCookie(response, "refresh_token", "/");
 
         return ResponseEntity.ok().build();
     }
@@ -137,17 +141,17 @@ public class AuthController {
 
         String rawRefreshToken = UUID.randomUUID().toString();
         serviceRefreshToken.create(user.getId(), rawRefreshToken);
-        long cookieMaxAge = (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
 
         setCookie(response,
                 "access_token",
                 accessToken,
-                jwtService.getAccessTokenTtlSeconds());
+                jwtService.getAccessTokenTtlSeconds(), "/");
 
         setCookie(response,
                 "refresh_token",
                 rawRefreshToken,
-                cookieMaxAge);
+                REFRESH_COOKIE_MAX_AGE,
+                "/");
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -215,11 +219,12 @@ public class AuthController {
         setCookie(response,
                 "access_token",
                 newAccessToken,
-                jwtService.getAccessTokenTtlSeconds());
+                jwtService.getAccessTokenTtlSeconds(), "/");
         setCookie(response,
                 "refresh_token",
                 result.newRefreshToken(),
-                MAX_COOKIE_DAYS * SECONDS_IN_A_DAY);
+                REFRESH_COOKIE_MAX_AGE,
+                "/");
 
         return ResponseEntity.ok().build();
     }
@@ -244,18 +249,24 @@ public class AuthController {
     }
 
     /**
-     * Internal utility to set an HTTP-only cookie.
+     * Internal utility to set a cookie on the response.
      * @param res servlet response.
      * @param name cookie name.
      * @param value cookie value.
-     * @param maxAge cookie expiry.
+     * @param maxAge max age in seconds.
+     * @param path cookie path.
      */
-    private void setCookie(final HttpServletResponse res, final String name,
-                           final String value, final long maxAge) {
+    private void setCookie(
+            final HttpServletResponse res,
+            final String name,
+            final String value,
+            final long maxAge,
+            final String path
+    ) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
+                .path(path)
                 .sameSite("None")
                 .maxAge(maxAge)
                 .build();
@@ -266,13 +277,18 @@ public class AuthController {
      * Internal utility to clear a specific cookie.
      * @param res servlet response.
      * @param name cookie name.
+     * @param path cookie path.
      */
-    private void clearCookie(final HttpServletResponse res, final String name) {
+    private void clearCookie(
+            final HttpServletResponse res,
+            final String name,
+            final String path
+    ) {
         ResponseCookie cookie = ResponseCookie.from(name, "")
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("None")
-                .path("/")
+                .path(path)
                 .maxAge(0)
                 .build();
 

@@ -129,7 +129,7 @@ public final class JwtServiceImpl implements JwtService {
                 ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/auth/refresh")
+                .path("/")
                 .sameSite("None")
                 .maxAge(Duration.ofDays(MAX_COOKIE_DAYS))
                 .build();

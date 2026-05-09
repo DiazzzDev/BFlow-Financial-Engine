@@ -1,6 +1,5 @@
 package bflow.auth.entities;
 
-import bflow.auth.enums.AuthProvider;
 import bflow.auth.enums.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -46,11 +45,6 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    /** The authentication provider used by the user. */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AuthProvider provider;
-
     /** The set of roles assigned to the user. */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -60,6 +54,10 @@ public class User {
     @Column(name = "role")
     @Builder.Default
     private Set<String> roles = Set.of("ROLE_USER");
+
+    /** Indicates whether the user email is verified. */
+    @Column(nullable = false)
+    private boolean emailVerified;
 
     /** Indicates whether the user account is active. */
     @Enumerated(EnumType.STRING)

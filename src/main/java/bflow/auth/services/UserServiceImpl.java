@@ -23,11 +23,17 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class UserServiceImpl implements UserService {
 
+    /** Roles in access token. */
+    private static final String ROLE_USER = "ROLE_USER";
+
     /** Repository for user core data. */
     private final RepositoryUser userRepository;
 
     /** Repository for authentication account mapping. */
     private final RepositoryAuthAccount authAccountRepository;
+
+    /** Service for refresh token operations. */
+    private final ServiceRefreshToken serviceRefreshToken;
 
     /**
      * Resolves an OAuth2 user by email, provider ID, and provider type.
@@ -43,78 +49,39 @@ public class UserServiceImpl implements UserService {
             final String providerId,
             final AuthProvider provider
     ) {
-        return userRepository.findByEmail(email)
-                .map(existingUser -> validateProvider(existingUser, provider))
-                .orElseGet(() -> createOAuth2User(email, providerId, provider));
-    }
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> createUser(email));
 
-    /**
-     * Ensures the user is using the same provider they registered with.
-     * @param user current user.
-     * @param provider attempted provider.
-     * @return the validated user.
-     */
-    private User validateProvider(
-            final User user,
-            final AuthProvider provider
-    ) {
+        boolean alreadyLinked = authAccountRepository
+                .existsByProviderAndProviderUserId(
+                        provider,
+                        providerId
+                );
 
-        if (user.getProvider() != provider) {
-            throw new IllegalStateException(
-                    "User already registered with provider: "
-                            + user.getProvider()
-            );
+        if (!alreadyLinked) {
+
+            AuthAccount account = AuthAccount.builder()
+                    .user(user)
+                    .provider(provider)
+                    .providerUserId(providerId)
+                    .enabled(true)
+                    .build();
+
+            authAccountRepository.save(account);
         }
+
         return user;
     }
 
-    private User createOAuth2User(
-            final String email,
-            final String providerId,
-            final AuthProvider provider
-    ) {
+    private User createUser(final String email) {
+
         User user = User.builder()
                 .email(email)
+                .roles(Set.of(ROLE_USER))
                 .status(UserStatus.ACTIVE)
-                .provider(provider)
-                .roles(Set.of("ROLE_USER"))
                 .build();
 
-        userRepository.save(user);
-
-        AuthAccount account = AuthAccount.builder()
-                .user(user)
-                .provider(provider)
-                .providerUserId(providerId)
-                .build();
-
-        authAccountRepository.save(account);
-
-        return user;
-    }
-
-    /**
-     * Finds an existing OAuth2 user by email or creates a new one.
-     * This method ensures that a user account exists in the system.
-     * @param email the user's email address.
-     * @param provider the authentication provider.
-     * @return the existing or newly created User entity.
-     */
-    @Override
-    public User findOrCreateOAuthUser(
-            final String email,
-            final AuthProvider provider
-    ) {
-
-        return userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email(email)
-                                .provider(provider)
-                                .roles(Set.of("ROLE_USER"))
-                                .status(UserStatus.ACTIVE)
-                                .build()
-                ));
+        return userRepository.save(user);
     }
 
     /**
@@ -168,6 +135,7 @@ public class UserServiceImpl implements UserService {
         User user = findById(userId);
 
         user.setStatus(UserStatus.DELETED);
+        serviceRefreshToken.revokeAll(userId);
 
         userRepository.save(user);
     }

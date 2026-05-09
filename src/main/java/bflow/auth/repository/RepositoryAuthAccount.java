@@ -37,12 +37,24 @@ public interface RepositoryAuthAccount
     );
 
     /**
-     * Checks if an account exists for a specific provider user ID.
-     * @param provider the auth provider.
-     * @param providerUserId the external provider's ID.
-     * @return true if it exists.
+     * Checks if an authentication account exists for the given provider
+     * and provider user ID.
+     * @param provider the authentication provider.
+     * @param providerUserId the provider-specific user identifier.
+     * @return true if the account exists, false otherwise.
      */
     boolean existsByProviderAndProviderUserId(
+            AuthProvider provider,
+            String providerUserId
+    );
+
+    /**
+     * Finds an authentication account by provider and provider user ID.
+     * @param provider the authentication provider.
+     * @param providerUserId the provider-specific user identifier.
+     * @return an Optional containing the AuthAccount if found.
+     */
+    Optional<AuthAccount> findByProviderAndProviderUserId(
             AuthProvider provider,
             String providerUserId
     );
