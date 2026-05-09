@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -27,6 +28,9 @@ public final class OAuth2SuccessHandler
     private final JwtService jwtService;
     /** Service for User persistence logic. */
     private final UserService userService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(
@@ -65,6 +69,6 @@ public final class OAuth2SuccessHandler
         String refreshToken = UUID.randomUUID().toString();
 
         jwtService.attachAuthCookies(response, accessToken, refreshToken);
-        response.sendRedirect("http://localhost:3000");
+        response.sendRedirect(frontendUrl);
     }
 }

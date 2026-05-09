@@ -121,7 +121,7 @@ public final class JwtServiceImpl implements JwtService {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("Strict")
+                .sameSite("None")
                 .maxAge(Duration.ofHours(1))
                 .build();
 
@@ -130,7 +130,7 @@ public final class JwtServiceImpl implements JwtService {
                 .httpOnly(true)
                 .secure(true)
                 .path("/api/auth/refresh")
-                .sameSite("Strict")
+                .sameSite("None")
                 .maxAge(Duration.ofDays(MAX_COOKIE_DAYS))
                 .build();
 

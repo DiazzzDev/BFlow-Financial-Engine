@@ -29,14 +29,14 @@ public class CorsConfig {
 
         //Production
         configuration.addAllowedOrigin("https://bflow-2why.onrender.com");
-        configuration.addAllowedOrigin("https://www.bflow-studio.com/");
+        configuration.addAllowedOrigin("https://www.bflow-studio.com");
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
         configuration.setAllowedHeaders(List.of(
-                "Content-Type", "Accept", "X-CSRF-TOKEN"
+                "Content-Type", "Accept", "Authorization", "X-CSRF-TOKEN"
         ));
 
         configuration.addExposedHeader("Set-Cookie");
