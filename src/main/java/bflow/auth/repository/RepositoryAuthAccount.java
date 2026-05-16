@@ -59,6 +59,12 @@ public interface RepositoryAuthAccount
             String providerUserId
     );
 
+    /**
+     * Finds an authentication account by user ID and provider.
+     * @param userId the user ID.
+     * @param provider the authentication provider.
+     * @return an Optional containing the AuthAccount if found.
+     */
     Optional<AuthAccount> findByUserIdAndProvider(
             UUID userId,
             AuthProvider provider

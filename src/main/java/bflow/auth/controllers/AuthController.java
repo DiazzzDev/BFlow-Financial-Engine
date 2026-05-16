@@ -49,6 +49,7 @@ public class AuthController {
     /** Service for managing refresh tokens. */
     private final ServiceRefreshToken serviceRefreshToken;
 
+    /** Service for password reset operations. */
     private final PasswordResetService passwordResetService;
 
     /** Total seconds in one day. */
@@ -253,9 +254,14 @@ public class AuthController {
         return ResponseEntity.ok(sessions);
     }
 
+    /**
+     * Initiates the forgot password flow by sending a reset email.
+     * @param request the forgot password request containing the email.
+     * @return a response indicating if the account exists.
+     */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request
+            final @Valid @RequestBody ForgotPasswordRequest request
     ) {
 
         passwordResetService.forgotPassword(request);
@@ -268,9 +274,14 @@ public class AuthController {
         );
     }
 
+    /**
+     * Resets the user password using a valid reset token.
+     * @param request the reset password request with token and new password.
+     * @return a success response.
+     */
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(
-            @Valid @RequestBody ResetPasswordRequest request
+            final @Valid @RequestBody ResetPasswordRequest request
     ) {
 
         passwordResetService.resetPassword(request);
