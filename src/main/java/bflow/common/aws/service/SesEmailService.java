@@ -33,10 +33,13 @@ public final class SesEmailService {
      *
      * @param to the recipient email address
      * @param subject the email subject
-     * @param body the email body
+     * @param html the email body
      */
-    public void sendEmail(final String to, final String subject,
-            final String body) {
+    public void sendEmail(
+            final String to,
+            final String subject,
+            final String html
+    ) {
         SendEmailRequest request = SendEmailRequest.builder()
                 .source(from)
                 .destination(Destination.builder()
@@ -48,10 +51,12 @@ public final class SesEmailService {
                                 .charset("UTF-8")
                                 .build())
                         .body(Body.builder()
-                                .text(Content.builder()
-                                        .data(body)
-                                        .charset("UTF-8")
-                                        .build())
+                                .html(
+                                        Content.builder()
+                                                .data(html)
+                                                .charset("UTF-8")
+                                                .build()
+                                )
                                 .build())
                         .build())
                 .build();

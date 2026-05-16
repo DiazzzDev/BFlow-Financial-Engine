@@ -3,12 +3,15 @@ package bflow.auth.controllers;
 import bflow.auth.DTO.AuthLoginRequest;
 import bflow.auth.DTO.AuthMeResponse;
 import bflow.auth.DTO.AuthRegisterRequest;
+import bflow.auth.DTO.Record.ForgotPasswordRequest;
 import bflow.auth.DTO.Record.RefreshRotationResult;
 import bflow.auth.DTO.Record.RefreshSession;
+import bflow.auth.DTO.Record.ResetPasswordRequest;
 import bflow.auth.entities.RefreshToken;
 import bflow.auth.entities.User;
 import bflow.auth.security.jwt.JwtService;
 import bflow.auth.services.AuthService;
+import bflow.auth.services.PasswordResetService;
 import bflow.auth.services.ServiceRefreshToken;
 import bflow.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,6 +48,8 @@ public class AuthController {
     private final JwtService jwtService;
     /** Service for managing refresh tokens. */
     private final ServiceRefreshToken serviceRefreshToken;
+
+    private final PasswordResetService passwordResetService;
 
     /** Total seconds in one day. */
     private static final int SECONDS_IN_A_DAY = 86400;
@@ -246,6 +251,36 @@ public class AuthController {
         );
 
         return ResponseEntity.ok(sessions);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+
+        passwordResetService.forgotPassword(request);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "If the account exists, a recovery email has been sent."
+                )
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+
+        passwordResetService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "Password updated successfully"
+                )
+        );
     }
 
     /**
