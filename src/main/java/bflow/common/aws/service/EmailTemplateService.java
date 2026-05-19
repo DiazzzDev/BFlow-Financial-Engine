@@ -36,6 +36,10 @@ public final class EmailTemplateService {
     @Value("${security.password-reset.expiration-minutes}")
     private Integer resetExpirationMinutes;
 
+    /** Expiration time in hours for email verification tokens. */
+    @Value("${security.email-verification.expiration-hours}")
+    private Integer verificationExpirationHours;
+
     /**
      * Sends a password reset email to the user.
      * @param toEmail the recipient email address.
@@ -70,6 +74,43 @@ public final class EmailTemplateService {
         sesEmailService.sendEmail(
                 toEmail,
                 "Reset your BFlow password",
+                html
+        );
+    }
+
+    /**
+     * Sends an email verification email to the specified recipient.
+     * @param toEmail the recipient email address.
+     * @param userName the user's name for personalization.
+     * @param token the email verification token.
+     */
+    public void sendEmailVerificationEmail(
+            final String toEmail,
+            final String userName,
+            final String token
+    ) {
+
+        String verificationUrl =
+                frontendUrl
+                        + "/verify-email?token="
+                        + token;
+
+        Context context = new Context();
+
+        context.setVariable("userName", userName);
+        context.setVariable("verificationUrl", verificationUrl);
+        context.setVariable("year", Year.now().getValue());
+        context.setVariable("supportEmail", supportEmail);
+        context.setVariable("logoUrl", logoUrl);
+
+        String html = templateEngine.process(
+                "email-verification",
+                context
+        );
+
+        sesEmailService.sendEmail(
+                toEmail,
+                "Verify your BFlow email",
                 html
         );
     }

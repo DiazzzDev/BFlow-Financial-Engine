@@ -82,6 +82,7 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/api/v1/legal/terms")
                 || path.equals("/api/v1/legal/cookies")
                 || path.equals("/api/auth/reset-password")
+                || path.equals("/api/auth/verify-email")
                 || path.equals("/api/auth/forgot-password");
     }
 

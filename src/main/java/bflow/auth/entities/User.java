@@ -56,8 +56,9 @@ public class User {
     private Set<String> roles = Set.of("ROLE_USER");
 
     /** Indicates whether the user email is verified. */
+    @Builder.Default
     @Column(nullable = false)
-    private boolean emailVerified;
+    private boolean emailVerified = false;
 
     /** Indicates whether the user account is active. */
     @Enumerated(EnumType.STRING)

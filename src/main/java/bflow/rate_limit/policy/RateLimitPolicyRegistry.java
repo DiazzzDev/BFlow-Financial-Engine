@@ -19,6 +19,12 @@ public final class RateLimitPolicyRegistry {
             "FORGOT_PASSWORD",
             new RateLimitPolicy(3, Duration.ofMinutes(15)),
 
+            "RESEND_VERIFICATION",
+            new RateLimitPolicy(3, Duration.ofMinutes(10)),
+
+            "VERIFY_EMAIL",
+            new RateLimitPolicy(10, Duration.ofMinutes(5)),
+
             "AUTHENTICATED_API",
             new RateLimitPolicy(100, Duration.ofMinutes(3))
     );

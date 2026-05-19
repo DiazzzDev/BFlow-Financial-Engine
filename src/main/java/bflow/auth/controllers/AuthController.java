@@ -11,6 +11,7 @@ import bflow.auth.entities.RefreshToken;
 import bflow.auth.entities.User;
 import bflow.auth.security.jwt.JwtService;
 import bflow.auth.services.AuthService;
+import bflow.auth.services.EmailVerificationService;
 import bflow.auth.services.PasswordResetService;
 import bflow.auth.services.ServiceRefreshToken;
 import bflow.common.response.ApiResponse;
@@ -29,7 +30,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,6 +54,9 @@ public class AuthController {
 
     /** Service for password reset operations. */
     private final PasswordResetService passwordResetService;
+
+    /** Service for email verification operations. */
+    private final EmailVerificationService emailVerificationService;
 
     /** Total seconds in one day. */
     private static final int SECONDS_IN_A_DAY = 86400;
@@ -136,6 +142,7 @@ public class AuthController {
     ) {
 
         User user = authService.register(request);
+        emailVerificationService.sendVerificationEmail(user);
 
         List<String> roles = authService.getRoles(user);
 
@@ -290,6 +297,51 @@ public class AuthController {
                 Map.of(
                         "message",
                         "Password updated successfully"
+                )
+        );
+    }
+
+    /**
+     * Verifies the user's email using the provided token.
+     * This method is final to ensure safe extension of the class.
+     * @param token the verification token provided by the user.
+     * @return ResponseEntity with a success message.
+     */
+    @PostMapping("/verify-email")
+    public final ResponseEntity<?> verifyEmail(
+            @RequestParam final String token
+    ) {
+
+        emailVerificationService.verifyEmail(token);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "Email verified successfully"
+                )
+        );
+    }
+
+    /**
+     * Resends the verification email to the authenticated user.
+     * This method is final to ensure safe extension of the class.
+     * @param authentication the authentication object containing the user's ID.
+     * @return ResponseEntity with a success message.
+     */
+    @PostMapping("/resend-verification")
+    public final ResponseEntity<?> resendVerification(
+            final Authentication authentication
+    ) {
+
+        UUID userId =
+                UUID.fromString(authentication.getName());
+
+        emailVerificationService.resendVerification(userId);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "Verification email sent"
                 )
         );
     }

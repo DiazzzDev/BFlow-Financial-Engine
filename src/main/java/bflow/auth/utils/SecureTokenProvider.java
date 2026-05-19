@@ -12,7 +12,7 @@ import java.util.Base64;
  * Service for generating and hashing password reset tokens.
  */
 @Component
-public final class PasswordResetTokenProvider {
+public final class SecureTokenProvider {
 
     /** Token byte array length for secure random generation. */
     private static final int TOKEN_BYTE_LENGTH = 32;

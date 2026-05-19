@@ -26,6 +26,14 @@ public final class EndpointPolicyResolver {
             return "FORGOT_PASSWORD";
         }
 
+        if (path.startsWith("/api/auth/resend-verification")) {
+            return "RESEND_VERIFICATION";
+        }
+
+        if (path.startsWith("/api/auth/verify-email")) {
+            return "VERIFY_EMAIL";
+        }
+
         return "AUTHENTICATED_API";
     }
 

@@ -10,7 +10,7 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.PasswordResetTokenRepository;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
-import bflow.auth.utils.PasswordResetTokenProvider;
+import bflow.auth.utils.SecureTokenProvider;
 import bflow.common.aws.service.EmailTemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,7 +35,7 @@ public class PasswordResetService {
     /** Repository for password reset tokens. */
     private final PasswordResetTokenRepository tokenRepository;
     /** Provider for generating and hashing reset tokens. */
-    private final PasswordResetTokenProvider tokenProvider;
+    private final SecureTokenProvider tokenProvider;
     /** Password encoder for hashing passwords. */
     private final PasswordEncoder passwordEncoder;
     /** Service for sending email notifications. */

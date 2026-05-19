@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Verify your email</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <!-- Poppins -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    </style>
+
+    <!-- Preheader -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        Verify your email address to activate your BFlow account securely.
+    </div>
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#0F1217;
+    background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+    -webkit-text-size-adjust:100%;
+    -ms-text-size-adjust:100%;
+">
+
+<table
+        role="presentation"
+        width="100%"
+        style="
+            width:100%;
+            background-color:#0F1217;
+            background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+        "
+>
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+
+            <!-- Main Container -->
+            <table
+                    role="presentation"
+                    width="600"
+                    style="
+                        width:100%;
+                        max-width:600px;
+                        border-radius:24px;
+                        overflow:hidden;
+                        border:3px solid #262A31;
+                        background-color:#1A1F26;
+                    "
+            >
+                <tr>
+                    <td style="padding:40px;">
+
+                        <!-- Header -->
+                        <table role="presentation" width="100%">
+                            <tr>
+
+                                <td align="left" valign="middle">
+
+                                    <h1 style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:30px;
+                                        line-height:40px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                        letter-spacing:-0.5px;
+                                    ">
+                                        Verify your email
+                                    </h1>
+
+                                    <table role="presentation" style="margin-top:12px;">
+                                        <tr>
+                                            <td
+                                                    width="48"
+                                                    height="4"
+                                                    bgcolor="#F46A12"
+                                                    style="
+                                                        border-radius:999px;
+                                                        font-size:1px;
+                                                        line-height:1px;
+                                                    "
+                                            >
+                                                &nbsp;
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+
+                                <td align="right" valign="middle" width="90">
+
+                                    <img
+                                            th:src="${logoUrl}"
+                                            alt="BFlow"
+                                            width="78"
+                                            style="
+                                                display:block;
+                                                border:0;
+                                                outline:none;
+                                                text-decoration:none;
+                                            "
+                                    />
+
+                                </td>
+
+                            </tr>
+                        </table>
+
+                        <!-- Greeting -->
+                        <table role="presentation" width="100%" style="margin-top:36px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Welcome
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            [[${userName}]]
+                                        </strong>
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Main Content -->
+                        <table role="presentation" width="100%" style="margin-top:20px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Thanks for creating your BFlow account.
+                                    </p>
+
+                                    <p style="
+                                        margin:16px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        To continue securely and activate all platform features,
+                                        please confirm your email address by clicking the button below.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Verification Notice -->
+                        <table
+                                role="presentation"
+                                width="100%"
+                                style="
+                                    margin-top:28px;
+                                    background-color:#13161C;
+                                    border:1px solid #262A31;
+                                    border-radius:14px;
+                                "
+                        >
+                            <tr>
+                                <td style="padding:20px;">
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:14px;
+                                        line-height:20px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        Why verification matters
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#737883;
+                                    ">
+                                        Verifying your email helps protect your account,
+                                        secure your financial data,
+                                        and ensures you can recover access if needed.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- CTA -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td align="center">
+
+                                    <a
+                                            th:href="${verificationUrl}"
+                                            target="_blank"
+                                            style="
+                                                display:block;
+                                                width:100%;
+                                                box-sizing:border-box;
+                                                background-color:#F46A12;
+                                                color:#FFFFFF;
+                                                text-decoration:none;
+                                                font-family:'Poppins',Arial,sans-serif;
+                                                font-size:16px;
+                                                font-weight:600;
+                                                text-align:center;
+                                                padding:16px 24px;
+                                                border-radius:12px;
+                                                box-shadow:0 4px 14px rgba(244,106,18,0.20);
+                                            "
+                                    >
+                                        Verify email
+                                    </a>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Secondary Info -->
+                        <table role="presentation" width="100%" style="margin-top:28px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#737883;
+                                    ">
+                                        If you did not create a BFlow account,
+                                        you can safely ignore this email.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Fallback URL -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        If the button does not work, copy and paste this link into your browser:
+                                    </p>
+
+                                    <p style="
+                                        margin:10px 0 0 0;
+                                        word-break:break-all;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                    ">
+
+                                        <a
+                                                th:href="${verificationUrl}"
+                                                style="
+                                                    color:#F38533;
+                                                    text-decoration:none;
+                                                "
+                                        >
+                                            [[${verificationUrl}]]
+                                        </a>
+
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Divider -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td style="border-top:1px solid #262A31;"></td>
+                            </tr>
+                        </table>
+
+                        <!-- Footer -->
+                        <table role="presentation" width="100%" style="margin-top:24px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        © [[${year}]] BFlow Studio.
+                                        Financial clarity starts with visibility.
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        Need help?
+
+                                        <a
+                                                th:href="'mailto:' + ${supportEmail}"
+                                                style="
+                                                    color:#F38533;
+                                                    text-decoration:none;
+                                                "
+                                        >
+                                            [[${supportEmail}]]
+                                        </a>
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

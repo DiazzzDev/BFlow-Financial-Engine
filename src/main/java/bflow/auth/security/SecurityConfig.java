@@ -74,6 +74,11 @@ public class SecurityConfig {
                     .requestMatchers("/login/oauth2/**", "/oauth2/**")
                         .permitAll()
                         .requestMatchers("/api/v1/legal/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/verify-email",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"
+                        ).permitAll()
                     .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 ->
