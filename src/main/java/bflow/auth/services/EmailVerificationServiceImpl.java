@@ -54,7 +54,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
             return;
         }
 
-        tokenRepository.deleteByUser_Id(user.getId());
+        tokenRepository.deleteByUserId(user.getId());
 
         String rawToken = tokenProvider.generateRawToken();
         String hash = tokenProvider.hash(rawToken);
@@ -105,7 +105,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         user.setEmailVerified(true);
 
         userRepository.save(user);
-        tokenRepository.deleteByUser_Id(user.getId());
+        tokenRepository.deleteByUserId(user.getId());
     }
 
     /**
