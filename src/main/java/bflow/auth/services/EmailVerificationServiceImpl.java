@@ -16,7 +16,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class EmailVerificationServiceImpl implements EmailVerificationService{
+public class EmailVerificationServiceImpl implements EmailVerificationService {
     /**
      * Verification token expiration time in hours.
      */
