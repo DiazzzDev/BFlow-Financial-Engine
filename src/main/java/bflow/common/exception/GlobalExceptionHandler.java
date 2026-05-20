@@ -214,4 +214,34 @@ public final class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler({
+            InvalidBudgetThresholdException.class,
+            InvalidBudgetScopeException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(
+            final RuntimeException ex,
+            final HttpServletRequest request
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                        ex.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(BudgetOverlapException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBudgetOverlap(
+            final BudgetOverlapException ex,
+            final HttpServletRequest request
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(
+                        ex.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
 }
