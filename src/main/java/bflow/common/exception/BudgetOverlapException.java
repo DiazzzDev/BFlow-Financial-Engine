@@ -6,6 +6,11 @@ package bflow.common.exception;
 public class BudgetOverlapException
         extends RuntimeException {
 
+    /**
+     * Construct a BudgetOverlapException with a message.
+     *
+     * @param message the exception message
+     */
     public BudgetOverlapException(final String message) {
         super(message);
     }

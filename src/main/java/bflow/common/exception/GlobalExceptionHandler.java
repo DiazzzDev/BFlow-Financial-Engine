@@ -214,6 +214,13 @@ public final class GlobalExceptionHandler {
                 ));
     }
 
+    /**
+     * Handle invalid budget threshold and scope exceptions.
+     *
+     * @param ex the exception
+     * @param request the HTTP request
+     * @return response with BAD_REQUEST status
+     */
     @ExceptionHandler({
             InvalidBudgetThresholdException.class,
             InvalidBudgetScopeException.class
@@ -231,6 +238,13 @@ public final class GlobalExceptionHandler {
                 ));
     }
 
+    /**
+     * Handle budget overlap exceptions.
+     *
+     * @param ex the exception
+     * @param request the HTTP request
+     * @return response with CONFLICT status
+     */
     @ExceptionHandler(BudgetOverlapException.class)
     public ResponseEntity<ApiResponse<Void>> handleBudgetOverlap(
             final BudgetOverlapException ex,

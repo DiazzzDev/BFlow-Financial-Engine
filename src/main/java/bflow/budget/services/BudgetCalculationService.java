@@ -29,6 +29,9 @@ public final class BudgetCalculationService {
      */
     private final RepositoryExpense repositoryExpense;
 
+    /**
+     * Service for managing budget lifecycle operations.
+     */
     private final BudgetLifecycleService lifecycleService;
 
     /**
@@ -62,9 +65,17 @@ public final class BudgetCalculationService {
             spent = BigDecimal.ZERO;
         }
 
+        BigDecimal amount = budget.getAmount();
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                    "Budget amount must be greater than 0"
+            );
+        }
+
         BigDecimal percentageDecimal = spent
                 .multiply(BigDecimal.valueOf(PERCENTAGE_MULTIPLIER))
-                .divide(budget.getAmount(), 2, RoundingMode.HALF_UP);
+                .divide(amount, 2, RoundingMode.HALF_UP);
 
         int percentage = percentageDecimal.intValue();
 

@@ -13,10 +13,21 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class BudgetOverlapValidationService {
+public final class BudgetOverlapValidationService {
 
+    /**
+     * Repository for accessing Budget entities.
+     */
     private final RepositoryBudget repositoryBudget;
 
+    /**
+     * Validate that creating a new budget does not overlap with existing ones.
+     *
+     * @param request the budget creation request
+     * @param userId the ID of the user (owner)
+     * @throws BudgetOverlapException if a budget already exists for this
+     *         scope and period
+     */
     public void validateCreateOverlap(
             final BudgetRequest request,
             final UUID userId
@@ -52,6 +63,17 @@ public class BudgetOverlapValidationService {
         }
     }
 
+    /**
+     * Validate that patching a budget does not create overlap with other
+     * budgets.
+     *
+     * @param budget the budget entity being updated
+     * @param scope the new budget scope
+     * @param categoryId the new category ID
+     * @param period the new period type
+     * @param userId the ID of the user (owner)
+     * @throws BudgetOverlapException if update creates an overlap
+     */
     public void validatePatchOverlap(
             final Budget budget,
             final BudgetScope scope,

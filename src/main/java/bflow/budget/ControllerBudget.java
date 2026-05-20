@@ -11,7 +11,14 @@
     import org.springframework.http.HttpStatus;
     import org.springframework.http.ResponseEntity;
     import org.springframework.security.core.Authentication;
-    import org.springframework.web.bind.annotation.*;
+    import org.springframework.web.bind.annotation.DeleteMapping;
+    import org.springframework.web.bind.annotation.GetMapping;
+    import org.springframework.web.bind.annotation.PatchMapping;
+    import org.springframework.web.bind.annotation.PathVariable;
+    import org.springframework.web.bind.annotation.PostMapping;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RestController;
 
     import java.util.List;
     import java.util.UUID;
@@ -36,7 +43,8 @@
          * @return response containing list of budgets
          */
         @GetMapping("/wallet/{walletId}")
-        public ResponseEntity<ApiResponse<List<BudgetResponse>>> getBudgetsByWallet(
+        public ResponseEntity<ApiResponse<List<BudgetResponse>>>
+                getBudgetsByWallet(
                 @PathVariable final UUID walletId,
                 final Authentication authentication) {
 
@@ -126,6 +134,14 @@
             );
         }
 
+        /**
+         * Partially update an existing budget.
+         *
+         * @param id the budget ID
+         * @param request the patch request with updated fields
+         * @param authentication the authentication object
+         * @return response containing the updated budget
+         */
         @PatchMapping("/{id}")
         public ResponseEntity<ApiResponse<BudgetResponse>> patchBudget(
                 @PathVariable final UUID id,
@@ -147,6 +163,13 @@
             );
         }
 
+        /**
+         * Delete a budget.
+         *
+         * @param id the budget ID
+         * @param authentication the authentication object
+         * @return response indicating successful deletion
+         */
         @DeleteMapping("/{id}")
         public ResponseEntity<ApiResponse<Void>> deleteBudget(
                 @PathVariable final UUID id,

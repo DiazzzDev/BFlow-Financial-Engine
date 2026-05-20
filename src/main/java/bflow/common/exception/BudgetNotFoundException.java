@@ -5,6 +5,11 @@ package bflow.common.exception;
  */
 public class BudgetNotFoundException extends NotFoundException {
 
+    /**
+     * Construct a BudgetNotFoundException with a message.
+     *
+     * @param message the exception message
+     */
     public BudgetNotFoundException(final String message) {
         super(message);
     }

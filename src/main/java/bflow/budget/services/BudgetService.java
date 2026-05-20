@@ -56,8 +56,19 @@ public class BudgetService {
      */
     private final NotificationService notificationService;
 
+    /**
+     * Service for validating budget constraints and values.
+     */
     private final BudgetValidationService validationService;
+
+    /**
+     * Service for managing budget lifecycle operations.
+     */
     private final BudgetLifecycleService lifecycleService;
+
+    /**
+     * Service for validating budget overlaps with existing budgets.
+     */
     private final BudgetOverlapValidationService overlapValidationService;
 
     /**
@@ -280,7 +291,15 @@ public class BudgetService {
         return summary;
     }
 
-    public BudgetResponse patchBudget(
+    /**
+     * Apply partial updates to an existing budget.
+     *
+     * @param budgetId the ID of the budget to update
+     * @param userId the ID of the user (owner)
+     * @param request the patch request containing updated fields
+     * @return the updated budget response
+     */
+    public final BudgetResponse patchBudget(
             final UUID budgetId,
             final UUID userId,
             final BudgetPatchRequest request
@@ -371,7 +390,13 @@ public class BudgetService {
         return calculationService.calculate(updated);
     }
 
-    public void deleteBudget(
+    /**
+     * Delete a budget by ID.
+     *
+     * @param budgetId the ID of the budget to delete
+     * @param userId the ID of the user (owner)
+     */
+    public final void deleteBudget(
             final UUID budgetId,
             final UUID userId
     ) {

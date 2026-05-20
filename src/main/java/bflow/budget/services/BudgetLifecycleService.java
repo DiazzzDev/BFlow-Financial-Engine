@@ -9,7 +9,13 @@ import java.time.LocalDate;
 @Component
 public class BudgetLifecycleService {
 
-    public LocalDate calculateEndDate(final Budget budget) {
+    /**
+     * Calculate the end date of a budget based on its period type.
+     *
+     * @param budget the budget entity
+     * @return the calculated end date
+     */
+    public final LocalDate calculateEndDate(final Budget budget) {
 
         return switch (budget.getPeriod()) {
             case DAILY -> budget.getStartDate().plusDays(1);
@@ -21,11 +27,21 @@ public class BudgetLifecycleService {
         };
     }
 
-    public void resetAlerts(final Budget budget) {
+    /**
+     * Reset alert status for a budget back to OK.
+     *
+     * @param budget the budget entity to update
+     */
+    public final void resetAlerts(final Budget budget) {
         budget.setLastAlertStatus(BudgetStatus.OK);
     }
 
-    public void resetBudgetPeriod(final Budget budget) {
+    /**
+     * Reset the budget period to start from today and reset its alerts.
+     *
+     * @param budget the budget entity to update
+     */
+    public final void resetBudgetPeriod(final Budget budget) {
 
         budget.setStartDate(LocalDate.now());
         resetAlerts(budget);
