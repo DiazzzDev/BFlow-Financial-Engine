@@ -2,6 +2,7 @@ package bflow.budget.services;
 
 import bflow.auth.entities.User;
 import bflow.auth.services.UserServiceImpl;
+import bflow.budget.DTO.BudgetPatchRequest;
 import bflow.budget.DTO.BudgetRequest;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.DTO.BudgetSummaryResponse;
@@ -9,6 +10,8 @@ import bflow.budget.RepositoryBudget;
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
+import bflow.budget.enums.PeriodType;
+import bflow.common.exception.BudgetNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.notifications.service.NotificationService;
 import bflow.wallet.RepositoryWalletUser;
@@ -54,6 +57,21 @@ public class BudgetService {
     private final NotificationService notificationService;
 
     /**
+     * Service for validating budget constraints and values.
+     */
+    private final BudgetValidationService validationService;
+
+    /**
+     * Service for managing budget lifecycle operations.
+     */
+    private final BudgetLifecycleService lifecycleService;
+
+    /**
+     * Service for validating budget overlaps with existing budgets.
+     */
+    private final BudgetOverlapValidationService overlapValidationService;
+
+    /**
      * Get the status of a specific budget.
      *
      * @param budgetId the budget ID
@@ -66,14 +84,7 @@ public class BudgetService {
         //Check if user has an active account
         userService.validateUserActive(userId);
 
-        Budget budget = repositoryBudget.findById(budgetId)
-                .orElseThrow(() -> new RuntimeException("Budget not found"));
-
-        if (!budget.getUser().getId().equals(userId)) {
-            throw new WalletAccessDeniedException(
-                    "You do not have access to this budget"
-            );
-        }
+        Budget budget = getOwnedBudget(budgetId, userId);
 
         return calculationService.calculate(budget);
     }
@@ -95,6 +106,10 @@ public class BudgetService {
         //Check if user has an active account
         userService.validateUserActive(userId);
 
+        //Check the start date for the budget before handle a query
+        validationService.validateAmount(request.getAmount());
+        validationService.validateStartDate(request.getStartDate());
+
         Budget budget = new Budget();
 
         budget.setPeriod(request.getPeriod());
@@ -107,20 +122,19 @@ public class BudgetService {
         wallet.setId(walletId);
 
         //If the user sets an wallet that it's not theirs throw exception
-        repositoryWalletUser
-                .findByWalletIdAndUserId(walletId, userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        validateWalletAccess(walletId, userId);
 
-        if (request.getScope() == BudgetScope.CATEGORY
-                && request.getCategoryId() == null) {
-            throw new IllegalArgumentException(
-                    "Category budget requires categoryId"
-            );
-        }
+        validationService.validateBudgetConstraints(
+                request.getScope(),
+                request.getCategoryId(),
+                request.getThresholdWarning(),
+                request.getThresholdCritical()
+        );
+
+        overlapValidationService.validateCreateOverlap(
+                request,
+                userId
+        );
 
         budget.setWallet(wallet);
         budget.setScope(request.getScope());
@@ -148,13 +162,7 @@ public class BudgetService {
         //Check if user has an active account
         userService.validateUserActive(userId);
 
-        repositoryWalletUser
-                .findByWalletIdAndUserId(walletId, userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        validateWalletAccess(walletId, userId);
 
         List<Budget> budgets = repositoryBudget.findByWalletId(walletId);
 
@@ -176,21 +184,7 @@ public class BudgetService {
 
         for (Budget budget : budgets) {
             LocalDate start = budget.getStartDate();
-            LocalDate end;
-
-            switch (budget.getPeriod()) {
-                case WEEKLY:
-                    end = start.plusWeeks(1);
-                    break;
-                case MONTHLY:
-                    end = start.plusMonths(1);
-                    break;
-                case DAILY:
-                    end = start.plusDays(1);
-                    break;
-                default:
-                    continue;
-            }
+            LocalDate end = lifecycleService.calculateEndDate(budget);
 
             boolean periodEnded = today.isAfter(end);
 
@@ -205,7 +199,7 @@ public class BudgetService {
                     );
                 }
 
-                resetBudgetPeriod(budget);
+                lifecycleService.resetBudgetPeriod(budget);
                 repositoryBudget.save(budget);
 
                 continue;
@@ -233,19 +227,6 @@ public class BudgetService {
     }
 
     /**
-     * Reset budget period to start from today.
-     *
-     * @param budget the budget to reset
-     */
-    private void resetBudgetPeriod(final Budget budget) {
-
-        LocalDate newStart = LocalDate.now();
-
-        budget.setStartDate(newStart);
-        budget.setLastAlertStatus(BudgetStatus.OK);
-    }
-
-    /**
      * Get budget summary for a wallet.
      *
      * @param walletId the wallet ID
@@ -256,16 +237,6 @@ public class BudgetService {
             final UUID walletId,
             final UUID userId
     ) {
-
-        userService.validateUserActive(userId);
-
-        repositoryWalletUser
-                .findByWalletIdAndUserId(walletId, userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
 
         List<BudgetResponse> budgets =
                 getBudgetsByWallet(walletId, userId);
@@ -319,4 +290,149 @@ public class BudgetService {
 
         return summary;
     }
+
+    /**
+     * Apply partial updates to an existing budget.
+     *
+     * @param budgetId the ID of the budget to update
+     * @param userId the ID of the user (owner)
+     * @param request the patch request containing updated fields
+     * @return the updated budget response
+     */
+    public final BudgetResponse patchBudget(
+            final UUID budgetId,
+            final UUID userId,
+            final BudgetPatchRequest request
+    ) {
+
+        userService.validateUserActive(userId);
+
+        if (request.getStartDate() != null) {
+            validationService.validateStartDate(request.getStartDate());
+        }
+
+        Budget budget = getOwnedBudget(budgetId, userId);
+
+        Integer finalWarning =
+                request.getThresholdWarning() != null
+                        ? request.getThresholdWarning()
+                        : budget.getThresholdWarning();
+
+        Integer finalCritical =
+                request.getThresholdCritical() != null
+                        ? request.getThresholdCritical()
+                        : budget.getThresholdCritical();
+
+        BudgetScope finalScope =
+                request.getScope() != null
+                        ? request.getScope()
+                        : budget.getScope();
+
+        UUID finalCategoryId =
+                request.getCategoryId() != null
+                        ? request.getCategoryId()
+                        : budget.getCategoryId();
+
+        if (finalScope == BudgetScope.WALLET) {
+            finalCategoryId = null;
+        }
+
+        validationService.validateBudgetConstraints(
+                finalScope,
+                finalCategoryId,
+                finalWarning,
+                finalCritical
+        );
+
+        PeriodType finalPeriod =
+                request.getPeriod() != null
+                        ? request.getPeriod()
+                        : budget.getPeriod();
+
+        overlapValidationService.validatePatchOverlap(
+                budget,
+                finalScope,
+                finalCategoryId,
+                finalPeriod,
+                userId
+        );
+
+        boolean shouldResetAlerts =
+                request.getAmount() != null
+                        || request.getPeriod() != null
+                        || request.getStartDate() != null
+                        || request.getScope() != null
+                        || request.getCategoryId() != null;
+
+        if (request.getAmount() != null) {
+            validationService.validateAmount(request.getAmount());
+            budget.setAmount(request.getAmount());
+        }
+
+        budget.setPeriod(finalPeriod);
+
+        if (request.getStartDate() != null) {
+            budget.setStartDate(request.getStartDate());
+        }
+
+        budget.setThresholdWarning(finalWarning);
+        budget.setThresholdCritical(finalCritical);
+
+        budget.setScope(finalScope);
+        budget.setCategoryId(finalCategoryId);
+
+        if (shouldResetAlerts) {
+            lifecycleService.resetAlerts(budget);
+        }
+
+        Budget updated = repositoryBudget.save(budget);
+
+        return calculationService.calculate(updated);
+    }
+
+    /**
+     * Delete a budget by ID.
+     *
+     * @param budgetId the ID of the budget to delete
+     * @param userId the ID of the user (owner)
+     */
+    public final void deleteBudget(
+            final UUID budgetId,
+            final UUID userId
+    ) {
+
+        userService.validateUserActive(userId);
+
+        Budget budget = getOwnedBudget(budgetId, userId);
+
+        repositoryBudget.delete(budget);
+    }
+
+    private void validateWalletAccess(
+            final UUID walletId,
+            final UUID userId
+    ) {
+        repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() ->
+                        new WalletAccessDeniedException(
+                                "You do not have access to this wallet"
+                        )
+                );
+    }
+
+    private Budget getOwnedBudget(
+            final UUID budgetId,
+            final UUID userId
+    ) {
+
+        return repositoryBudget
+                .findByIdAndUserId(budgetId, userId)
+                .orElseThrow(() ->
+                        new BudgetNotFoundException(
+                                "Budget not found"
+                        )
+                );
+    }
+
 }

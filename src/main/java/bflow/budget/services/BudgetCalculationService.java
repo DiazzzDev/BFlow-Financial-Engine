@@ -30,6 +30,11 @@ public final class BudgetCalculationService {
     private final RepositoryExpense repositoryExpense;
 
     /**
+     * Service for managing budget lifecycle operations.
+     */
+    private final BudgetLifecycleService lifecycleService;
+
+    /**
      * Calculate budget response from a budget entity.
      *
      * @param budget the budget entity
@@ -38,21 +43,7 @@ public final class BudgetCalculationService {
     public BudgetResponse calculate(final Budget budget) {
 
         LocalDate start = budget.getStartDate();
-        LocalDate end;
-
-        switch (budget.getPeriod()) {
-            case WEEKLY:
-                end = start.plusWeeks(1);
-                break;
-            case MONTHLY:
-                end = start.plusMonths(1);
-                break;
-            case DAILY:
-                end = start.plusDays(1);
-                break;
-            default:
-                throw new RuntimeException("Invalid period");
-        }
+        LocalDate end = lifecycleService.calculateEndDate(budget);
 
         BigDecimal spent;
 
@@ -74,9 +65,17 @@ public final class BudgetCalculationService {
             spent = BigDecimal.ZERO;
         }
 
+        BigDecimal amount = budget.getAmount();
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                    "Budget amount must be greater than 0"
+            );
+        }
+
         BigDecimal percentageDecimal = spent
                 .multiply(BigDecimal.valueOf(PERCENTAGE_MULTIPLIER))
-                .divide(budget.getAmount(), 2, RoundingMode.HALF_UP);
+                .divide(amount, 2, RoundingMode.HALF_UP);
 
         int percentage = percentageDecimal.intValue();
 
