@@ -105,7 +105,7 @@ public class AuthController {
             final HttpServletResponse response
     ) {
         if (refreshToken != null) {
-            serviceRefreshToken.validateAndRotate(refreshToken);
+            serviceRefreshToken.revoke(refreshToken);
         }
 
         jwtService.clearAuthCookies(response);

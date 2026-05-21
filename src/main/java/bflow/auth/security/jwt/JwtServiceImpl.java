@@ -29,10 +29,16 @@ public final class JwtServiceImpl implements JwtService {
     /** Key provider for RSA keys. */
     private final RsaKeyProvider rsaKeyProvider;
 
-    /** Seconds in one hour. */
-    private static final long ACCESS_TOKEN_TTL_SECONDS = 3600;
+    /** 15 minutes. */
+    private static final long ACCESS_TOKEN_TTL_SECONDS = 900;
     /** Cookie duration in days. */
     private static final int MAX_COOKIE_DAYS = 14;
+
+    /** JWT issuer identifier. */
+    private static final String ISSUER = "bflow-api";
+
+    /** Expected JWT audience. */
+    private static final String AUDIENCE = "bflow-client";
 
     @Override
     public String generateToken(final UUID userId, final String email,
@@ -44,9 +50,11 @@ public final class JwtServiceImpl implements JwtService {
                     .subject(userId.toString())
                     .claim("roles", roles)
                     .claim("email", email)
+                    .jwtID(UUID.randomUUID().toString())
                     .issueTime(Date.from(Instant.now()))
-                    .expirationTime(Date.from(Instant.now()
-                            .plusSeconds(ACCESS_TOKEN_TTL_SECONDS)))
+                    .expirationTime(Date.from(
+                            Instant.now().plusSeconds(ACCESS_TOKEN_TTL_SECONDS)
+                    ))
                     .issuer("bflow-api")
                     .build();
 
@@ -71,20 +79,22 @@ public final class JwtServiceImpl implements JwtService {
             SignedJWT jwt = SignedJWT.parse(token);
 
             String kid = jwt.getHeader().getKeyID();
+
+            if (kid == null || kid.isBlank()) {
+                return false;
+            }
+
             RSAPublicKey key = rsaKeyProvider.getPublicKey(kid);
 
+            JWTClaimsSet claims = jwt.getJWTClaimsSet();
+
             return jwt.verify(new RSASSAVerifier(key))
-                    && jwt.getJWTClaimsSet()
-                    .getExpirationTime()
-                    .after(new Date());
+                    && claims.getExpirationTime().after(new Date())
+                    && ISSUER.equals(claims.getIssuer())
+                    && claims.getAudience().contains(AUDIENCE);
         } catch (Exception e) {
             return false;
         }
-    }
-
-    @Override
-    public long getAccessTokenTtlSeconds() {
-        return ACCESS_TOKEN_TTL_SECONDS;
     }
 
     @Override
