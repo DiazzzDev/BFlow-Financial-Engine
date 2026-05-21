@@ -17,7 +17,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-public class ServiceRefreshToken {
+public final class ServiceRefreshToken {
 
     /** Time-to-live for refresh tokens (14 days). */
     private static final Duration TTL = Duration.ofDays(14);
@@ -42,6 +42,13 @@ public class ServiceRefreshToken {
         repository.save(rt);
     }
 
+    /**
+     * Revokes a refresh token if it exists.
+     * This operation is used during logout flows
+     * to invalidate the current session token.
+     *
+     * @param rawToken the plain text refresh token.
+     */
     public void revoke(final String rawToken) {
 
         String hash = hash(rawToken);
