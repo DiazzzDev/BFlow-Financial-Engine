@@ -9,6 +9,8 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
 import jakarta.transaction.Transactional;
+
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -47,36 +49,66 @@ public class UserServiceImpl implements UserService {
     public User resolveOAuth2User(
             final String email,
             final String providerId,
-            final AuthProvider provider
+            final AuthProvider provider,
+            final boolean emailVerified
     ) {
-        User user = userRepository.findByEmail(email)
-                .orElseGet(() -> createUser(email));
 
-        boolean alreadyLinked = authAccountRepository
-                .existsByProviderAndProviderUserId(
-                        provider,
-                        providerId
-                );
+        //Check if the user exists
+        Optional<AuthAccount> existingAccount =
+                authAccountRepository
+                        .findByProviderAndProviderUserId(
+                                provider,
+                                providerId
+                        );
 
-        if (!alreadyLinked) {
+        if (existingAccount.isPresent()) {
 
-            AuthAccount account = AuthAccount.builder()
-                    .user(user)
-                    .provider(provider)
-                    .providerUserId(providerId)
-                    .enabled(true)
-                    .build();
+            AuthAccount account = existingAccount.get();
 
-            authAccountRepository.save(account);
+            return account.getUser();
         }
+
+        //Prevent take-over for existing non verified accounts
+        Optional<User> existingUser =
+                userRepository.findByEmail(email);
+
+        if (existingUser.isPresent()
+                && !existingUser.get().isEmailVerified()) {
+
+            throw new IllegalStateException(
+                    "Local account email not verified"
+            );
+        }
+
+        //Create a new user
+        User user = existingUser.orElseGet(
+                () -> createUser(email, emailVerified)
+        );
+
+        if (emailVerified && !user.isEmailVerified()) {
+            user.setEmailVerified(true);
+        }
+
+        AuthAccount account = AuthAccount.builder()
+                .user(user)
+                .provider(provider)
+                .providerUserId(providerId)
+                .enabled(true)
+                .build();
+
+        authAccountRepository.save(account);
 
         return user;
     }
 
-    private User createUser(final String email) {
+    private User createUser(
+            final String email,
+            final boolean emailVerified
+    ) {
 
         User user = User.builder()
                 .email(email)
+                .emailVerified(emailVerified)
                 .roles(Set.of(ROLE_USER))
                 .status(UserStatus.ACTIVE)
                 .build();

@@ -19,8 +19,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,14 +56,6 @@ public class AuthController {
     /** Service for email verification operations. */
     private final EmailVerificationService emailVerificationService;
 
-    /** Total seconds in one day. */
-    private static final int SECONDS_IN_A_DAY = 86400;
-    /** Maximum validity of a cookie in days. */
-    private static final int MAX_COOKIE_DAYS = 14;
-    /** Refresh token Time To Live. */
-    private static final long REFRESH_COOKIE_MAX_AGE =
-            (long) MAX_COOKIE_DAYS * SECONDS_IN_A_DAY;
-
     /**
      * Authenticates a user and sets session cookies.
      * @param request the login credentials.
@@ -93,16 +83,11 @@ public class AuthController {
         String rawRefreshToken = UUID.randomUUID().toString();
         serviceRefreshToken.create(user.getId(), rawRefreshToken);
 
-        setCookie(response,
-                "access_token",
+        jwtService.attachAuthCookies(
+                response,
                 accessToken,
-                jwtService.getAccessTokenTtlSeconds(), "/");
-
-        setCookie(response,
-                "refresh_token",
-                rawRefreshToken,
-                REFRESH_COOKIE_MAX_AGE,
-                "/");
+                rawRefreshToken
+        );
 
         return ResponseEntity.ok().build();
     }
@@ -120,11 +105,10 @@ public class AuthController {
             final HttpServletResponse response
     ) {
         if (refreshToken != null) {
-            serviceRefreshToken.validateAndRotate(refreshToken);
+            serviceRefreshToken.revoke(refreshToken);
         }
 
-        clearCookie(response, "access_token", "/");
-        clearCookie(response, "refresh_token", "/");
+        jwtService.clearAuthCookies(response);
 
         return ResponseEntity.ok().build();
     }
@@ -155,16 +139,11 @@ public class AuthController {
         String rawRefreshToken = UUID.randomUUID().toString();
         serviceRefreshToken.create(user.getId(), rawRefreshToken);
 
-        setCookie(response,
-                "access_token",
+        jwtService.attachAuthCookies(
+                response,
                 accessToken,
-                jwtService.getAccessTokenTtlSeconds(), "/");
-
-        setCookie(response,
-                "refresh_token",
-                rawRefreshToken,
-                REFRESH_COOKIE_MAX_AGE,
-                "/");
+                rawRefreshToken
+        );
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -229,15 +208,11 @@ public class AuthController {
                 roles
         );
 
-        setCookie(response,
-                "access_token",
+        jwtService.attachAuthCookies(
+                response,
                 newAccessToken,
-                jwtService.getAccessTokenTtlSeconds(), "/");
-        setCookie(response,
-                "refresh_token",
-                result.newRefreshToken(),
-                REFRESH_COOKIE_MAX_AGE,
-                "/");
+                result.newRefreshToken()
+        );
 
         return ResponseEntity.ok().build();
     }
@@ -346,50 +321,4 @@ public class AuthController {
         );
     }
 
-    /**
-     * Internal utility to set a cookie on the response.
-     * @param res servlet response.
-     * @param name cookie name.
-     * @param value cookie value.
-     * @param maxAge max age in seconds.
-     * @param path cookie path.
-     */
-    private void setCookie(
-            final HttpServletResponse res,
-            final String name,
-            final String value,
-            final long maxAge,
-            final String path
-    ) {
-        ResponseCookie cookie = ResponseCookie.from(name, value)
-                .httpOnly(true)
-                .secure(true)
-                .path(path)
-                .sameSite("None")
-                .maxAge(maxAge)
-                .build();
-        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    /**
-     * Internal utility to clear a specific cookie.
-     * @param res servlet response.
-     * @param name cookie name.
-     * @param path cookie path.
-     */
-    private void clearCookie(
-            final HttpServletResponse res,
-            final String name,
-            final String path
-    ) {
-        ResponseCookie cookie = ResponseCookie.from(name, "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
-                .path(path)
-                .maxAge(0)
-                .build();
-
-        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
 }

@@ -15,7 +15,7 @@ public class BudgetLifecycleService {
      * @param budget the budget entity
      * @return the calculated end date
      */
-    public final LocalDate calculateEndDate(final Budget budget) {
+    public LocalDate calculateEndDate(final Budget budget) {
 
         return switch (budget.getPeriod()) {
             case DAILY -> budget.getStartDate().plusDays(1);
@@ -32,7 +32,7 @@ public class BudgetLifecycleService {
      *
      * @param budget the budget entity to update
      */
-    public final void resetAlerts(final Budget budget) {
+    public void resetAlerts(final Budget budget) {
         budget.setLastAlertStatus(BudgetStatus.OK);
     }
 
@@ -41,7 +41,7 @@ public class BudgetLifecycleService {
      *
      * @param budget the budget entity to update
      */
-    public final void resetBudgetPeriod(final Budget budget) {
+    public void resetBudgetPeriod(final Budget budget) {
 
         budget.setStartDate(LocalDate.now());
         resetAlerts(budget);

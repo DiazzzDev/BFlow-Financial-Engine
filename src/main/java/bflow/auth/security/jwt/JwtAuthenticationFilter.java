@@ -64,28 +64,6 @@ public final class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    @Override
-    protected boolean shouldNotFilter(final HttpServletRequest request) {
-        String path = request.getRequestURI();
-
-        return path.equals("/api/auth/login")
-                || path.equals("/api/auth/register")
-                || path.equals("/api/auth/refresh")
-                || path.startsWith("/login/oauth2")
-                || path.startsWith("/oauth2")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs")
-                || path.equals("/actuator/info")
-                || path.equals("/actuator/health")
-                || path.equals("/.well-known/jwks.json")
-                || path.equals("/api/v1/legal/privacy")
-                || path.equals("/api/v1/legal/terms")
-                || path.equals("/api/v1/legal/cookies")
-                || path.equals("/api/auth/reset-password")
-                || path.equals("/api/auth/verify-email")
-                || path.equals("/api/auth/forgot-password");
-    }
-
     /**
      * Helper to extract the access token from the request cookies.
      * @param request the current HTTP request.

@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -33,8 +34,8 @@ public final class OAuth2SuccessHandler
     private final ServiceRefreshToken serviceRefreshToken;
 
     /** The frontend URL for redirecting on successful authentication. */
-    //@Value("${app.frontend-url}")
-    private final String frontendUrl = "http://localhost:5173/app/dashboard";
+    @Value("${app.frontend-url}")
+    private final String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(
@@ -45,7 +46,7 @@ public final class OAuth2SuccessHandler
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
 
         String email = oAuth2User.getAttribute("email");
-        String providerId = oAuth2User.getAttribute("sub");
+        String providerId = oAuth2User.getName();
         Boolean emailVerified =
                 oAuth2User.getAttribute("email_verified");
 
@@ -64,7 +65,8 @@ public final class OAuth2SuccessHandler
         User user = userService.resolveOAuth2User(
                 email,
                 providerId,
-                AuthProvider.GOOGLE
+                AuthProvider.GOOGLE,
+                Boolean.TRUE.equals(emailVerified)
         );
 
         List<String> roles = List.copyOf(user.getRoles());
@@ -80,6 +82,6 @@ public final class OAuth2SuccessHandler
         serviceRefreshToken.create(user.getId(), refreshToken);
 
         jwtService.attachAuthCookies(response, accessToken, refreshToken);
-        response.sendRedirect(frontendUrl);
+        response.sendRedirect(frontendUrl + "/app/dashboard");
     }
 }

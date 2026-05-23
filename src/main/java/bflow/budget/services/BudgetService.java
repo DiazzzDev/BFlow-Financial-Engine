@@ -299,7 +299,7 @@ public class BudgetService {
      * @param request the patch request containing updated fields
      * @return the updated budget response
      */
-    public final BudgetResponse patchBudget(
+    public BudgetResponse patchBudget(
             final UUID budgetId,
             final UUID userId,
             final BudgetPatchRequest request
@@ -396,7 +396,7 @@ public class BudgetService {
      * @param budgetId the ID of the budget to delete
      * @param userId the ID of the user (owner)
      */
-    public final void deleteBudget(
+    public void deleteBudget(
             final UUID budgetId,
             final UUID userId
     ) {

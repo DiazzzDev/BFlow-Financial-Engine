@@ -22,12 +22,6 @@ public interface JwtService {
     );
 
     /**
-     * Gets the TTL for access tokens.
-     * @return duration in seconds.
-     */
-    long getAccessTokenTtlSeconds();
-
-    /**
      * Validates if a token is authentic and not expired.
      * @param token serialized JWT.
      * @return true if valid.
@@ -66,4 +60,11 @@ public interface JwtService {
             String accessToken,
             String refreshToken
     );
+
+    /**
+     * Clear authentication cookies from the response.
+     *
+     * @param response servlet response.
+     */
+    void clearAuthCookies(HttpServletResponse response);
 }

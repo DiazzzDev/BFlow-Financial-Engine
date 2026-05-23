@@ -17,7 +17,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-public class ServiceRefreshToken {
+public final class ServiceRefreshToken {
 
     /** Time-to-live for refresh tokens (14 days). */
     private static final Duration TTL = Duration.ofDays(14);
@@ -43,25 +43,21 @@ public class ServiceRefreshToken {
     }
 
     /**
-     * Validates a token and revokes it as part of a rotation check.
-     * @param rawToken the plain text token.
+     * Revokes a refresh token if it exists.
+     * This operation is used during logout flows
+     * to invalidate the current session token.
+     *
+     * @param rawToken the plain text refresh token.
      */
-    public void validateAndRotate(final String rawToken) {
+    public void revoke(final String rawToken) {
+
         String hash = hash(rawToken);
 
-        RefreshToken existing = repository.findByTokenHash(hash)
-                .orElseThrow(() ->
-                        new SecurityException("Invalid refresh token"));
-
-        if (existing.isRevoked()
-                || existing.getExpiresAt().isBefore(Instant.now())) {
-            revokeAll(existing.getUserId());
-            throw new SecurityException("Refresh token reuse detected");
-        }
-
-        existing.setRevoked(true);
-        repository.save(existing);
-
+        repository.findByTokenHash(hash)
+                .ifPresent(token -> {
+                    token.setRevoked(true);
+                    repository.save(token);
+                });
     }
 
     /**

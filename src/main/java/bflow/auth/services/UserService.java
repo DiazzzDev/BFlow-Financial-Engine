@@ -23,12 +23,14 @@ public interface UserService {
      * @param email user email.
      * @param providerId external provider ID.
      * @param provider the provider (e.g., GOOGLE).
+     * @param emailVerified whether the email is verified.
      * @return the resolved User entity.
      */
     User resolveOAuth2User(
             String email,
             String providerId,
-            AuthProvider provider
+            AuthProvider provider,
+            boolean emailVerified
     );
 
     /**
