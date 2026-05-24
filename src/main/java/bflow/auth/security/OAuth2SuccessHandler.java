@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Component;
  * Strategy used to handle successful OAuth2 authentication.
  */
 @Component
-@RequiredArgsConstructor
 public final class OAuth2SuccessHandler
         implements AuthenticationSuccessHandler {
 
@@ -34,8 +32,29 @@ public final class OAuth2SuccessHandler
     private final ServiceRefreshToken serviceRefreshToken;
 
     /** The frontend URL for redirecting on successful authentication. */
-    @Value("${app.frontend-url}")
     private final String frontendUrl;
+
+    /**
+     * Constructs an OAuth2SuccessHandler with required dependencies.
+     *
+     * @param newJwtService the JWT service for token generation
+     * @param newUserService the user service for resolving OAuth2 users
+     * @param newServiceRefreshToken the refresh token service
+     * @param newFrontendUrl the frontend URL for redirects
+     */
+    // CHECKSTYLE:OFF HiddenField
+    public OAuth2SuccessHandler(
+            final JwtService newJwtService,
+            final UserService newUserService,
+            final ServiceRefreshToken newServiceRefreshToken,
+            @Value("${app.frontend-url}") final String newFrontendUrl
+    ) {
+        this.jwtService = newJwtService;
+        this.userService = newUserService;
+        this.serviceRefreshToken = newServiceRefreshToken;
+        this.frontendUrl = newFrontendUrl;
+    }
+    // CHECKSTYLE:ON HiddenField
 
     @Override
     public void onAuthenticationSuccess(
