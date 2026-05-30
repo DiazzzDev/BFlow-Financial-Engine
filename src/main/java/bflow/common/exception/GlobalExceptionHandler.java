@@ -11,7 +11,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
-
+import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import java.util.stream.Collectors;
 
 /**
@@ -156,6 +157,31 @@ public final class GlobalExceptionHandler {
     }
 
     /**
+     * Handles client disconnects and aborted HTTP connections.
+     * These are common in production and should not be treated
+     * as server-side failures.
+     *
+     * @param ex the exception.
+     * @param request the current request.
+     */
+    @ExceptionHandler({
+            ClientAbortException.class,
+            AsyncRequestNotUsableException.class
+    })
+    public void handleClientDisconnect(
+            final Exception ex,
+            final HttpServletRequest request
+    ) {
+
+        log.warn(
+                "CLIENT DISCONNECTED at {} {} - {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getClass().getSimpleName()
+        );
+    }
+
+    /**
      * Final fallback for unhandled exceptions.
      * @param ex the exception.
      * @param request the current request.
@@ -164,17 +190,36 @@ public final class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGeneric(
             final Exception ex,
-            final HttpServletRequest request) {
-        log.error("UNHANDLED EXCEPTION at {} {} - {}",
-                request.getMethod(), request.getRequestURI(),
-                ex.getClass().getSimpleName(), ex);
+            final HttpServletRequest request
+    ) {
+
+        if (isIgnorableException(ex)) {
+
+            log.warn(
+                    "IGNORED NETWORK EXCEPTION at {} {} - {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    ex.getClass().getSimpleName()
+            );
+
+            return null;
+        }
+
+        log.error(
+                "UNHANDLED EXCEPTION at {} {} - {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getClass().getSimpleName(),
+                ex
+        );
 
         ApiResponse<?> response = ApiResponse.error(
                 "Internal server error",
                 request.getRequestURI()
         );
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
     }
 
@@ -257,5 +302,39 @@ public final class GlobalExceptionHandler {
                         ex.getMessage(),
                         request.getRequestURI()
                 ));
+    }
+
+    /**
+     * Determines whether the exception is a harmless
+     * network/client disconnect exception.
+     *
+     * @param ex the exception.
+     * @return true if ignorable.
+     */
+    private boolean isIgnorableException(final Throwable ex) {
+
+        Throwable current = ex;
+
+        while (current != null) {
+
+            if (current instanceof ClientAbortException
+                    || current instanceof AsyncRequestNotUsableException) {
+                return true;
+            }
+
+            String message = current.getMessage();
+
+            if (message != null
+                    && (
+                    message.contains("Broken pipe")
+                            || message.contains("Connection reset by peer")
+            )) {
+                return true;
+            }
+
+            current = current.getCause();
+        }
+
+        return false;
     }
 }
