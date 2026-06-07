@@ -35,7 +35,7 @@ public final class OAuth2FailureHandler
             final HttpServletResponse response,
             final AuthenticationException exception
     ) throws IOException {
-        String redirectUrl = frontendUrl + "/login?error=oauth2";
+        String redirectUrl = frontendUrl + "/auth/login?error=oauth2";
         response.sendRedirect(redirectUrl);
     }
 }

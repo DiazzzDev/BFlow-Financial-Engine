@@ -101,6 +101,6 @@ public final class OAuth2SuccessHandler
         serviceRefreshToken.create(user.getId(), refreshToken);
 
         jwtService.attachAuthCookies(response, accessToken, refreshToken);
-        response.sendRedirect(frontendUrl + "/app/dashboard");
+        response.sendRedirect(frontendUrl + "app/dashboard");
     }
 }

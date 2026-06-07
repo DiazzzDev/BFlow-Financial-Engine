@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public final class RateLimitCleanupTask {
+public class RateLimitCleanupTask {
 
     /** Initial delay in minutes for cleanup task. */
     private static final long INITIAL_DELAY_MINUTES = 5;
