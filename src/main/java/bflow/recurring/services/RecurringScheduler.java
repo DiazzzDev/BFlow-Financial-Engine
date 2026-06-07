@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
-public final class RecurringScheduler {
+public class RecurringScheduler {
     /**
      * Service for executing recurring transactions.
      */
