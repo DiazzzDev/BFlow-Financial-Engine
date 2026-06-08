@@ -58,6 +58,7 @@ public class UserServiceImpl implements UserService {
      * @return the resolved or newly created User entity.
      */
     @Override
+    @Transactional
     public User resolveOAuth2User(
             final String email,
             final String providerId,
@@ -65,42 +66,39 @@ public class UserServiceImpl implements UserService {
             final boolean emailVerified
     ) {
 
-        //Check if the user exists
+        // 1. Check existing OAuth account
         Optional<AuthAccount> existingAccount =
-                authAccountRepository
-                        .findByProviderAndProviderUserId(
-                                provider,
-                                providerId
-                        );
+                authAccountRepository.findByProviderAndProviderUserId(
+                        provider,
+                        providerId
+                );
 
         if (existingAccount.isPresent()) {
-
-            AuthAccount account = existingAccount.get();
-
-            return account.getUser();
+            return existingAccount.get().getUser();
         }
 
-        //Prevent take-over for existing non verified accounts
+        // 2. Check existing user by email
         Optional<User> existingUser =
                 userRepository.findByEmail(email);
 
-        if (existingUser.isPresent()
-                && !existingUser.get().isEmailVerified()) {
+        User user;
 
-            throw new IllegalStateException(
-                    "Local account email not verified"
-            );
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+
+            // TRUST GOOGLE AS VERIFICATION SOURCE
+            if (emailVerified && !user.isEmailVerified()) {
+                user.setEmailVerified(true);
+            }
+
+        } else {
+            user = createUser(email, emailVerified);
         }
 
-        //Create a new user
-        User user = existingUser.orElseGet(
-                () -> createUser(email, emailVerified)
-        );
+        // 3. persist user state changes (important in JPA)
+        user = userRepository.save(user);
 
-        if (emailVerified && !user.isEmailVerified()) {
-            user.setEmailVerified(true);
-        }
-
+        // 4. create OAuth account link
         AuthAccount account = AuthAccount.builder()
                 .user(user)
                 .provider(provider)
