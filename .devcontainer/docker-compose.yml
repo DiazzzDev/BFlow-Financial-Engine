@@ -14,7 +14,10 @@ services:
       # NOTE: POSTGRES_DB/USER/PASSWORD should match values in db container
         POSTGRES_PASSWORD: postgres
         POSTGRES_USER: postgres
-        POSTGRES_DB: postgres
+        POSTGRES_DB: bflow
+        # Fixed AWS REGION issue as well, uncomment this dummy value if you don't have AWS
+        # credentials set up in your .env file to avoid errors related to missing AWS_REGION
+        #AWS_REGION: us-east-1
 
     volumes:
       - ../..:/workspaces:cached
@@ -40,7 +43,7 @@ services:
       # NOTE: POSTGRES_DB/USER/PASSWORD should match values in app container
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_DB: bflow
     networks:
       - asset-network
     healthcheck:
