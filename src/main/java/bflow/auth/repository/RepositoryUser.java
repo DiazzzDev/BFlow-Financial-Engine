@@ -27,4 +27,6 @@ public interface RepositoryUser
      * @return optional user.
      */
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByCognitoSub(String cognitoSub);
 }

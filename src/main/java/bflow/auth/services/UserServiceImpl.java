@@ -37,9 +37,6 @@ public class UserServiceImpl implements UserService {
     /** Repository for authentication account mapping. */
     private final RepositoryAuthAccount authAccountRepository;
 
-    /** Service for refresh token operations. */
-    private final ServiceRefreshToken serviceRefreshToken;
-
     /** Repository for subscription lookup and persistence. */
     private final RepositorySubscription subscriptionRepository;
 
@@ -180,7 +177,6 @@ public class UserServiceImpl implements UserService {
         User user = findById(userId);
 
         user.setStatus(UserStatus.DELETED);
-        serviceRefreshToken.revokeAll(userId);
 
         userRepository.save(user);
     }

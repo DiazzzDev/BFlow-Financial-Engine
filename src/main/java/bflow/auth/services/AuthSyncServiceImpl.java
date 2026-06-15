@@ -1,0 +1,94 @@
+package bflow.auth.services;
+
+import bflow.auth.DTO.Record.SyncUserRequest;
+import bflow.auth.DTO.Record.SyncUserResponse;
+import bflow.auth.entities.User;
+import bflow.auth.enums.UserStatus;
+import bflow.auth.repository.RepositoryUser;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import java.util.Optional;
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+public class AuthSyncServiceImpl implements AuthSyncService {
+
+    private final RepositoryUser repositoryUser;
+
+    @Override
+    public SyncUserResponse synchronize(Jwt jwt) {
+        return synchronize(jwt, new SyncUserRequest(
+                null,
+                null,
+                false
+        ));
+    }
+
+    @Override
+    public SyncUserResponse synchronize(Jwt jwt, SyncUserRequest request) {
+
+        String sub = jwt.getSubject();
+
+        String email = request.email();
+
+        Optional<User> existingBySub =
+                repositoryUser.findByCognitoSub(sub);
+
+        if (existingBySub.isPresent()) {
+
+            User user = existingBySub.get();
+
+            return new SyncUserResponse(
+                    user.getId(),
+                    user.getEmail(),
+                    String.join(",", user.getRoles()),
+                    false
+            );
+        }
+
+        Optional<User> existingByEmail = repositoryUser.findByEmail(email);
+
+        if (existingByEmail.isPresent()) {
+
+            User user = existingByEmail.get();
+
+            user.setCognitoSub(sub);
+
+            if (Boolean.TRUE.equals(request.emailVerified())) {
+                user.setEmailVerified(true);
+            }
+
+            repositoryUser.save(user);
+
+            return new SyncUserResponse(
+                    user.getId(),
+                    user.getEmail(),
+                    String.join(",", user.getRoles()),
+                    false
+            );
+        }
+        User newUser =
+                User.builder()
+                        .cognitoSub(sub)
+                        .email(email)
+                        .status(UserStatus.ACTIVE)
+                        .emailVerified(
+                                Boolean.TRUE.equals(
+                                        request.emailVerified()
+                                )
+                        )
+                        .roles(Set.of("ROLE_USER"))
+                        .build();
+
+        repositoryUser.save(newUser);
+
+        return new SyncUserResponse(
+                newUser.getId(),
+                newUser.getEmail(),
+                "ROLE_USER",
+                true
+        );
+    }
+}

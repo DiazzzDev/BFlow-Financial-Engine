@@ -3,17 +3,8 @@ package bflow.auth.controllers;
 import bflow.auth.DTO.AuthLoginRequest;
 import bflow.auth.DTO.AuthMeResponse;
 import bflow.auth.DTO.AuthRegisterRequest;
-import bflow.auth.DTO.Record.ForgotPasswordRequest;
-import bflow.auth.DTO.Record.RefreshRotationResult;
-import bflow.auth.DTO.Record.RefreshSession;
-import bflow.auth.DTO.Record.ResetPasswordRequest;
-import bflow.auth.entities.RefreshToken;
 import bflow.auth.entities.User;
-import bflow.auth.security.jwt.JwtService;
 import bflow.auth.services.AuthService;
-import bflow.auth.services.EmailVerificationService;
-import bflow.auth.services.PasswordResetService;
-import bflow.auth.services.ServiceRefreshToken;
 import bflow.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,16 +36,6 @@ public class AuthController {
 
     /** Service for core auth logic. */
     private final AuthService authService;
-    /** Service for JWT generation and validation. */
-    private final JwtService jwtService;
-    /** Service for managing refresh tokens. */
-    private final ServiceRefreshToken serviceRefreshToken;
-
-    /** Service for password reset operations. */
-    private final PasswordResetService passwordResetService;
-
-    /** Service for email verification operations. */
-    private final EmailVerificationService emailVerificationService;
 
     /**
      * Authenticates a user and sets session cookies.
@@ -74,42 +55,19 @@ public class AuthController {
 
         List<String> roles = authService.getRoles(user);
 
-        String accessToken = jwtService.generateToken(
-                user.getId(),
-                user.getEmail(),
-                roles
-        );
-
-        String rawRefreshToken = UUID.randomUUID().toString();
-        serviceRefreshToken.create(user.getId(), rawRefreshToken);
-
-        jwtService.attachAuthCookies(
-                response,
-                accessToken,
-                rawRefreshToken
-        );
-
         return ResponseEntity.ok().build();
     }
 
     /**
      * Logs out the user and clears authentication cookies.
-     * @param refreshToken the current refresh token from cookies.
      * @param response the servlet response.
      * @return a success response.
      */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @CookieValue(value = "refresh_token", required = false)
-            final String refreshToken,
             final HttpServletResponse response
     ) {
-        if (refreshToken != null) {
-            serviceRefreshToken.revoke(refreshToken);
-        }
-
-        jwtService.clearAuthCookies(response);
-
         return ResponseEntity.ok().build();
     }
 
@@ -126,24 +84,8 @@ public class AuthController {
     ) {
 
         User user = authService.register(request);
-        emailVerificationService.sendVerificationEmail(user);
 
         List<String> roles = authService.getRoles(user);
-
-        String accessToken = jwtService.generateToken(
-                user.getId(),
-                user.getEmail(),
-                roles
-        );
-
-        String rawRefreshToken = UUID.randomUUID().toString();
-        serviceRefreshToken.create(user.getId(), rawRefreshToken);
-
-        jwtService.attachAuthCookies(
-                response,
-                accessToken,
-                rawRefreshToken
-        );
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -182,101 +124,6 @@ public class AuthController {
     }
 
     /**
-     * Rotates the refresh token and generates a new access token.
-     * @param refreshToken current refresh token.
-     * @param response servlet response.
-     * @return success or unauthorized status.
-     */
-    @PostMapping("/refresh")
-    public ResponseEntity<Void> refresh(
-            @CookieValue(value = "refresh_token", required = false)
-            final String refreshToken,
-            final HttpServletResponse response
-    ) {
-        if (refreshToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        RefreshRotationResult result = serviceRefreshToken.rotate(refreshToken);
-
-        User user = authService.findById(result.userId());
-        List<String> roles = authService.getRoles(user);
-
-        String newAccessToken = jwtService.generateToken(
-                user.getId(),
-                user.getEmail(),
-                roles
-        );
-
-        jwtService.attachAuthCookies(
-                response,
-                newAccessToken,
-                result.newRefreshToken()
-        );
-
-        return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Lists active refresh sessions for the user.
-     * @param rawToken the current refresh token.
-     * @return list of active sessions.
-     */
-    @GetMapping("/sessions")
-    public ResponseEntity<List<RefreshSession>> sessions(
-            @CookieValue("refresh_token") final String rawToken
-    ) {
-        RefreshToken current = serviceRefreshToken.validate(rawToken);
-
-        List<RefreshSession> sessions = serviceRefreshToken.listActiveSessions(
-                        current.getUserId(),
-                        current.getId()
-        );
-
-        return ResponseEntity.ok(sessions);
-    }
-
-    /**
-     * Initiates the forgot password flow by sending a reset email.
-     * @param request the forgot password request containing the email.
-     * @return a response indicating if the account exists.
-     */
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(
-            final @Valid @RequestBody ForgotPasswordRequest request
-    ) {
-
-        passwordResetService.forgotPassword(request);
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "message",
-                        "If the account exists, a recovery email has been sent."
-                )
-        );
-    }
-
-    /**
-     * Resets the user password using a valid reset token.
-     * @param request the reset password request with token and new password.
-     * @return a success response.
-     */
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(
-            final @Valid @RequestBody ResetPasswordRequest request
-    ) {
-
-        passwordResetService.resetPassword(request);
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "message",
-                        "Password updated successfully"
-                )
-        );
-    }
-
-    /**
      * Verifies the user's email using the provided token.
      * This method is final to ensure safe extension of the class.
      * @param token the verification token provided by the user.
@@ -286,8 +133,6 @@ public class AuthController {
     public final ResponseEntity<?> verifyEmail(
             @RequestParam final String token
     ) {
-
-        emailVerificationService.verifyEmail(token);
 
         return ResponseEntity.ok(
                 Map.of(
@@ -310,8 +155,6 @@ public class AuthController {
 
         UUID userId =
                 UUID.fromString(authentication.getName());
-
-        emailVerificationService.resendVerification(userId);
 
         return ResponseEntity.ok(
                 Map.of(

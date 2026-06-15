@@ -82,18 +82,17 @@ public final class EmailTemplateService {
      * Sends an email verification email to the specified recipient.
      * @param toEmail the recipient email address.
      * @param userName the user's name for personalization.
-     * @param token the email verification token.
      */
     public void sendEmailVerificationEmail(
             final String toEmail,
-            final String userName,
-            final String token
+            final String userName
+            //final String token
     ) {
 
         String verificationUrl =
                 frontendUrl
-                        + "/api/auth/verify-email?token="
-                        + token;
+                        + "/api/auth/verify-email?token=";
+                        //+ token;
 
         Context context = new Context();
 
