@@ -3,6 +3,7 @@ package bflow.auth.controllers;
 import bflow.auth.DTO.AuthLoginRequest;
 import bflow.auth.DTO.AuthMeResponse;
 import bflow.auth.DTO.AuthRegisterRequest;
+import bflow.auth.DTO.UserMeResponse;
 import bflow.auth.entities.User;
 import bflow.auth.services.AuthService;
 import bflow.common.response.ApiResponse;
@@ -93,34 +94,26 @@ public class AuthController {
     /**
      * Returns the current authenticated user's details.
      * @param authentication the security context.
-     * @param httpRequest the servlet request.
+     * @param request the servlet request.
      * @return user details or 401 unauthorized.
      */
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<AuthMeResponse>> me(
+    public ResponseEntity<ApiResponse<UserMeResponse>> me(
             final Authentication authentication,
-            final HttpServletRequest httpRequest
+            final HttpServletRequest request
     ) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        AuthMeResponse response = new AuthMeResponse();
-        response.setUserId(UUID.fromString(authentication.getName()));
-        response.setRoles(authentication.getAuthorities()
-                        .stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList()
-        );
-
-        Object details = authentication.getDetails();
-        if (details instanceof Map<?, ?> map) {
-            response.setEmail((String) map.get("email"));
-        }
+        UserMeResponse response = authService.getCurrentUser(authentication);
 
         return ResponseEntity.ok(
-                ApiResponse.success("User authenticated",
-                                             response,
-                                             httpRequest.getRequestURI()));
+                ApiResponse.success(
+                        "User data retrieved successfully",
+                        response,
+                        request.getRequestURI()
+                )
+        );
     }
 
     /**

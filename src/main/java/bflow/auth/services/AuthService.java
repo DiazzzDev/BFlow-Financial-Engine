@@ -1,6 +1,7 @@
 package bflow.auth.services;
 
 import bflow.auth.DTO.AuthRegisterRequest;
+import bflow.auth.DTO.UserMeResponse;
 import bflow.auth.entities.AuthAccount;
 import bflow.auth.entities.User;
 import bflow.auth.enums.AuthProvider;
@@ -8,13 +9,16 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
 import bflow.common.exception.InvalidCredentialsException;
+import bflow.common.exception.ResourceNotFoundException;
 import bflow.subscription.services.SubscriptionService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,5 +120,37 @@ public class AuthService {
     public User findById(final UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public UserMeResponse getCurrentUser(
+            final Authentication authentication
+    ) {
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResourceNotFoundException(
+                    "Invalid authentication type"
+            );
+        }
+
+        String cognitoSub =
+                jwtAuth.getToken()
+                        .getClaimAsString("sub");
+
+        User user = userRepository
+                .findByCognitoSub(cognitoSub)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found"
+                        ));
+
+        return new UserMeResponse(
+                user.getId(),
+                user.getEmail(),
+                List.copyOf(user.getRoles()),
+                null,
+                List.of(),
+                null
+        );
     }
 }

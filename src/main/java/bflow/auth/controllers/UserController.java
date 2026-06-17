@@ -31,31 +31,6 @@ public final class UserController {
     private final UserService userService;
 
     /**
-     * Retrieves the current authenticated user's profile.
-     * @param authentication the current user's authentication object.
-     * @param request the HTTP request for path information.
-     * @return a ResponseEntity containing the user profile response.
-     */
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUser(
-            final Authentication authentication,
-            final HttpServletRequest request
-    ) {
-
-        UUID userId = UUID.fromString(authentication.getName());
-
-        UserProfileResponse profile = userService.getProfile(userId);
-
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        "User profile retrieved",
-                        profile,
-                        request.getRequestURI()
-                )
-        );
-    }
-
-    /**
      * Updates the current authenticated user's profile.
      * @param authentication the current user's authentication object.
      * @param requestBody the update profile request with new data.

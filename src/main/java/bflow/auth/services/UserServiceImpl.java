@@ -11,13 +11,12 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.subscription.repository.RepositoryPlan;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.subscription.services.SubscriptionService;
-import jakarta.transaction.Transactional;
-
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Implementation of the {@link UserService}.
