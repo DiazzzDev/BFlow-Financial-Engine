@@ -38,4 +38,6 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID> {
             UUID userId,
             WalletRole role
     );
+
+    boolean existsByUserId(UUID userId);
 }

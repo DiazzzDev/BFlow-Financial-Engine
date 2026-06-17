@@ -16,15 +16,7 @@ import java.util.Set;
 public class AuthSyncServiceImpl implements AuthSyncService {
 
     private final RepositoryUser repositoryUser;
-
-    @Override
-    public SyncUserResponse synchronize(Jwt jwt) {
-        return synchronize(jwt, new SyncUserRequest(
-                null,
-                null,
-                false
-        ));
-    }
+    private final AuthBootstrapService authBootstrapService;
 
     @Override
     public SyncUserResponse synchronize(Jwt jwt, SyncUserRequest request) {
@@ -62,6 +54,9 @@ public class AuthSyncServiceImpl implements AuthSyncService {
 
             repositoryUser.save(user);
 
+            authBootstrapService
+                    .bootstrap(user);
+
             return new SyncUserResponse(
                     user.getId(),
                     user.getEmail(),
@@ -83,6 +78,8 @@ public class AuthSyncServiceImpl implements AuthSyncService {
                         .build();
 
         repositoryUser.save(newUser);
+
+        authBootstrapService.bootstrap(newUser);
 
         return new SyncUserResponse(
                 newUser.getId(),
