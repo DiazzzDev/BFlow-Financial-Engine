@@ -373,6 +373,13 @@ public class ServiceWallet {
         wallet.setBalance(newBalance);
     }
 
+    /**
+      * Creates the default wallet assigned to a newly registered user.
+      *
+      * @param user owner of the wallet
+      * @return the existing owner wallet if one already exists, otherwise the
+      *         newly created default wallet
+    */
     @Transactional
     public Wallet createDefaultWallet(
             final User user

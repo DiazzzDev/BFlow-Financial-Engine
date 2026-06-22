@@ -1,5 +1,6 @@
 package bflow.wallet;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.income.DTO.IncomeResponse;
 import bflow.wallet.DTO.UpdateWalletRequest;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.UUID;
+import bflow.auth.entities.User;
 
 /**
  * Controller for managing wallet-related operations.
@@ -36,6 +38,9 @@ public final class ControllerWallet {
 
     /** The service handling wallet business logic. */
     private final ServiceWallet serviceWallet;
+
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
 
     /**
      * Retrieves all wallets for the authenticated user.
@@ -54,7 +59,9 @@ public final class ControllerWallet {
         //String userIdString = (String) authentication.getPrincipal();
         //UUID userId = UUID.fromString(userIdString);
 
-        UUID userId = UUID.fromString(authentication.getName());
+        //UUID userId = UUID.fromString(authentication.getName());
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<WalletResponse> wallets = serviceWallet
@@ -91,8 +98,10 @@ public final class ControllerWallet {
             final HttpServletRequest request
     ) {
         // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         WalletResponse walletResponse = serviceWallet
@@ -127,8 +136,10 @@ public final class ControllerWallet {
             final HttpServletRequest request
     ) {
         // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<ExpenseResponse> expenseResponse = serviceWallet
@@ -163,8 +174,10 @@ public final class ControllerWallet {
             final HttpServletRequest request
     ) {
         // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<IncomeResponse> incomeResponse = serviceWallet
@@ -197,8 +210,10 @@ public final class ControllerWallet {
             final HttpServletRequest httpRequest
     ) {
         // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Create wallet with user as owner
         WalletResponse walletResponse = serviceWallet
@@ -239,8 +254,10 @@ public final class ControllerWallet {
             final HttpServletRequest httpRequest
     ) {
         // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        //String userIdString = (String) authentication.getPrincipal();
+        //UUID userId = UUID.fromString(userIdString);
+
+        UUID userId = getCurrentUserId(authentication);
 
         // Create wallet with user as owner
         WalletResponse walletResponse = serviceWallet
@@ -263,5 +280,13 @@ public final class ControllerWallet {
         return ResponseEntity
                 .created(location)
                 .body(response);
+    }
+
+    private UUID getCurrentUserId(final Authentication authentication) {
+
+        User currentUser =
+                currentUserService.getCurrentUser(authentication);
+
+        return currentUser.getId();
     }
 }

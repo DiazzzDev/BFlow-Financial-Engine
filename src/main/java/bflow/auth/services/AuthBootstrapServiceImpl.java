@@ -12,11 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AuthBootstrapServiceImpl implements AuthBootstrapService {
 
+    /**
+     * Wallet service.
+     */
     private final ServiceWallet serviceWallet;
+
+    /**
+     * Subscription service.
+     */
     private final SubscriptionService subscriptionService;
 
+    /**
+     * Creates default resources required for a newly registered user.
+     *
+     * @param user user being initialized
+     */
     @Override
-    public void bootstrap(User user) {
+    public void bootstrap(final User user) {
         serviceWallet.createDefaultWallet(user);
         subscriptionService.createFreeSubscription(user);
     }

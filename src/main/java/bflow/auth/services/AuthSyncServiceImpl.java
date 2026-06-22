@@ -13,13 +13,30 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class AuthSyncServiceImpl implements AuthSyncService {
+public final class AuthSyncServiceImpl implements AuthSyncService {
 
+    /**
+     * User repository.
+     */
     private final RepositoryUser repositoryUser;
+
+    /**
+     * Bootstrap service for newly created users.
+     */
     private final AuthBootstrapService authBootstrapService;
 
+    /**
+     * Synchronizes a Cognito user with the local database.
+     *
+     * @param jwt authenticated JWT
+     * @param request synchronization request
+     * @return synchronization result
+     */
     @Override
-    public SyncUserResponse synchronize(Jwt jwt, SyncUserRequest request) {
+    public SyncUserResponse synchronize(
+        final Jwt jwt,
+        final SyncUserRequest request
+    ) {
 
         String sub = jwt.getSubject();
 
@@ -54,8 +71,7 @@ public class AuthSyncServiceImpl implements AuthSyncService {
 
             repositoryUser.save(user);
 
-            authBootstrapService
-                    .bootstrap(user);
+            //authBootstrapService.bootstrap(user);
 
             return new SyncUserResponse(
                     user.getId(),

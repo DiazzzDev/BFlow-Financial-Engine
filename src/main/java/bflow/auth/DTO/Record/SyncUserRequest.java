@@ -4,4 +4,4 @@ public record SyncUserRequest(
         String idToken,
         String email,
         Boolean emailVerified
-) {}
+) { }

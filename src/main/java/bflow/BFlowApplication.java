@@ -2,6 +2,7 @@ package bflow;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -21,6 +22,15 @@ public final class BFlowApplication {
      * @param args Command line arguments.
      */
     public static void main(final String[] args) {
-        SpringApplication.run(BFlowApplication.class, args);
+        final int capacity = 2048;
+
+        SpringApplication app =
+                new SpringApplication(BFlowApplication.class);
+
+        app.setApplicationStartup(
+                new BufferingApplicationStartup(capacity)
+        );
+
+        app.run(args);
     }
 }

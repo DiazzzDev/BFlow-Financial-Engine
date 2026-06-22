@@ -1,4 +1,8 @@
-## BFlow - API
+# BFlow Backend
+
+![GitHub stars](https://img.shields.io/github/stars/DiazzzDev/BFlow-Backend-Open-Source?style=social)
+![GitHub forks](https://img.shields.io/github/forks/DiazzzDev/BFlow-Backend-Open-Source?style=social)
+![GitHub license](https://img.shields.io/github/license/DiazzzDev/BFlow-Backend-Open-Source)
 
 BFlow is a multi-wallet financial control system designed to help individuals and small groups understand, organize and master how their money actually moves.
 
@@ -7,7 +11,7 @@ BFlow is a multi-wallet financial control system designed to help individuals an
 BFlow was born from a real and daily problem: financial disorder.
 
 Managing money across multiple wallets, cards, cash, and shared funds becomes chaotic very quickly. 
-Small daily expenses (“gastos hormiga”) silently destroy weekly budgets, and by mid-week it’s unclear how much money is actually available.
+Small daily expenses silently destroy weekly budgets, and by mid-week it’s unclear how much money is actually available.
 
 Many people — especially students — try to solve this with:
 - Custom Excel sheets
@@ -51,15 +55,15 @@ This project is both:
 MVP in active development.
 
 Implemented:
-- User authentication (JWT RS256)
+- User authentication (AWS Cognito)
 - Multi-wallet support
 - Expense registration
 - Basic transactional consistency
+- Budget rules engine
 
 Planned:
 - Redis-based caching
 - Idempotency layer for future payment integration
-- Budget rules engine
 - Shared wallet roles
 
 ## Architecture & Engineering Philosophy
@@ -68,7 +72,8 @@ Current Stack
 
 - Spring Boot
 - PostgreSQL
-- JWT with RSA (RS256)
+- AWS for cognito Auth
+- Docker
 
 ### Planned Additions
 

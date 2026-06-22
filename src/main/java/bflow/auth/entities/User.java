@@ -60,6 +60,7 @@ public class User {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    /** Unique Cognito subject identifier associated with the user. */
     @Column(unique = true)
     private String cognitoSub;
 

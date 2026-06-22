@@ -122,6 +122,13 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("User not found"));
     }
 
+    /**
+     * Retrieves the currently authenticated user based on the JWT subject.
+     *
+     * @param authentication current authentication
+     * @return authenticated user information
+     * @throws ResourceNotFoundException if the user cannot be resolved
+    */
     @Transactional(readOnly = true)
     public UserMeResponse getCurrentUser(
             final Authentication authentication

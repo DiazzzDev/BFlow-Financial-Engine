@@ -7,4 +7,4 @@ public record SyncUserResponse(
         String email,
         String roles,
         boolean isNewUser
-) {}
+) { }

@@ -28,5 +28,11 @@ public interface RepositoryUser
      */
     Optional<User> findByEmail(String email);
 
+    /**
+     * Finds a user by Cognito subject identifier.
+     *
+     * @param cognitoSub Cognito subject identifier
+     * @return optional user
+     */
     Optional<User> findByCognitoSub(String cognitoSub);
 }
