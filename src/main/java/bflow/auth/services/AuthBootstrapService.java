@@ -1,14 +1,34 @@
 package bflow.auth.services;
 
 import bflow.auth.entities.User;
+import bflow.subscription.services.SubscriptionService;
+import bflow.wallet.ServiceWallet;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public interface AuthBootstrapService {
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class AuthBootstrapService {
 
     /**
-     * Creates the default resources required for a newly created user.
+     * Wallet service.
+     */
+    private final ServiceWallet serviceWallet;
+
+    /**
+     * Subscription service.
+     */
+    private final SubscriptionService subscriptionService;
+
+    /**
+     * Creates default resources required for a newly registered user.
      *
      * @param user user being initialized
      */
-    void bootstrap(User user);
-
+    public void bootstrap(final User user) {
+        serviceWallet.createDefaultWallet(user);
+        subscriptionService.createFreeSubscription(user);
+    }
 }
