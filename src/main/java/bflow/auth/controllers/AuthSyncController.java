@@ -4,6 +4,8 @@ import bflow.auth.DTO.Record.SyncUserRequest;
 import bflow.auth.DTO.Record.SyncUserResponse;
 import bflow.auth.services.AuthSyncService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v2/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthSyncController {
 
     /**
@@ -33,6 +36,7 @@ public class AuthSyncController {
             @AuthenticationPrincipal final Jwt jwt,
             @RequestBody final SyncUserRequest request
     ) {
+        log.debug("Auth sync initiated for sub: {}", jwt.getSubject());
         return authSyncService.synchronize(jwt, request);
     }
 }

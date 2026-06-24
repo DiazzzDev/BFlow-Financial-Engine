@@ -87,6 +87,7 @@ public final class GlobalExceptionHandler {
             final IllegalArgumentException ex,
             final HttpServletRequest request
     ) {
+        log.warn("Bad request at {}: {}", request.getRequestURI(), ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(

@@ -10,45 +10,41 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.transaction.annotation.Transactional;
+import bflow.auth.security.CognitoIdTokenValidator;
+
 
 @Service
 @RequiredArgsConstructor
-public final class AuthSyncServiceImpl implements AuthSyncService {
+public class AuthSyncServiceImpl implements AuthSyncService {
 
-    /**
-     * User repository.
-     */
     private final RepositoryUser repositoryUser;
-
-    /**
-     * Bootstrap service for newly created users.
-     */
     private final AuthBootstrapService authBootstrapService;
+    private final CognitoIdTokenValidator idTokenValidator;
 
-    /**
-     * Synchronizes a Cognito user with the local database.
-     *
-     * @param jwt authenticated JWT
-     * @param request synchronization request
-     * @return synchronization result
-     */
     @Override
+    @Transactional
     public SyncUserResponse synchronize(
-        final Jwt jwt,
-        final SyncUserRequest request
+            final Jwt accessJwt,
+            final SyncUserRequest request
     ) {
+        // Validate idToken signature with Cognito JWKs — no manual parsing
+        Jwt idToken = idTokenValidator.validate(request.idToken());
 
-        String sub = jwt.getSubject();
+        String sub = idToken.getSubject();
+        String email = idToken.getClaimAsString("email");
+        Boolean emailVerified = idToken.getClaimAsBoolean("email_verified");
 
-        String email = request.email();
+        // Verify sub consistency between access token and id token
+        if (!accessJwt.getSubject().equals(sub)) {
+            throw new IllegalArgumentException(
+                    "Token subject mismatch"
+            );
+        }
 
-        Optional<User> existingBySub =
-                repositoryUser.findByCognitoSub(sub);
-
+        Optional<User> existingBySub = repositoryUser.findByCognitoSub(sub);
         if (existingBySub.isPresent()) {
-
             User user = existingBySub.get();
-
             return new SyncUserResponse(
                     user.getId(),
                     user.getEmail(),
@@ -58,21 +54,13 @@ public final class AuthSyncServiceImpl implements AuthSyncService {
         }
 
         Optional<User> existingByEmail = repositoryUser.findByEmail(email);
-
         if (existingByEmail.isPresent()) {
-
             User user = existingByEmail.get();
-
             user.setCognitoSub(sub);
-
-            if (Boolean.TRUE.equals(request.emailVerified())) {
+            if (Boolean.TRUE.equals(emailVerified)) {
                 user.setEmailVerified(true);
             }
-
             repositoryUser.save(user);
-
-            //authBootstrapService.bootstrap(user);
-
             return new SyncUserResponse(
                     user.getId(),
                     user.getEmail(),
@@ -80,21 +68,16 @@ public final class AuthSyncServiceImpl implements AuthSyncService {
                     false
             );
         }
-        User newUser =
-                User.builder()
-                        .cognitoSub(sub)
-                        .email(email)
-                        .status(UserStatus.ACTIVE)
-                        .emailVerified(
-                                Boolean.TRUE.equals(
-                                        request.emailVerified()
-                                )
-                        )
-                        .roles(Set.of("ROLE_USER"))
-                        .build();
+
+        User newUser = User.builder()
+                .cognitoSub(sub)
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .emailVerified(Boolean.TRUE.equals(emailVerified))
+                .roles(Set.of("ROLE_USER"))
+                .build();
 
         repositoryUser.save(newUser);
-
         authBootstrapService.bootstrap(newUser);
 
         return new SyncUserResponse(
