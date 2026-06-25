@@ -1,20 +1,15 @@
 package bflow.auth.services;
 
-import bflow.auth.DTO.AuthRegisterRequest;
-import bflow.auth.entities.AuthAccount;
+import bflow.auth.DTO.UserMeResponse;
 import bflow.auth.entities.User;
-import bflow.auth.enums.AuthProvider;
-import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryAuthAccount;
 import bflow.auth.repository.RepositoryUser;
-import bflow.common.exception.InvalidCredentialsException;
-import bflow.subscription.services.SubscriptionService;
-import jakarta.validation.Valid;
+import bflow.common.exception.ResourceNotFoundException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,83 +25,6 @@ public class AuthService {
     private final RepositoryAuthAccount authAccountRepository;
     /** Repository for core user profile data. */
     private final RepositoryUser userRepository;
-    /** Encoder for hashing and verifying passwords. */
-    private final PasswordEncoder passwordEncoder;
-
-    /** Service for managing subscriptions during user registration. */
-    private final SubscriptionService subscriptionService;
-
-    /**
-     * Authenticates a user based on email and password.
-     * @param email the user's email address.
-     * @param password the plain-text password.
-     * @return the authenticated User entity.
-     * @throws InvalidCredentialsException if authentication fails.
-     */
-    public User authenticate(
-            final String email,
-            final String password
-    ) {
-
-        AuthAccount account = authAccountRepository
-                .findActiveByLoginAndProvider(email, AuthProvider.LOCAL)
-                .orElseThrow(InvalidCredentialsException::new);
-
-        if (account.getPasswordHash() == null
-                || !passwordEncoder.matches(
-                        password, account.getPasswordHash())
-        ) {
-            throw new InvalidCredentialsException();
-        }
-
-        return account.getUser();
-    }
-
-    /**
-     * Retrieves the roles associated with a specific user.
-     * @param user the user entity.
-     * @return a list of role names.
-     */
-    public List<String> getRoles(final User user) {
-        return List.copyOf(user.getRoles());
-    }
-
-    /**
-     * Registers a new user and creates a local auth account.
-     * @param dto the registration data.
-     * @return the newly created user entity.
-     */
-    public User register(@Valid final AuthRegisterRequest dto) {
-
-        boolean exists = authAccountRepository
-                .existsByProviderAndProviderUserId(
-                        AuthProvider.LOCAL,
-                        dto.getEmail()
-                );
-
-        if (exists) {
-            throw new IllegalStateException("User already exists");
-        }
-
-        User user = new User();
-        user.setEmail(dto.getEmail());
-        user.setRoles(Set.of("ROLE_USER"));
-        user.setStatus(UserStatus.ACTIVE);
-
-        userRepository.save(user);
-        subscriptionService.createFreeSubscription(user);
-
-        AuthAccount account = new AuthAccount();
-        account.setUser(user);
-        account.setProvider(AuthProvider.LOCAL);
-        account.setProviderUserId(dto.getEmail());
-        account.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
-        account.setEnabled(true);
-
-        authAccountRepository.save(account);
-
-        return user;
-    }
 
     /**
      * Finds a user by their unique identifier.
@@ -116,5 +34,44 @@ public class AuthService {
     public User findById(final UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found"));
+    }
+
+    /**
+     * Retrieves the currently authenticated user based on the JWT subject.
+     *
+     * @param authentication current authentication
+     * @return authenticated user information
+     * @throws ResourceNotFoundException if the user cannot be resolved
+    */
+    @Transactional(readOnly = true)
+    public UserMeResponse getCurrentUser(
+            final Authentication authentication
+    ) {
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResourceNotFoundException(
+                    "Invalid authentication type"
+            );
+        }
+
+        String cognitoSub =
+                jwtAuth.getToken()
+                        .getClaimAsString("sub");
+
+        User user = userRepository
+                .findByCognitoSub(cognitoSub)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found"
+                        ));
+
+        return new UserMeResponse(
+                user.getId(),
+                user.getEmail(),
+                List.copyOf(user.getRoles()),
+                null,
+                List.of(),
+                null
+        );
     }
 }

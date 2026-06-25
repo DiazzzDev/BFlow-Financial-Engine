@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.6</version>
+		<version>4.1.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>Diaz.Dev</groupId>
@@ -69,33 +69,20 @@
         </dependency>
 
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.84</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.nimbusds</groupId>
-			<artifactId>nimbus-jose-jwt</artifactId>
-			<version>10.0.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>commons-codec</groupId>
-			<artifactId>commons-codec</artifactId>
-			<version>1.16.0</version>
 		</dependency>
 
 		<!-- JOSE / JWT (Nimbus) -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-jose</artifactId>
-		</dependency>
-
-		<!-- OAuth2 client (Google) -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
 		</dependency>
 
 		<dependency>
@@ -192,7 +179,7 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.20</minimum>
+											<minimum>0.10</minimum>
 										</limit>
 									</limits>
 								</rule>

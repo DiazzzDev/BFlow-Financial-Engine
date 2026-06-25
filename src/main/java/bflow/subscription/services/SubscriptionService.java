@@ -67,6 +67,7 @@ public class SubscriptionService {
      * @param user the user entity
      * @return the created or existing free subscription
      */
+    @Transactional
     public Subscription createFreeSubscription(final User user) {
 
         if (subscriptionRepository.existsByUserId(user.getId())) {

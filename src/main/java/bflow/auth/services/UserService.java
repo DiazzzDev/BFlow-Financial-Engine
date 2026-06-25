@@ -3,7 +3,6 @@ package bflow.auth.services;
 import bflow.auth.DTO.user.UpdateUserProfileRequest;
 import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.entities.User;
-import bflow.auth.enums.AuthProvider;
 import java.util.UUID;
 
 /**
@@ -17,21 +16,6 @@ public interface UserService {
      * @return the found user.
      */
     User findById(UUID id);
-
-    /**
-     * Resolves an OAuth2 user by checking email and provider consistency.
-     * @param email user email.
-     * @param providerId external provider ID.
-     * @param provider the provider (e.g., GOOGLE).
-     * @param emailVerified whether the email is verified.
-     * @return the resolved User entity.
-     */
-    User resolveOAuth2User(
-            String email,
-            String providerId,
-            AuthProvider provider,
-            boolean emailVerified
-    );
 
     /**
      * Retrieves the user profile for a given user ID.
@@ -56,4 +40,5 @@ public interface UserService {
      * @param userId the unique identifier of the user.
      */
     void softDelete(UUID userId);
+
 }

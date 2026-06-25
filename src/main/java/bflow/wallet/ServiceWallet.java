@@ -13,6 +13,7 @@ import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
+import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.entities.User;
@@ -372,6 +373,48 @@ public class ServiceWallet {
         wallet.setBalance(newBalance);
     }
 
+    /**
+      * Creates the default wallet assigned to a newly registered user.
+      *
+      * @param user owner of the wallet
+      * @return the existing owner wallet if one already exists, otherwise the
+      *         newly created default wallet
+    */
+    @Transactional
+    public Wallet createDefaultWallet(
+            final User user
+    ) {
+
+        if (repositoryWalletUser.existsByUserId(user.getId())) {
+            return repositoryWalletUser
+                    .findFirstByUserIdAndRole(
+                            user.getId(),
+                            WalletRole.OWNER
+                    )
+                    .map(WalletUser::getWallet)
+                    .orElseThrow();
+        }
+
+        Wallet wallet = new Wallet();
+
+        wallet.setName("Personal");
+        wallet.setDescription("Default wallet");
+        wallet.setCurrency(Currency.USD);
+        wallet.setBalance(BigDecimal.ZERO);
+        wallet.setInitialValue(BigDecimal.ZERO);
+
+        repositoryWallet.save(wallet);
+
+        WalletUser walletUser = new WalletUser();
+
+        walletUser.setWallet(wallet);
+        walletUser.setUser(user);
+        walletUser.setRole(WalletRole.OWNER);
+
+        repositoryWalletUser.save(walletUser);
+
+        return wallet;
+    }
 
     /**
     * Converts an Expense entity into an ExpenseResponse DTO.

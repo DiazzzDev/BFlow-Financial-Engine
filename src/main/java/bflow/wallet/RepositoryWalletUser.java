@@ -38,4 +38,12 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID> {
             UUID userId,
             WalletRole role
     );
+
+    /**
+     * Checks whether the user belongs to at least one wallet.
+     *
+     * @param userId user identifier
+     * @return true if a wallet association exists
+     */
+    boolean existsByUserId(UUID userId);
 }

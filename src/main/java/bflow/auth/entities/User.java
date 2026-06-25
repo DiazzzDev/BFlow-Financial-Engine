@@ -60,6 +60,10 @@ public class User {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    /** Unique Cognito subject identifier associated with the user. */
+    @Column(unique = true)
+    private String cognitoSub;
+
     /** Indicates whether the user account is active. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
