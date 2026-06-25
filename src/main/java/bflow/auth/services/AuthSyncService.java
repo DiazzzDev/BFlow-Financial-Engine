@@ -13,14 +13,35 @@ import java.util.Set;
 import org.springframework.transaction.annotation.Transactional;
 import bflow.auth.security.CognitoIdTokenValidator;
 
+/**
+ * Synchronizes Cognito users with the local database.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthSyncService {
 
+    /**
+     * Repository for user persistence.
+     */
     private final RepositoryUser repositoryUser;
+
+    /**
+     * Service responsible for initial user setup.
+     */
     private final AuthBootstrapService authBootstrapService;
+
+    /**
+     * Validator for Cognito ID tokens.
+     */
     private final CognitoIdTokenValidator idTokenValidator;
 
+    /**
+     * Synchronizes the authenticated Cognito user with the local database.
+     *
+     * @param accessJwt validated access token
+     * @param request synchronization request
+     * @return synchronization result
+     */
     @Transactional
     public SyncUserResponse synchronize(
             final Jwt accessJwt,

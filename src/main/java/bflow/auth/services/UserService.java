@@ -3,7 +3,6 @@ package bflow.auth.services;
 import bflow.auth.DTO.user.UpdateUserProfileRequest;
 import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.entities.User;
-import bflow.auth.enums.AuthProvider;
 import java.util.UUID;
 
 /**
