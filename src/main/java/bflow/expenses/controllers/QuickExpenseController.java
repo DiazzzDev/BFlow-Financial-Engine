@@ -1,5 +1,6 @@
 package bflow.expenses.controllers;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.expenses.DTO.QuickExpenseRequest;
 import bflow.expenses.services.QuickExpenseService;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -23,6 +24,9 @@ public final class QuickExpenseController {
      */
     private final QuickExpenseService quickExpenseService;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Create a quick expense.
      *
@@ -35,7 +39,7 @@ public final class QuickExpenseController {
             @Valid @RequestBody final QuickExpenseRequest request,
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         return quickExpenseService.createQuickExpense(userId, request);
     }

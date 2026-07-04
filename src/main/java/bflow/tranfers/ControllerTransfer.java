@@ -1,5 +1,6 @@
 package bflow.tranfers;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.common.response.ApiResponse;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
@@ -8,7 +9,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +33,9 @@ public final class ControllerTransfer {
     /** The service handling transfer business logic. */
     private final ServiceTransfers serviceTransfers;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Retrieves a transfer by its unique identifier.
      * @param id the transfer UUID.
@@ -41,14 +44,12 @@ public final class ControllerTransfer {
      * @return a ResponseEntity containing the transfer response.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TransferenceResponse>> getTransferById(
+    public ApiResponse<TransferenceResponse> getTransferById(
             @PathVariable final UUID id,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         TransferenceResponse transfer = serviceTransfers
@@ -61,9 +62,7 @@ public final class ControllerTransfer {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -74,13 +73,12 @@ public final class ControllerTransfer {
      * @return a ResponseEntity containing paginated transfer responses.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>>
-        getUserTransfers(
+    public ApiResponse<Page<TransferenceResponse>> getUserTransfers(
             final Authentication authentication,
             final Pageable pageable,
             final HttpServletRequest request
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<TransferenceResponse> transfers = serviceTransfers
@@ -93,9 +91,7 @@ public final class ControllerTransfer {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -107,14 +103,13 @@ public final class ControllerTransfer {
      * @return a ResponseEntity containing paginated transfer responses.
      */
     @GetMapping("/wallet/{walletId}")
-    public ResponseEntity<ApiResponse<Page<TransferenceResponse>>>
-        getUserTransfersByWalletId(
+    public ApiResponse<Page<TransferenceResponse>> getUserTransfersByWalletId(
             @PathVariable final UUID walletId,
             final Authentication authentication,
             final Pageable pageable,
             final HttpServletRequest request
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<TransferenceResponse> transfers = serviceTransfers
@@ -127,9 +122,7 @@ public final class ControllerTransfer {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -147,7 +140,7 @@ public final class ControllerTransfer {
             final HttpServletRequest httpRequest
     ) {
 
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         TransferenceResponse transferResponse =
                 serviceTransfers.saveTransfer(request, userId);

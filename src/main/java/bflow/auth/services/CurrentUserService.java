@@ -8,6 +8,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public final class CurrentUserService {
@@ -29,11 +31,19 @@ public final class CurrentUserService {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
 
-        String cognitoSub = jwt.getSubject();
-
-        return repositoryUser
-                .findByCognitoSub(cognitoSub)
+        return repositoryUser.findByCognitoSub(jwt.getSubject())
                 .orElseThrow(() ->
                         new NotFoundException("User not found"));
+    }
+
+    /**
+     * Retrieves the unique identifier of the currently authenticated user.
+     *
+     * @param authentication the current authentication object
+     * @return the authenticated user's unique identifier
+     * @throws NotFoundException when the user cannot be found
+     */
+    public UUID getCurrentUserId(final Authentication authentication) {
+        return getCurrentUser(authentication).getId();
     }
 }

@@ -3,7 +3,6 @@ package bflow.legal.controller;
 import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.service.LegalService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,13 +24,11 @@ public final class LegalController {
      * @return a response entity containing the legal document.
      */
     @GetMapping("/{documentType}")
-    public ResponseEntity<LegalDocumentResponse> getDocument(
+    public LegalDocumentResponse getDocument(
             @PathVariable final String documentType,
             @RequestParam(defaultValue = "en") final String lang
     ) {
 
-        return ResponseEntity.ok(
-                legalService.getDocument(documentType, lang)
-        );
+        return legalService.getDocument(documentType, lang);
     }
 }

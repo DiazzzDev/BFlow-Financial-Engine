@@ -35,6 +35,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(final HttpSecurity http)
             throws Exception {
         return http
+                 // CSRF protection is disabled because this application is a
+                 // stateless REST API secured with JWT Bearer tokens issued by
+                 // AWS Cognito. Authentication is not cookie-based,
+                 // therefore CSRF protection is not applicable.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sess ->

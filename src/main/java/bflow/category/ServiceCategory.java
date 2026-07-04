@@ -1,6 +1,7 @@
 package bflow.category;
 
 import bflow.category.DTO.CategoryRequest;
+import bflow.category.DTO.CategoryResponse;
 import bflow.category.entity.Category;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -8,11 +9,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Service class for managing category operations.
- * Provides business logic for creating and retrieving financial transaction
- * categories.
- */
 @Service
 @RequiredArgsConstructor
 public class ServiceCategory {
@@ -27,9 +23,9 @@ public class ServiceCategory {
      * Initializes system-defined flag to false for user-created categories.
      *
      * @param request the category request containing category details
-     * @return the created category entity
+     * @return the created category response
      */
-    public Category create(final CategoryRequest request) {
+    public CategoryResponse create(final CategoryRequest request) {
 
         Category category = new Category();
         category.setName(request.getName());
@@ -39,16 +35,36 @@ public class ServiceCategory {
         category.setSystemDefined(false);
         category.setCreatedAt(Instant.now());
 
-        return repositoryCategory.save(category);
+        Category saved = repositoryCategory.save(category);
+        return from(saved);
     }
 
     /**
      * Retrieves all categories from the database.
      *
-     * @return a list of all categories
+     * @return a list of all category responses
      */
-    public List<Category> findAll() {
-        return repositoryCategory.findAll();
+    public List<CategoryResponse> findAll() {
+        return repositoryCategory.findAll()
+                .stream()
+                .map(this::from)
+                .toList();
+    }
+
+    /**
+     * Builds a response DTO from a Category entity.
+     *
+     * @param category the source entity
+     * @return the mapped response DTO
+     */
+    private CategoryResponse from(final Category category) {
+        CategoryResponse response = new CategoryResponse();
+        response.setId(category.getId());
+        response.setName(category.getName());
+        response.setType(category.getType());
+        response.setIcon(category.getIcon());
+        response.setColor(category.getColor());
+        return response;
     }
 
 }
