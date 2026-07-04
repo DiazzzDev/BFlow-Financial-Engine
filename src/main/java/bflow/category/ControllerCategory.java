@@ -1,13 +1,17 @@
 package bflow.category;
 
 import bflow.category.DTO.CategoryRequest;
-import bflow.category.entity.Category;
+import bflow.category.DTO.CategoryResponse;
+import bflow.common.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
 
@@ -32,10 +36,12 @@ public class ControllerCategory {
      * @return a ResponseEntity containing the created category
      */
     @PostMapping
-    public Category create(
-            @RequestBody final CategoryRequest request
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CategoryResponse>  create(
+            @Valid @RequestBody final CategoryRequest request
     ) {
-        return serviceCategory.create(request);
+        return ApiResponse.success("Categoría creada",
+                serviceCategory.create(request), "/api/v1/categories");
     }
 
     /**
@@ -44,8 +50,9 @@ public class ControllerCategory {
      * @return a list of all categories
      */
     @GetMapping
-    public List<Category> getAll() {
-        return serviceCategory.findAll();
+    public ApiResponse<List<CategoryResponse>> getAll() {
+        return ApiResponse.success("Categorías obtenidas",
+                serviceCategory.findAll(), "/api/v1/categories");
     }
 
 }
