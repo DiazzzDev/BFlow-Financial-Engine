@@ -36,7 +36,14 @@ public final class CurrentUserService {
                         new NotFoundException("User not found"));
     }
 
-    public UUID getCurrentUserId(Authentication authentication) {
+    /**
+     * Retrieves the unique identifier of the currently authenticated user.
+     *
+     * @param authentication the current authentication object
+     * @return the authenticated user's unique identifier
+     * @throws NotFoundException when the user cannot be found
+     */
+    public UUID getCurrentUserId(final Authentication authentication) {
         return getCurrentUser(authentication).getId();
     }
 }

@@ -9,7 +9,9 @@
 |-- .env.example
 |-- .gitattributes
 |-- .github
+|   |-- dependabot.yml
 |   `-- workflows
+|       |-- gitleaks.yml
 |       `-- github-pipeline.yml
 |-- .gitignore
 |-- .mvn
@@ -390,4 +392,4 @@
             `-- application-test.properties
 ```
 
-**Total: 285 files**
+**Total: 287 files**

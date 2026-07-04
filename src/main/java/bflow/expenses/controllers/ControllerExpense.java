@@ -96,7 +96,6 @@ public class ControllerExpense {
      * @param id the unique identifier of the expense to delete
      * @param authentication the authentication object containing the
      *        authenticated user's principal (UUID)
-     * @return a ResponseEntity with HTTP 204 No Content status
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -1,9 +1,17 @@
 HELP.md
+build/
 target/
+target_test-classes/
 bin/
-.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+jacoco.exec
+*.pid
+*.tmp
 
 ### STS ###
 .apt_generated
@@ -25,9 +33,7 @@ bin/
 !*.example
 
 # Ignore private pem
-BFlow-Backend/src/main/resources/keys/private.pem
-**/src/main/**/keys/private.pem
-src/main/resources/keys/private.pem
+**/keys/private.pem
 
 ### NetBeans ###
 /nbproject/private/
