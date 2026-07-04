@@ -1,5 +1,6 @@
 package bflow.recurring;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.recurring.DTO.RecurringRequest;
 import bflow.recurring.DTO.RecurringResponse;
 import bflow.recurring.services.RecurringExecutionService;
@@ -30,6 +31,9 @@ public class ControllerRecurring {
      */
     private final RecurringExecutionService recurringService;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Create a new recurring transaction.
      *
@@ -42,7 +46,7 @@ public class ControllerRecurring {
             @RequestBody final RecurringRequest request,
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         return recurringService.createRecurring(request, userId);
     }
 
@@ -56,7 +60,7 @@ public class ControllerRecurring {
     public List<RecurringResponse> getUserRecurring(
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         return recurringService.getUserRecurring(userId);
     }
 
@@ -71,7 +75,7 @@ public class ControllerRecurring {
             @PathVariable final UUID id,
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         recurringService.toggleRecurring(id, userId, true);
     }
 
@@ -86,7 +90,7 @@ public class ControllerRecurring {
             @PathVariable final UUID id,
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         recurringService.toggleRecurring(id, userId, false);
     }
 
@@ -101,7 +105,7 @@ public class ControllerRecurring {
             @PathVariable final UUID id,
             final Authentication authentication
     ) {
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         recurringService.deleteRecurring(id, userId);
     }
 }

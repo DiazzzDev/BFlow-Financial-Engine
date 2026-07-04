@@ -1,10 +1,10 @@
 package bflow.notifications;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.common.response.ApiResponse;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,6 +28,9 @@ public final class ControllerNotification {
      */
     private final NotificationService service;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Get all notifications for the authenticated user.
      *
@@ -35,20 +38,16 @@ public final class ControllerNotification {
      * @return response containing list of notifications
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getAll(
+    public ApiResponse<List<NotificationResponse>> getAll(
             final Authentication authentication
     ) {
 
-        UUID userId = UUID.fromString(
-                (String) authentication.getPrincipal()
-        );
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        return ApiResponse.success(
                         "Notifications retrieved",
                         service.getUserNotifications(userId),
                         "/api/v1/notifications"
-                )
         );
     }
 
@@ -59,20 +58,16 @@ public final class ControllerNotification {
      * @return response containing unread count
      */
     @GetMapping("/unread-count")
-    public ResponseEntity<ApiResponse<Long>> unreadCount(
+    public ApiResponse<Long> unreadCount(
             final Authentication authentication
     ) {
 
-        UUID userId = UUID.fromString(
-                (String) authentication.getPrincipal()
-        );
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        return ApiResponse.success(
                         "Unread count retrieved",
                         service.getUnreadCount(userId),
                         "/api/v1/notifications/unread-count"
-                )
         );
     }
 
@@ -84,23 +79,19 @@ public final class ControllerNotification {
      * @return response
      */
     @PatchMapping("/{id}/read")
-    public ResponseEntity<ApiResponse<Void>> markAsRead(
+    public ApiResponse<Void> markAsRead(
             @PathVariable final UUID id,
             final Authentication authentication
     ) {
 
-        UUID userId = UUID.fromString(
-                (String) authentication.getPrincipal()
-        );
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         service.markAsRead(id, userId);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        return ApiResponse.success(
                         "Notification marked as read",
                         null,
                         "/api/v1/notifications/" + id + "/read"
-                )
         );
     }
 }

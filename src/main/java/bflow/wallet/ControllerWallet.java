@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.UUID;
-import bflow.auth.entities.User;
 
 /**
  * Controller for managing wallet-related operations.
@@ -50,18 +48,12 @@ public final class ControllerWallet {
      * @return a ResponseEntity containing paginated wallet data.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<WalletResponse>>> getUserWallets(
+    public ApiResponse<Page<WalletResponse>> getUserWallets(
             final Authentication authentication,
             final Pageable pageable,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        //UUID userId = UUID.fromString(authentication.getName());
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<WalletResponse> wallets = serviceWallet
@@ -74,9 +66,7 @@ public final class ControllerWallet {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -92,16 +82,12 @@ public final class ControllerWallet {
      *         if the wallet does not exist.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<WalletResponse>> getWalletById(
+    public ApiResponse<WalletResponse> getWalletById(
             @PathVariable final UUID id,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         WalletResponse walletResponse = serviceWallet
@@ -114,9 +100,7 @@ public final class ControllerWallet {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -129,17 +113,13 @@ public final class ControllerWallet {
     * @return a paginated list of wallet expenses.
     */
     @GetMapping("/{id}/expenses")
-    public ResponseEntity<ApiResponse<Page<ExpenseResponse>>> getWalletExpenses(
+    public ApiResponse<Page<ExpenseResponse>> getWalletExpenses(
             @PathVariable final UUID id,
             final Pageable pageable,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<ExpenseResponse> expenseResponse = serviceWallet
@@ -152,9 +132,7 @@ public final class ControllerWallet {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -167,17 +145,13 @@ public final class ControllerWallet {
     * @return a paginated list of wallet incomes.
     */
     @GetMapping("/{id}/incomes")
-    public ResponseEntity<ApiResponse<Page<IncomeResponse>>> getWalletIncomes(
+    public ApiResponse<Page<IncomeResponse>> getWalletIncomes(
             @PathVariable final UUID id,
             final Pageable pageable,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Retrieve wallet with access validation
         Page<IncomeResponse> incomeResponse = serviceWallet
@@ -190,9 +164,7 @@ public final class ControllerWallet {
                 request.getRequestURI()
         );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return response;
     }
 
     /**
@@ -209,11 +181,7 @@ public final class ControllerWallet {
             final Authentication authentication,
             final HttpServletRequest httpRequest
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Create wallet with user as owner
         WalletResponse walletResponse = serviceWallet
@@ -253,11 +221,7 @@ public final class ControllerWallet {
             final Authentication authentication,
             final HttpServletRequest httpRequest
     ) {
-        // Extract user UUID from JWT token (principal)
-        //String userIdString = (String) authentication.getPrincipal();
-        //UUID userId = UUID.fromString(userIdString);
-
-        UUID userId = getCurrentUserId(authentication);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         // Create wallet with user as owner
         WalletResponse walletResponse = serviceWallet
@@ -282,11 +246,4 @@ public final class ControllerWallet {
                 .body(response);
     }
 
-    private UUID getCurrentUserId(final Authentication authentication) {
-
-        User currentUser =
-                currentUserService.getCurrentUser(authentication);
-
-        return currentUser.getId();
-    }
 }

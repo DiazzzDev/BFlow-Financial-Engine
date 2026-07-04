@@ -3,7 +3,6 @@ package bflow.category;
 import bflow.category.DTO.CategoryRequest;
 import bflow.category.entity.Category;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,10 +32,10 @@ public class ControllerCategory {
      * @return a ResponseEntity containing the created category
      */
     @PostMapping
-    public ResponseEntity<Category> create(
+    public Category create(
             @RequestBody final CategoryRequest request
     ) {
-        return ResponseEntity.ok(serviceCategory.create(request));
+        return serviceCategory.create(request);
     }
 
     /**

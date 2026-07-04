@@ -2,12 +2,12 @@ package bflow.auth.controllers;
 
 import bflow.auth.DTO.user.UpdateUserProfileRequest;
 import bflow.auth.DTO.user.UserProfileResponse;
+import bflow.auth.services.CurrentUserService;
 import bflow.auth.services.UserService;
 import bflow.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,6 +29,9 @@ public final class UserController {
     /** Service for user profile operations. */
     private final UserService userService;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Updates the current authenticated user's profile.
      * @param authentication the current user's authentication object.
@@ -37,23 +40,21 @@ public final class UserController {
      * @return a ResponseEntity containing the updated user's profile.
      */
     @PatchMapping("/me")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
+    public ApiResponse<UserProfileResponse> updateProfile(
             final Authentication authentication,
             @Valid @RequestBody final UpdateUserProfileRequest requestBody,
             final HttpServletRequest request
     ) {
 
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         UserProfileResponse updated =
                 userService.updateProfile(userId, requestBody);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        return ApiResponse.success(
                         "User profile updated",
                         updated,
                         request.getRequestURI()
-                )
         );
     }
 
@@ -64,21 +65,19 @@ public final class UserController {
      * @return a ResponseEntity containing a success response.
      */
     @DeleteMapping("/me")
-    public ResponseEntity<ApiResponse<Void>> deleteAccount(
+    public ApiResponse<Void> deleteAccount(
             final Authentication authentication,
             final HttpServletRequest request
     ) {
 
-        UUID userId = UUID.fromString(authentication.getName());
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         userService.softDelete(userId);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        return ApiResponse.success(
                         "User account deleted",
                         null,
                         request.getRequestURI()
-                )
         );
     }
 

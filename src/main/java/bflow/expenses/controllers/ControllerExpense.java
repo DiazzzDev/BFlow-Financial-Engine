@@ -1,5 +1,6 @@
 package bflow.expenses.controllers;
 
+import bflow.auth.services.CurrentUserService;
 import bflow.common.response.ApiResponse;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -7,7 +8,6 @@ import bflow.expenses.services.ServiceExpense;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -28,6 +29,9 @@ public class ControllerExpense {
      */
     private final ServiceExpense serviceExpense;
 
+    /** Service used to resolve the authenticated user. */
+    private final CurrentUserService currentUserService;
+
     /**
      * Creates a new expense entry for the authenticated user's wallet.
      *
@@ -38,20 +42,19 @@ public class ControllerExpense {
      *         HTTP 201 Created status
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<ExpenseResponse>> createExpense(
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<ExpenseResponse> createExpense(
             @Valid @RequestBody final ExpenseRequest request,
             final Authentication authentication
     ) {
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
         ExpenseResponse response = serviceExpense.newExpense(request, userId);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(
+        return ApiResponse.success(
                         "Expense created successfully",
                         response,
                         "/api/v1/expenses"
-                ));
+        );
     }
 
     /**
@@ -65,13 +68,12 @@ public class ControllerExpense {
      *         HTTP 200 OK status
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ExpenseResponse>> updateExpense(
+    public ApiResponse<ExpenseResponse> updateExpense(
             @PathVariable final String id,
             @Valid @RequestBody final ExpenseRequest request,
             final Authentication authentication
     ) {
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         UUID expenseId = UUID.fromString(id);
 
@@ -81,12 +83,11 @@ public class ControllerExpense {
                 userId
         );
 
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(
+        return ApiResponse.success(
                         "Expense updated successfully",
                         response,
                         "/api/v1/expenses"
-                ));
+        );
     }
 
     /**
@@ -98,17 +99,15 @@ public class ControllerExpense {
      * @return a ResponseEntity with HTTP 204 No Content status
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteExpense(
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteExpense(
             @PathVariable final String id,
             final Authentication authentication
     ) {
-        String userIdString = (String) authentication.getPrincipal();
-        UUID userId = UUID.fromString(userIdString);
+        UUID userId = currentUserService.getCurrentUserId(authentication);
 
         UUID expenseId = UUID.fromString(id);
 
         serviceExpense.deleteExpense(expenseId, userId);
-
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
