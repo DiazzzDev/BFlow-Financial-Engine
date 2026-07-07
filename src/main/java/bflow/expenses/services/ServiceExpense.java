@@ -19,8 +19,7 @@ import bflow.wallet.RepositoryWallet;
 import bflow.wallet.RepositoryWalletUser;
 import bflow.wallet.ServiceWallet;
 import bflow.wallet.entities.Wallet;
-import bflow.wallet.entities.WalletUser;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
@@ -89,38 +88,31 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
-        // Validate wallet access
-        WalletUser walletUser = repositoryWalletUser
+        repositoryWalletUser
                 .findByWalletIdAndUserId(request.getWalletId(), userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"));
 
-        Wallet wallet = walletUser.getWallet();
+        Wallet wallet = repositoryWallet
+                .findByIdForUpdate(request.getWalletId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found"
+                ));
 
-        // Get contributor
         User contributor = repositoryUser.findById(userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "Authenticated user not found"
-                        )
-                );
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "Authenticated user not found"
+                ));
 
-        // Map DTO → Entity
         Expense expense = mapToEntity(request, wallet, contributor);
-
-        // Subtract expense from wallet balance using service method
         serviceWallet.subtractBalance(wallet, expense.getAmount());
 
         Expense savedExpense = repositoryExpense.saveAndFlush(expense);
-
         serviceBudget.evaluateBudgetsForWallet(
-                savedExpense.getWallet().getId());
+                savedExpense.getWallet().getId()
+        );
 
         return mapToResponse(savedExpense);
     }
@@ -141,55 +133,61 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
         Expense expense = repositoryExpense.findById(expenseId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Expense not found")
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Expense not found"
+                ));
 
-        Wallet oldWallet = expense.getWallet();
+        UUID oldWalletId = expense.getWallet().getId();
+        UUID newWalletId = request.getWalletId();
 
-        // Validate access
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        oldWallet.getId(),
-                        userId
-                )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        repositoryWalletUser.findByWalletIdAndUserId(oldWalletId, userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"
+                ));
+        repositoryWalletUser.findByWalletIdAndUserId(newWalletId, userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to the target wallet"
+                ));
 
-        Wallet newWallet = repositoryWallet.findById(request.getWalletId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Target wallet not found")
-                );
+        Wallet oldWallet;
+        Wallet newWallet;
 
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        newWallet.getId(),
-                        userId
-                )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to the target wallet"
-                        )
-                );
+        if (oldWalletId.equals(newWalletId)) {
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Wallet not found"
+                    ));
+            newWallet = oldWallet;
+        } else if (oldWalletId.compareTo(newWalletId) < 0) {
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Origin wallet not found"
+                    ));
+            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Target wallet not found"
+                    ));
+        } else {
+            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Target wallet not found"
+                    ));
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Origin wallet not found"
+                    ));
+        }
 
         BigDecimal oldAmount = expense.getAmount();
         BigDecimal newAmount = request.getAmount();
 
-        // Resolve and validate category update
-        Category category = repositoryCategory
-                .findById(request.getCategoryId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Category not found"
-                        )
-                );
+        Category category = repositoryCategory.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Category not found"
+                ));
 
         if (category.getType() != CategoryType.EXPENSE) {
             throw new IllegalArgumentException(
@@ -197,26 +195,13 @@ public class ServiceExpense {
             );
         }
 
-        if (oldWallet.getId().equals(newWallet.getId())) {
-
-            // Same wallet → apply difference using service method
+        if (oldWalletId.equals(newWalletId)) {
             serviceWallet.adjustBalanceForUpdate(
-                    oldWallet,
-                    oldAmount,
-                    newAmount
-            );
-
+                oldWallet, oldAmount, newAmount
+        );
         } else {
-
-            // Different wallet → full transfer logic using service methods
-
-            // Remove old impact
             serviceWallet.reverseTransactionImpact(oldWallet, oldAmount);
-
-            // Apply new impact
             serviceWallet.subtractBalance(newWallet, newAmount);
-
-            // Reassign wallet
             expense.setWallet(newWallet);
         }
 
@@ -225,19 +210,16 @@ public class ServiceExpense {
         expense.setAmount(newAmount);
         expense.setDate(request.getDate());
         expense.setCategory(category);
-        expense.setTaxDeductible(
-                Boolean.TRUE.equals(request.getTaxDeductible())
+        expense.setTaxDeductible(Boolean.TRUE.equals(
+                request.getTaxDeductible())
         );
         expense.setRecurring(Boolean.TRUE.equals(request.getRecurring()));
         expense.setRecurrencePattern(request.getRecurrencePattern());
 
         repositoryExpense.save(expense);
 
-        //Check on the budget from the original wallet
         serviceBudget.evaluateBudgetsForWallet(newWallet.getId());
-
-        //If the wallet was changed we evaluate the new wallet budget
-        if (!oldWallet.getId().equals(newWallet.getId())) {
+        if (!oldWalletId.equals(newWalletId)) {
             serviceBudget.evaluateBudgetsForWallet(oldWallet.getId());
         }
 
@@ -257,34 +239,27 @@ public class ServiceExpense {
             final UUID expenseId,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
         Expense expense = repositoryExpense.findById(expenseId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Expense not found")
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Expense not found"
+                ));
 
-        // Validate access
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        expense.getWallet().getId(),
-                        userId
-                )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        repositoryWalletUser.
+                findByWalletIdAndUserId(expense.getWallet().getId(), userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"
+                ));
 
-        Wallet wallet = expense.getWallet();
+        Wallet wallet = repositoryWallet
+                .findByIdForUpdate(expense.getWallet().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found"
+                ));
 
-        // Reverse the expense impact on wallet balance using service method
         serviceWallet.addBalance(wallet, expense.getAmount());
-
         repositoryExpense.delete(expense);
-
-        // Recalculate budgets
         serviceBudget.evaluateBudgetsForWallet(wallet.getId());
     }
 

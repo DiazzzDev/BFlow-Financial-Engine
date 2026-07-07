@@ -29,7 +29,7 @@ public abstract class BaseTransactionRequest {
     private static final int DESCRIPTION_MAX_LENGTH = 100;
 
     /** Maximum integer digits for expense amount. */
-    private static final int AMOUNT_INTEGER_DIGITS = 15;
+    private static final int AMOUNT_INTEGER_DIGITS = 13;
 
     /** Fraction digits for expense amount (decimal places). */
     private static final int AMOUNT_FRACTION_DIGITS = 2;

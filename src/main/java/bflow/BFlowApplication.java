@@ -4,11 +4,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import bflow.common.idempotency.config.IdempotencyProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * Main entry point for the BFlow application.
  */
 @EnableScheduling
+@EnableConfigurationProperties(IdempotencyProperties.class)
 @SpringBootApplication
 public final class BFlowApplication {
     /**

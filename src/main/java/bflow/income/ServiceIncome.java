@@ -17,8 +17,7 @@ import bflow.wallet.RepositoryWallet;
 import bflow.wallet.RepositoryWalletUser;
 import bflow.wallet.ServiceWallet;
 import bflow.wallet.entities.Wallet;
-import bflow.wallet.entities.WalletUser;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -87,38 +86,30 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
-        // Validate wallet access (supports shared wallets)
-        WalletUser walletUser = repositoryWalletUser
-                .findByWalletIdAndUserId(request.getWalletId(),
-                        userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
+        repositoryWalletUser
+        .findByWalletIdAndUserId(request.getWalletId(), userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"));
+
+        Wallet wallet = repositoryWallet.findByIdForUpdate(
+                request.getWalletId()
+        )
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Wallet not found"
                         )
                 );
 
-        Wallet wallet = walletUser.getWallet();
-
-        // Get contributor
         User contributor = repositoryUser.findById(userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "Authenticated user not found"
-                        )
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "Authenticated user not found")
                 );
 
-        // Map dto to entity
         Income income = mapToEntity(request, wallet, contributor);
-
-        // Add income to wallet using service method
         serviceWallet.addBalance(wallet, income.getAmount());
-
-        // Save income into database
         Income savedIncome = repositoryIncome.saveAndFlush(income);
-
         return mapToResponse(savedIncome);
     }
 
@@ -138,82 +129,73 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
         Income income = repositoryIncome.findById(incomeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Income not found")
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Income not found"
+                ));
 
-        Wallet oldWallet = income.getWallet();
+        UUID oldWalletId = income.getWallet().getId();
+        UUID newWalletId = request.getWalletId();
 
-        // Validate access
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        oldWallet.getId(),
-                        userId
-                )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        repositoryWalletUser.findByWalletIdAndUserId(oldWalletId, userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"));
+        repositoryWalletUser.findByWalletIdAndUserId(newWalletId, userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to the target wallet"));
 
-        Wallet newWallet = repositoryWallet.findById(request.getWalletId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Target wallet not found")
-                );
+        Wallet oldWallet;
+        Wallet newWallet;
 
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        newWallet.getId(),
-                        userId
-                )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to the target wallet"
-                        )
+        if (oldWalletId.equals(newWalletId)) {
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(
+                        () -> new ResourceNotFoundException("Wallet not found")
                 );
+            newWallet = oldWallet;
+        } else if (oldWalletId.compareTo(newWalletId) < 0) {
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                        "Origin wallet not found"
+                ));
+            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                        "Target wallet not found"
+                ));
+        } else {
+            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                        "Target wallet not found"
+                ));
+            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                        "Origin wallet not found"
+                ));
+        }
 
         BigDecimal oldAmount = income.getAmount();
         BigDecimal newAmount = request.getAmount();
 
-        // Resolve and validate category update
-        Category category = repositoryCategory
-                .findById(request.getCategoryId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Category not found"
-                        )
-                );
+        Category category = repositoryCategory.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Category not found"
+                ));
 
         if (category.getType() != CategoryType.INCOME) {
             throw new IllegalArgumentException(
-                    "Category must be of type INCOME"
+                "Category must be of type INCOME"
             );
         }
 
-        if (oldWallet.getId().equals(newWallet.getId())) {
-
-            // Same wallet → apply difference using service method
+        if (oldWalletId.equals(newWalletId)) {
             serviceWallet.adjustBalanceForUpdate(
-                    oldWallet,
-                    oldAmount,
-                    newAmount
-            );
-
+                oldWallet, oldAmount, newAmount
+        );
         } else {
-
-            // Different wallet → full transfer logic using service methods
-
-            // Remove old balance
             serviceWallet.subtractBalance(oldWallet, oldAmount);
-
-            // Apply new impact
             serviceWallet.addBalance(newWallet, newAmount);
-
-            // Reassign wallet
             income.setWallet(newWallet);
         }
 
@@ -225,7 +207,6 @@ public class ServiceIncome {
         income.setTaxable(Boolean.TRUE.equals(request.getTaxable()));
         income.setRecurring(Boolean.TRUE.equals(request.getRecurring()));
         income.setRecurrencePattern(request.getRecurrencePattern());
-
 
         return mapToResponse(income);
     }
@@ -243,31 +224,27 @@ public class ServiceIncome {
             final UUID incomeId,
             final UUID userId
     ) {
-        //Check if user has an active account
         userService.validateUserActive(userId);
 
         Income income = repositoryIncome.findById(incomeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Income not found")
-                );
-
-        // Validate access
-        repositoryWalletUser
-                .findByWalletIdAndUserId(
-                        income.getWallet().getId(),
-                        userId
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Income not found"
                 )
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                "You do not have access to this wallet"
-                        )
-                );
+        );
 
-        Wallet wallet = income.getWallet();
+        repositoryWalletUser
+        .findByWalletIdAndUserId(income.getWallet().getId(), userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        "You do not have access to this wallet"
+                ));
 
-        // Reverse the income impact on wallet balance using service method
+        Wallet wallet = repositoryWallet
+        .findByIdForUpdate(income.getWallet().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found"
+                ));
+
         serviceWallet.subtractBalance(wallet, income.getAmount());
-
         repositoryIncome.delete(income);
     }
 

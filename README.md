@@ -45,10 +45,12 @@ Implemented:
 - Expense registration
 - Basic transactional consistency
 - Budget rules engine
+- Rate limiter
+- Idempotency layer
 
 Planned:
 - Redis-based caching
-- Idempotency layer for future payment integration
+- Payment integration via Wompi
 - Shared wallet roles
 
 ## Architecture & Engineering Philosophy
@@ -59,10 +61,6 @@ Current Stack
 - PostgreSQL
 - AWS Services (SES & Cognito)
 - Docker
-
-### Planned Additions
-
-- Redis (caching, idempotency, rate limiting)
 
 The focus is on:
 - Clear business rules
