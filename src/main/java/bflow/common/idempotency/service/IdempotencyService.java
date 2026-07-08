@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public final class IdempotencyService {
+public class IdempotencyService {
 
     /** Repository for idempotency records. */
     private final RepositoryIdempotency repositoryIdempotency;

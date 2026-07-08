@@ -11,6 +11,7 @@ import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
 import bflow.budget.enums.PeriodType;
+import bflow.category.entity.Category;
 import bflow.common.exception.BudgetNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.notifications.service.NotificationService;
@@ -138,7 +139,12 @@ public class BudgetService {
 
         budget.setWallet(wallet);
         budget.setScope(request.getScope());
-        budget.setCategoryId(request.getCategoryId());
+
+        if (request.getCategoryId() != null) {
+            Category category = new Category();
+            category.setId(request.getCategoryId());
+            budget.setCategory(category);
+        }
 
         User user = new User();
         user.setId(userId);
@@ -328,10 +334,15 @@ public class BudgetService {
                         ? request.getScope()
                         : budget.getScope();
 
+        UUID currentCategoryId =
+                budget.getCategory() != null
+                        ? budget.getCategory().getId()
+                        : null;
+
         UUID finalCategoryId =
                 request.getCategoryId() != null
                         ? request.getCategoryId()
-                        : budget.getCategoryId();
+                        : currentCategoryId;
 
         if (finalScope == BudgetScope.WALLET) {
             finalCategoryId = null;
@@ -379,7 +390,14 @@ public class BudgetService {
         budget.setThresholdCritical(finalCritical);
 
         budget.setScope(finalScope);
-        budget.setCategoryId(finalCategoryId);
+
+        if (finalCategoryId != null) {
+            Category category = new Category();
+            category.setId(finalCategoryId);
+            budget.setCategory(category);
+        } else {
+            budget.setCategory(null);
+        }
 
         if (shouldResetAlerts) {
             lifecycleService.resetAlerts(budget);
