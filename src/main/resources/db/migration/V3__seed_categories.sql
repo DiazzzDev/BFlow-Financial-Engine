@@ -1,0 +1,145 @@
+INSERT INTO categories (
+    id,
+    name,
+    type,
+    system_defined,
+    icon,
+    color,
+    created_at
+)
+VALUES
+(
+    gen_random_uuid(),
+    'Food',
+    'EXPENSE',
+    true,
+    'utensils',
+    '#EF4444',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Transportation',
+    'EXPENSE',
+    true,
+    'car',
+    '#3B82F6',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Housing',
+    'EXPENSE',
+    true,
+    'house',
+    '#10B981',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Utilities',
+    'EXPENSE',
+    true,
+    'bolt',
+    '#F59E0B',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Healthcare',
+    'EXPENSE',
+    true,
+    'heart-pulse',
+    '#EC4899',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Education',
+    'EXPENSE',
+    true,
+    'graduation-cap',
+    '#8B5CF6',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Entertainment',
+    'EXPENSE',
+    true,
+    'film',
+    '#6366F1',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Shopping',
+    'EXPENSE',
+    true,
+    'shopping-cart',
+    '#06B6D4',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Travel',
+    'EXPENSE',
+    true,
+    'plane',
+    '#14B8A6',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Other',
+    'EXPENSE',
+    true,
+    'circle-help',
+    '#6B7280',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Salary',
+    'INCOME',
+    true,
+    'briefcase',
+    '#22C55E',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Freelance',
+    'INCOME',
+    true,
+    'laptop',
+    '#0EA5E9',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Investment',
+    'INCOME',
+    true,
+    'trending-up',
+    '#A855F7',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Gift',
+    'INCOME',
+    true,
+    'gift',
+    '#F97316',
+    NOW()
+),
+(
+    gen_random_uuid(),
+    'Other',
+    'INCOME',
+    true,
+    'circle-help',
+    '#6B7280',
+    NOW()
+ON CONFLICT (name, type) DO NOTHING;
