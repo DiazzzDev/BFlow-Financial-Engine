@@ -142,4 +142,4 @@ VALUES
     'circle-help',
     '#6B7280',
     NOW()
-ON CONFLICT (name, type) DO NOTHING;
+)
