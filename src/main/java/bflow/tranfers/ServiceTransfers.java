@@ -13,7 +13,7 @@ import bflow.wallet.RepositoryWalletUser;
 import bflow.wallet.ServiceWallet;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -149,17 +149,38 @@ public class ServiceTransfers {
                         "User does not have access to this wallet"
                 ));
 
-        Wallet fromWallet = repositoryWallet
-                .findByIdForUpdate(originWallet.getWallet().getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Origin wallet not found"
-                ));
+        UUID firstId = originWallet.getWallet().getId();
+        UUID secondId = destinationWallet.getWallet().getId();
 
-        Wallet toWallet = repositoryWallet
-                .findByIdForUpdate(destinationWallet.getWallet().getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
+        Wallet walletA;
+        Wallet walletB;
+
+        if (firstId.compareTo(secondId) < 0) {
+            walletA = repositoryWallet.findByIdForUpdate(firstId)
+                    .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Origin wallet not found"
+                        )
+                );
+            walletB = repositoryWallet.findByIdForUpdate(secondId)
+                    .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Destination wallet not found"
+                        )
+                );
+        } else {
+            walletB = repositoryWallet.findByIdForUpdate(secondId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
                         "Destination wallet not found"
                 ));
+            walletA = repositoryWallet.findByIdForUpdate(firstId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                        "Origin wallet not found"
+                ));
+        }
+
+        Wallet fromWallet = firstId.equals(walletA.getId()) ? walletA : walletB;
+        Wallet toWallet = fromWallet == walletA ? walletB : walletA;
 
         if (fromWallet.getId().equals(toWallet.getId())) {
             throw new IllegalStateException(

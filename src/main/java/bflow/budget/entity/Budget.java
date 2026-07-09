@@ -4,6 +4,7 @@ import bflow.auth.entities.User;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
 import bflow.budget.enums.PeriodType;
+import bflow.category.entity.Category;
 import bflow.wallet.entities.Wallet;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,7 +35,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public final class Budget {
+public class Budget {
     /**
      * The budget ID.
      */
@@ -92,7 +93,9 @@ public final class Budget {
     /**
      * The category ID (if scope is CATEGORY).
      */
-    private UUID categoryId;
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     /**
      * The current status of the budget.

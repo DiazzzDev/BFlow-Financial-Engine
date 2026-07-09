@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import jakarta.persistence.Version;
 
 /**
  * Entity representing a financial wallet.
@@ -67,4 +68,11 @@ public class Wallet {
     @UpdateTimestamp
     private Instant updatedAt;
 
+    /**
+     * Optimistic locking version, used as a safety
+     * net alongside pessimistic locks.
+    */
+    @Version
+    @Column(nullable = false)
+    private Long version;
 }

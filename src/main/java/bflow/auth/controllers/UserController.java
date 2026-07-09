@@ -22,7 +22,7 @@ import java.util.UUID;
  * Provides endpoints for retrieving, updating, and deleting user profiles.
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public final class UserController {
 

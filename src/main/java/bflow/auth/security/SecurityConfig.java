@@ -1,6 +1,11 @@
 package bflow.auth.security;
 
+import bflow.auth.services.CurrentUserService;
+import bflow.common.idempotency.config.IdempotencyProperties;
+import bflow.common.idempotency.filter.IdempotencyFilter;
+import bflow.common.idempotency.service.IdempotencyService;
 import bflow.rate_limit.filter.RateLimitFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -22,8 +28,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 @EnableMethodSecurity
 public class SecurityConfig {
-    /** Filter for rate limiting requests. */
+    /** Filter responsible for applying request rate limiting. */
     private final RateLimitFilter rateLimitFilter;
+
+    /** Service responsible for idempotency operations. */
+    private final IdempotencyService idempotencyService;
+
+    /** Configuration properties for idempotency handling. */
+    private final IdempotencyProperties idempotencyProperties;
+
+    /** Service used to resolve the authenticated application user. */
+    private final CurrentUserService currentUserService;
+
+    /** JSON serializer used by the idempotency filter. */
+    private final ObjectMapper objectMapper;
 
     /**
      * Configures the security filter chain.
@@ -34,11 +52,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(final HttpSecurity http)
             throws Exception {
+        IdempotencyFilter idempotencyFilter = new IdempotencyFilter(
+                idempotencyService, idempotencyProperties,
+                currentUserService, objectMapper
+        );
+
         return http
-                 // CSRF protection is disabled because this application is a
-                 // stateless REST API secured with JWT Bearer tokens issued by
-                 // AWS Cognito. Authentication is not cookie-based,
-                 // therefore CSRF protection is not applicable.
+                 /*
+                * CSRF protection is intentionally disabled.
+                *
+                * This application is a stateless REST API authenticated
+                * exclusively through OAuth2 JWT Bearer tokens issued
+                * by AWS Cognito.
+                *
+                * Since authentication does not rely on cookies or
+                * HTTP sessions,
+                * CSRF attacks are not applicable.
+                */
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sess ->
@@ -79,6 +109,8 @@ public class SecurityConfig {
                 )
                 .addFilterAfter(rateLimitFilter,
                         UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(idempotencyFilter,
+                        BearerTokenAuthenticationFilter.class)
                 .build();
     }
 }
