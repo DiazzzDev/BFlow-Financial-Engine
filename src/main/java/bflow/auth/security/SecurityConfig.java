@@ -58,10 +58,17 @@ public class SecurityConfig {
         );
 
         return http
-                 // CSRF protection is disabled because this application is a
-                 // stateless REST API secured with JWT Bearer tokens issued by
-                 // AWS Cognito. Authentication is not cookie-based,
-                 // therefore CSRF protection is not applicable.
+                 /*
+                * CSRF protection is intentionally disabled.
+                *
+                * This application is a stateless REST API authenticated
+                * exclusively through OAuth2 JWT Bearer tokens issued
+                * by AWS Cognito.
+                *
+                * Since authentication does not rely on cookies or
+                * HTTP sessions,
+                * CSRF attacks are not applicable.
+                */
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sess ->

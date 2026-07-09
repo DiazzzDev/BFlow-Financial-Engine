@@ -35,7 +35,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public final class Budget {
+public class Budget {
     /**
      * The budget ID.
      */

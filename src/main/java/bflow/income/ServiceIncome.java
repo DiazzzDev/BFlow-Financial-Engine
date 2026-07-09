@@ -13,9 +13,11 @@ import bflow.common.financial.TransactionMapper;
 import bflow.income.DTO.IncomeRequest;
 import bflow.income.DTO.IncomeResponse;
 import bflow.income.entity.Income;
+import bflow.wallet.DTO.WalletPair;
 import bflow.wallet.RepositoryWallet;
 import bflow.wallet.RepositoryWalletUser;
 import bflow.wallet.ServiceWallet;
+import bflow.wallet.WalletLockService;
 import bflow.wallet.entities.Wallet;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -72,6 +74,11 @@ public class ServiceIncome {
      * Validator for category operations.
      */
     private final CategoryValidator categoryValidator;
+
+    /**
+     * Service for wallet locking validation.
+     */
+    private final WalletLockService walletLockService;
 
     /**
      * Creates a new income entry for the specified wallet and user.
@@ -146,34 +153,13 @@ public class ServiceIncome {
                 .orElseThrow(() -> new WalletAccessDeniedException(
                         "You do not have access to the target wallet"));
 
-        Wallet oldWallet;
-        Wallet newWallet;
+        WalletPair wallets = walletLockService.lockWallets(
+                oldWalletId,
+                newWalletId
+        );
 
-        if (oldWalletId.equals(newWalletId)) {
-            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
-                    .orElseThrow(
-                        () -> new ResourceNotFoundException("Wallet not found")
-                );
-            newWallet = oldWallet;
-        } else if (oldWalletId.compareTo(newWalletId) < 0) {
-            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                        "Origin wallet not found"
-                ));
-            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                        "Target wallet not found"
-                ));
-        } else {
-            newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                        "Target wallet not found"
-                ));
-            oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                        "Origin wallet not found"
-                ));
-        }
+        Wallet oldWallet = wallets.oldWallet();
+        Wallet newWallet = wallets.newWallet();
 
         BigDecimal oldAmount = income.getAmount();
         BigDecimal newAmount = request.getAmount();

@@ -55,8 +55,8 @@ public final class BudgetCalculationService {
             );
         } else {
             spent = repositoryExpense.sumByCategoryAndDateRange(
-                    budget.getCategory() != null ?
-                            budget.getCategory().getId() : null,
+                    budget.getCategory() != null
+                            ? budget.getCategory().getId() : null,
                     start,
                     end
             );
