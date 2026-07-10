@@ -9,36 +9,46 @@ source "$SCRIPT_DIR/../lib/helpers.sh"
 
 OUTPUT_FILE="$SCRIPT_DIR/../outputs.env"
 
-echo "Checking ECR repository..."
+echo "Checking ECR repository: $ECR_REPOSITORY"
 
-read -r REPOSITORY_URI REPOSITORY_ARN <<<"$(
-aws ecr describe-repositories \
+DESCRIBE_OUTPUT=""
+
+if DESCRIBE_OUTPUT=$(aws ecr describe-repositories \
     --region "$AWS_REGION" \
     --repository-names "$ECR_REPOSITORY" \
     --query "repositories[0].[repositoryUri,repositoryArn]" \
-    --output text 2>/dev/null || true
-)"
+    --output text 2>&1); then
 
-if [[ "$REPOSITORY_URI" == "None" || -z "$REPOSITORY_URI" ]]; then
+    read -r REPOSITORY_URI REPOSITORY_ARN <<<"$DESCRIBE_OUTPUT"
 
-    echo "Creating ECR repository..."
-
-    read -r REPOSITORY_URI REPOSITORY_ARN <<<"$(
-    aws ecr create-repository \
-        --region "$AWS_REGION" \
-        --repository-name "$ECR_REPOSITORY" \
-        --image-scanning-configuration scanOnPush=true \
-        --image-tag-mutability IMMUTABLE \
-        --encryption-configuration encryptionType=AES256 \
-        --query "repository.[repositoryUri,repositoryArn]" \
-        --output text
-    )"
-
-    echo "ECR repository created."
+    echo "ECR repository already exists."
 
 else
 
-    echo "ECR repository already exists."
+    if echo "$DESCRIBE_OUTPUT" | grep -q "RepositoryNotFoundException"; then
+
+        echo "ECR repository not found. Creating repository..."
+
+        read -r REPOSITORY_URI REPOSITORY_ARN <<<"$(
+            aws ecr create-repository \
+                --region "$AWS_REGION" \
+                --repository-name "$ECR_REPOSITORY" \
+                --image-scanning-configuration scanOnPush=true \
+                --image-tag-mutability IMMUTABLE \
+                --encryption-configuration encryptionType=AES256 \
+                --query "repository.[repositoryUri,repositoryArn]" \
+                --output text
+        )"
+
+        echo "ECR repository created."
+
+    else
+
+        echo "Failed to check ECR repository."
+        echo "$DESCRIBE_OUTPUT"
+        exit 1
+
+    fi
 
 fi
 
