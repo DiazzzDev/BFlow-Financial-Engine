@@ -46,3 +46,29 @@ LICENSE
 docker-compose.yml
 Dockerfile
 .dockerignore
+
+# Tests / Coverage
+surefire-reports/
+failsafe-reports/
+jacoco.exec
+coverage/
+*.exec
+
+# Build tools / temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# CI/CD
+.github/
+
+# Security / secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+secrets/
+credentials/
