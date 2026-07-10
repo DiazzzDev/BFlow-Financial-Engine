@@ -40,7 +40,7 @@ create_cluster() {
             --tags \
                 key=Project,value="$PROJECT_NAME" \
                 key=Environment,value="$ENVIRONMENT" \
-                key=ManagedBy,value="bash"
+                Key=ManagedBy,Value="$MANAGED_BY"
 
     fi
 

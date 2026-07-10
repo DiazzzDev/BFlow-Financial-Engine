@@ -93,7 +93,7 @@ EOF
             --tags \
                 Key=Project,Value="$PROJECT_NAME" \
                 Key=Environment,Value="$ENVIRONMENT" \
-                Key=ManagedBy,Value="bash" \
+                Key=ManagedBy,Value="$MANAGED_BY" \
             --query "Role.Arn" \
             --output text)
 
@@ -107,16 +107,13 @@ create_inline_policy() {
 
     local ROLE_NAME="$GITHUB_ACTIONS_ROLE_NAME"
 
-
     ECS_EXECUTION_ROLE_ARN=$(require_output ECS_TASK_EXECUTION_ROLE_ARN)
 
     ECS_TASK_ROLE_ARN=$(require_output ECS_TASK_ROLE_ARN)
 
-
     ACCOUNT_ID=$(aws sts get-caller-identity \
         --query Account \
         --output text)
-
 
     POLICY=$(cat <<EOF
 {
@@ -174,7 +171,6 @@ EOF
         --role-name "$ROLE_NAME" \
         --policy-name "${PROJECT_NAME}-github-deploy-policy" \
         --policy-document "$POLICY"
-
 
 }
 

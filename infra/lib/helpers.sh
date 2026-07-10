@@ -44,5 +44,5 @@ ensure_tag() {
         --tags \
             Key=Project,Value="$PROJECT_NAME" \
             Key=Environment,Value="$ENVIRONMENT" \
-            Key=ManagedBy,Value="bash"
+            Key=ManagedBy,Value="$MANAGED_BY"
 }
