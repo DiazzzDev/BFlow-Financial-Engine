@@ -39,9 +39,10 @@ jobs:
             .
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: bflow-backend:security-scan
           format: table
           severity: CRITICAL,HIGH
+          ignorefile: .trivyignore
           exit-code: 1
