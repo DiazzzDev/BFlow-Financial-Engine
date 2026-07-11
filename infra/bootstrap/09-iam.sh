@@ -9,16 +9,13 @@ source "$SCRIPT_DIR/../lib/helpers.sh"
 
 OUTPUT_FILE="$SCRIPT_DIR/../outputs.env"
 
-
 create_role() {
 
     local ROLE_NAME="$1"
     local POLICY_DOCUMENT="$2"
     local OUTPUT_KEY="$3"
 
-
     local ROLE_ARN
-
 
     ROLE_ARN=$(aws iam get-role \
         --role-name "$ROLE_NAME" \
@@ -47,11 +44,9 @@ create_role() {
 
     fi
 
-
     append_output "$OUTPUT_KEY" "$ROLE_ARN"
 
 }
-
 
 attach_managed_policy() {
 
@@ -75,9 +70,7 @@ attach_managed_policy() {
 
 }
 
-
 echo "Creating ECS execution role..."
-
 
 EXECUTION_POLICY='{
     "Version": "2012-10-17",
@@ -92,22 +85,16 @@ EXECUTION_POLICY='{
     ]
 }'
 
-
 create_role \
     "$ECS_TASK_EXECUTION_ROLE_NAME" \
     "$EXECUTION_POLICY" \
     "ECS_TASK_EXECUTION_ROLE_ARN"
 
-
-
 attach_managed_policy \
     "$ECS_TASK_EXECUTION_ROLE_NAME" \
     "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
-
-
 echo "Creating ECS task role..."
-
 
 TASK_POLICY='{
     "Version": "2012-10-17",
@@ -122,7 +109,6 @@ TASK_POLICY='{
     ]
 }'
 
-
 create_role \
     "$ECS_TASK_ROLE_NAME" \
     "$TASK_POLICY" \
@@ -132,9 +118,7 @@ create_role \
 
 echo "Creating inline task permissions..."
 
-
 SECRET_ARN=$(require_output RDS_SECRET_ARN)
-
 
 aws iam put-role-policy \
     --role-name "$ECS_TASK_ROLE_NAME" \
@@ -153,7 +137,5 @@ aws iam put-role-policy \
             }
         ]
     }"
-
-
 
 echo "IAM roles ready."

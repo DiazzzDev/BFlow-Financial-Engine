@@ -17,7 +17,7 @@ VPC_ID=$(require_output VPC_ID)
 PRIVATE_SUBNET_A_ID=$(require_output PRIVATE_SUBNET_A_ID)
 PRIVATE_SUBNET_B_ID=$(require_output PRIVATE_SUBNET_B_ID)
 RDS_SECURITY_GROUP_ID=$(require_output RDS_SECURITY_GROUP_ID)
-DB_SUBNET_GROUP_NAME=$(require_output DB_SUBNET_GROUP_NAME)
+DB_SUBNET_GROUP_NAME="${PROJECT_NAME}-db-subnet-group"
 
 create_db_subnet_group() {
 
