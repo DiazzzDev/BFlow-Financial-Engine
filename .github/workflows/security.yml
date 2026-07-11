@@ -39,7 +39,7 @@ jobs:
             .
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.72.0
+        uses: aquasecurity/trivy-action@main
         with:
           image-ref: bflow-backend:security-scan
           format: table
