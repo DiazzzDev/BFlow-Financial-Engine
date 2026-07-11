@@ -35,10 +35,7 @@ create_log_group() {
         aws logs tag-log-group \
             --region "$AWS_REGION" \
             --log-group-name "$LOG_GROUP" \
-            --tags \
-                Project="$PROJECT_NAME" \
-                Environment="$ENVIRONMENT" \
-                ManagedBy="bash"
+            --tags "Project=${PROJECT_NAME},Environment=${ENVIRONMENT},ManagedBy=bash"
 
     fi
 

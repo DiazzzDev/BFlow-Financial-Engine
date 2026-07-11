@@ -59,44 +59,44 @@ aws budgets create-budget \
     --notifications-with-subscribers "$(cat <<EOF
 [
     {
-        \"Notification\": {
-            \"NotificationType\": \"ACTUAL\",
-            \"ComparisonOperator\": \"GREATER_THAN\",
-            \"Threshold\": 50,
-            \"ThresholdType\": \"PERCENTAGE\"
+        "Notification": {
+            "NotificationType": "ACTUAL",
+            "ComparisonOperator": "GREATER_THAN",
+            "Threshold": 50,
+            "ThresholdType": "PERCENTAGE"
         },
-        \"Subscribers\": [
+        "Subscribers": [
             {
-                \"SubscriptionType\": \"EMAIL\",
-                \"Address\": \"$BUDGET_EMAIL\"
+                "SubscriptionType": "EMAIL",
+                "Address": "$BUDGET_EMAIL"
             }
         ]
     },
     {
-        \"Notification\": {
-            \"NotificationType\": \"ACTUAL\",
-            \"ComparisonOperator\": \"GREATER_THAN\",
-            \"Threshold\": 80,
-            \"ThresholdType\": \"PERCENTAGE\"
+        "Notification": {
+            "NotificationType": "ACTUAL",
+            "ComparisonOperator": "GREATER_THAN",
+            "Threshold": 80,
+            "ThresholdType": "PERCENTAGE"
         },
-        \"Subscribers\": [
+        "Subscribers": [
             {
-                \"SubscriptionType\": \"EMAIL\",
-                \"Address\": \"$BUDGET_EMAIL\"
+                "SubscriptionType": "EMAIL",
+                "Address": "$BUDGET_EMAIL"
             }
         ]
     },
     {
-        \"Notification\": {
-            \"NotificationType\": \"ACTUAL\",
-            \"ComparisonOperator\": \"GREATER_THAN\",
-            \"Threshold\": 100,
-            \"ThresholdType\": \"PERCENTAGE\"
+        "Notification": {
+            "NotificationType": "ACTUAL",
+            "ComparisonOperator": "GREATER_THAN",
+            "Threshold": 100,
+            "ThresholdType": "PERCENTAGE"
         },
-        \"Subscribers\": [
+        "Subscribers": [
             {
-                \"SubscriptionType\": \"EMAIL\",
-                \"Address\": \"$BUDGET_EMAIL\"
+                "SubscriptionType": "EMAIL",
+                "Address": "$BUDGET_EMAIL"
             }
         ]
     }

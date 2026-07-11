@@ -105,7 +105,7 @@ authorize_cloudflare_ranges() {
             EXISTS=$(aws ec2 describe-security-groups \
                 --region "$AWS_REGION" \
                 --group-ids "$ECS_SECURITY_GROUP_ID" \
-                --query "SecurityGroups[0].IpPermissions[?FromPort==\`${APP_PORT}\` && IpRanges[?CidrIp=='${CIDR}']]" \
+                --query "SecurityGroups[0].IpPermissions[?FromPort==\`${PORT}\` && IpRanges[?CidrIp=='${CIDR}']]" \
                 --output text)
 
             if [[ -z "$EXISTS" ]]; then
@@ -114,9 +114,9 @@ authorize_cloudflare_ranges() {
 
                 aws ec2 authorize-security-group-ingress \
                     --region "$AWS_REGION" \
-                    --group-id "$ECS_SECURITY_GROUP_ID" \
+                    --group-id "$SECURITY_GROUP_ID" \
                     --protocol tcp \
-                    --port "$APP_PORT" \
+                    --port "$PORT" \
                     --cidr "$CIDR"
 
             fi
@@ -126,7 +126,7 @@ authorize_cloudflare_ranges() {
             EXISTS=$(aws ec2 describe-security-groups \
                 --region "$AWS_REGION" \
                 --group-ids "$ECS_SECURITY_GROUP_ID" \
-                --query "SecurityGroups[0].IpPermissions[?FromPort==\`${APP_PORT}\` && Ipv6Ranges[?CidrIpv6=='${CIDR}']]" \
+                --query "SecurityGroups[0].IpPermissions[?FromPort==\`${PORT}\` && Ipv6Ranges[?CidrIpv6=='${CIDR}']]" \
                 --output text)
 
             if [[ -z "$EXISTS" ]]; then
@@ -137,7 +137,7 @@ authorize_cloudflare_ranges() {
                     --region "$AWS_REGION" \
                     --group-id "$ECS_SECURITY_GROUP_ID" \
                     --protocol tcp \
-                    --port "$APP_PORT" \
+                    --port "$PORT" \
                     --ipv6-cidr-block "$CIDR"
 
             fi
@@ -154,11 +154,11 @@ authorize_cloudflare_ranges \
     "$CLOUDFLARE_IPV4_URL" \
     ipv4
 
-authorize_cloudflare_ranges \
-    "$ECS_SECURITY_GROUP_ID" \
-    "$APP_PORT" \
-    "$CLOUDFLARE_IPV6_URL" \
-    ipv6
+#authorize_cloudflare_ranges \
+#    "$ECS_SECURITY_GROUP_ID" \
+#    "$APP_PORT" \
+#    "$CLOUDFLARE_IPV6_URL" \
+#    ipv6
 
 echo "Checking RDS ingress rule..."
 

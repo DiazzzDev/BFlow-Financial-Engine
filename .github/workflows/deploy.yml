@@ -15,8 +15,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  security:
+    name: Security checks
+    uses: ./.github/workflows/security.yml
+
   deploy:
     name: Deploy to ECS
+    needs: security
     runs-on: ubuntu-latest
 
     environment:
@@ -24,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,7 +41,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -52,25 +57,34 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Download current ECS task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition ${{ vars.ECS_TASK_FAMILY }} \
-            --query taskDefinition \
-            > task-definition.json
-
-      - name: Render ECS task definition with new image
+      - name: Render ECS task definition
         id: render-task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: ecs/task-definition.json
           container-name: ${{ vars.ECS_CONTAINER_NAME }}
           image: ${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
 
-      - name: Deploy ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
-          service: ${{ vars.ECS_SERVICE }}
-          cluster: ${{ vars.ECS_CLUSTER }}
-          wait-for-service-stability: true
+      - name: Register new task definition
+        id: register-task
+        run: |
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://${{ steps.render-task-definition.outputs.task-definition }} \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+
+          echo "task_definition=$TASK_DEFINITION_ARN" >> $GITHUB_OUTPUT
+
+      - name: Update ECS service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ vars.ECS_CLUSTER_NAME }} \
+            --service ${{ vars.ECS_SERVICE_NAME }} \
+            --task-definition ${{ steps.register-task.outputs.task_definition }} \
+            --force-new-deployment
+
+      - name: Wait for ECS stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ vars.ECS_CLUSTER_NAME }} \
+            --services ${{ vars.ECS_SERVICE_NAME }}

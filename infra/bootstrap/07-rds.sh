@@ -7,6 +7,10 @@ source "$SCRIPT_DIR/../config.env"
 source "$SCRIPT_DIR/../outputs.env"
 source "$SCRIPT_DIR/../lib/helpers.sh"
 
+if [[ -f "$SCRIPT_DIR/../secrets.env" ]]; then
+    source "$SCRIPT_DIR/../secrets.env"
+fi
+
 OUTPUT_FILE="$SCRIPT_DIR/../outputs.env"
 
 VPC_ID=$(require_output VPC_ID)
@@ -62,6 +66,12 @@ create_rds_instance() {
 
         echo "RDS instance already exists."
 
+        if [[ ! -f "$SCRIPT_DIR/../secrets.env" ]]; then
+            echo "ERROR: RDS exists but secrets.env is missing."
+            echo "Password cannot be recovered from AWS."
+            exit 1
+        fi
+
         return
 
     fi
@@ -71,6 +81,9 @@ create_rds_instance() {
     local PASSWORD
 
     PASSWORD=$(generate_password)
+
+    echo "RDS_PASSWORD=$PASSWORD" > "$SCRIPT_DIR/../secrets.env"
+    chmod 600 "$SCRIPT_DIR/../secrets.env"
 
     echo "Creating RDS instance..."
 
@@ -86,18 +99,16 @@ create_rds_instance() {
         --master-username "$DB_USERNAME" \
         --master-user-password "$PASSWORD" \
         --db-subnet-group-name "$DB_SUBNET_GROUP_NAME" \
-        --vpc-security-groups "$RDS_SECURITY_GROUP_ID" \
+        --vpc-security-group-ids "$RDS_SECURITY_GROUP_ID" \
         --backup-retention-period "$RDS_BACKUP_RETENTION_DAYS" \
         --no-publicly-accessible \
         --storage-encrypted \
         --no-multi-az \
-        --deletion-protection false \
+        --no-deletion-protection \
         --tags \
             Key=Project,Value="$PROJECT_NAME" \
             Key=Environment,Value="$ENVIRONMENT" \
             Key=ManagedBy,Value="$MANAGED_BY"
-
-    append_output "RDS_PASSWORD" "$PASSWORD"
 
 }
 
@@ -122,7 +133,6 @@ save_rds_information() {
         --output text)
 
     append_output "RDS_ENDPOINT" "$ENDPOINT"
-
     append_output "RDS_INSTANCE_ID" "$RDS_INSTANCE_IDENTIFIER"
 
 }

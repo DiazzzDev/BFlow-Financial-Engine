@@ -49,4 +49,3 @@ build/
 .vscode/
 
 outputs.env
-task-definition.json

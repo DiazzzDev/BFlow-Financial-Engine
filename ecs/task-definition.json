@@ -1,0 +1,73 @@
+{
+  "family": "${ECS_TASK_FAMILY}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_TASK_ROLE_ARN}",
+
+  "containerDefinitions": [
+    {
+      "name": "bflow-backend",
+
+      "image": "placeholder",
+
+      "essential": true,
+
+      "portMappings": [
+        {
+          "containerPort": "${ECS_CONTAINER_PORT}",
+          "protocol": "tcp"
+        }
+      ],
+
+      "environment": [
+        {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "prod"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "${AWS_REGION}"
+        }
+      ],
+
+      "secrets": [
+        {
+          "name": "DB_HOST",
+          "valueFrom": "${RDS_SECRET_ARN}:DB_HOST::"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "${RDS_SECRET_ARN}:DB_PORT::"
+        },
+        {
+          "name": "DB_NAME",
+          "valueFrom": "${RDS_SECRET_ARN}:DB_NAME::"
+        },
+        {
+          "name": "DB_USER",
+          "valueFrom": "${RDS_SECRET_ARN}:DB_USER::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "${RDS_SECRET_ARN}:DB_PASSWORD::"
+        }
+      ],
+
+      "logConfiguration": {
+        "logDriver": "awslogs",
+
+        "options": {
+          "awslogs-group": "${CLOUDWATCH_LOG_GROUP}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
