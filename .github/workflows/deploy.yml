@@ -66,6 +66,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Generate task definition
+        env:
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
+          RDS_SECRET_ARN: ${{ vars.RDS_SECRET_ARN }}
+        run: |
+          envsubst < ecs/task-definition.template.json > ecs/task-definition.json
+
       - name: Render ECS task definition
         id: render-task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1

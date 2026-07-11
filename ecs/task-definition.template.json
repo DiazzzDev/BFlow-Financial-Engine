@@ -20,7 +20,7 @@
 
       "portMappings": [
         {
-          "containerPort": "${ECS_CONTAINER_PORT}",
+          "containerPort": 8080,
           "protocol": "tcp"
         }
       ],
