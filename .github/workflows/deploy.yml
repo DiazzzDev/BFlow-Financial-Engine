@@ -43,6 +43,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Verify ECR access
+        run: |
+          aws ecr describe-repositories
+          aws ecr list-images --repository-name bflow-backend
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
