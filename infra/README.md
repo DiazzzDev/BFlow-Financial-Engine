@@ -421,3 +421,13 @@ infra/
 ├── outputs.env.example
 └── README.md
 ```
+
+pending to document:
+
+
+aws iam put-role-policy --role-name bflow-github-actions-role --policy-name bflow-github-deploy-policy --policy-document file://bflow-github-deploy-policy.json
+aws iam get-role-policy --role-name bflow-github-actions-role --policy-name bflow-github-deploy-policy
+
+How to replicate
+---
+adr

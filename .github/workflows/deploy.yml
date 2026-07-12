@@ -90,9 +90,10 @@ jobs:
 
       - name: Validate ECR repository
         run: |
+          REPOSITORY_NAME=$(basename "${{ vars.ECR_REPOSITORY }}")
+
           aws ecr describe-repositories \
-            --repository-names "${{ vars.ECR_REPOSITORY }}" \
-            >/dev/null
+            --repository-names "$REPOSITORY_NAME"
 
       - name: Validate ECS cluster
         run: |
