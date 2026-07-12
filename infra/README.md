@@ -431,3 +431,6 @@ aws iam get-role-policy --role-name bflow-github-actions-role --policy-name bflo
 How to replicate
 ---
 adr
+
+future troubleshooting:
+resolve port redirecction with route 53 (If a migration from Cloudflare to Route 53 applies)

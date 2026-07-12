@@ -53,6 +53,11 @@ jobs:
           ECS_PUBLIC_SUBNET_2: ${{ vars.ECS_PUBLIC_SUBNET_2 }}
           ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
 
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+
         run: |
           set -euo pipefail
 
@@ -71,6 +76,10 @@ jobs:
             ECS_PUBLIC_SUBNET_1
             ECS_PUBLIC_SUBNET_2
             ECS_SECURITY_GROUP
+            CLOUDFLARE_API_TOKEN
+            CLOUDFLARE_ZONE_ID
+            CLOUDFLARE_DNS_RECORD_ID
+            CLOUDFLARE_DNS_RECORD_NAME
           )
 
           for var in "${required[@]}"; do
@@ -79,9 +88,6 @@ jobs:
               exit 1
             fi
           done
-
-      - name: Verify AWS identity
-        run: aws sts get-caller-identity
 
       - name: Validate Secrets Manager secret
         run: |
@@ -129,6 +135,68 @@ jobs:
               echo "::error::ECS subnets must be public."
               exit 1
           fi
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate Cloudflare configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+        run: |
+          set -euo pipefail
+
+          echo "Validating Cloudflare API token..."
+          TOKEN_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$TOKEN_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare API token is invalid or expired."
+            echo "$TOKEN_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "Validating Cloudflare zone..."
+          ZONE_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$ZONE_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare zone ID is invalid, or token lacks access to it."
+            echo "$ZONE_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "Validating Cloudflare DNS record..."
+          RECORD_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records/${CLOUDFLARE_DNS_RECORD_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$RECORD_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare DNS record ID does not exist in this zone."
+            echo "$RECORD_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          RECORD_NAME=$(echo "$RECORD_CHECK" | jq -r '.result.name')
+          RECORD_TYPE=$(echo "$RECORD_CHECK" | jq -r '.result.type')
+
+          if [ "$RECORD_NAME" != "$CLOUDFLARE_DNS_RECORD_NAME" ]; then
+            echo "::error::DNS record name mismatch. Expected '${CLOUDFLARE_DNS_RECORD_NAME}', got '${RECORD_NAME}'."
+            exit 1
+          fi
+
+          if [ "$RECORD_TYPE" != "A" ]; then
+            echo "::error::DNS record is type '${RECORD_TYPE}', expected 'A'."
+            exit 1
+          fi
+
+          echo "Cloudflare configuration validated successfully."    
 
       - name: Validate CloudWatch log group
         run: |
@@ -347,3 +415,78 @@ jobs:
 
               exit 1
           }
+
+      - name: Get new task public IP
+        id: get_ip
+        run: |
+          for i in {1..5}; do
+            TASK_ARN=$(aws ecs list-tasks \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+              --desired-status RUNNING \
+              --query "taskArns[0]" \
+              --output text)
+
+            if [ -n "$TASK_ARN" ] && [ "$TASK_ARN" != "None" ]; then
+              ENI_ID=$(aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks "$TASK_ARN" \
+                --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+                --output text)
+
+              PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+                --network-interface-ids "$ENI_ID" \
+                --query "NetworkInterfaces[0].Association.PublicIp" \
+                --output text)
+
+              if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "None" ]; then
+                break
+              fi
+            fi
+
+            echo "Public IP not ready yet, retrying in 10s..."
+            sleep 10
+          done
+
+          if [ -z "$PUBLIC_IP" ] || [ "$PUBLIC_IP" = "None" ]; then
+            echo "::error::Could not resolve task public IP after retries."
+            exit 1
+          fi
+
+          echo "Public IP: $PUBLIC_IP"
+          echo "public_ip=$PUBLIC_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Update Cloudflare DNS record
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PUBLIC_IP: ${{ steps.get_ip.outputs.public_ip }}
+        run: |
+          RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records/${CLOUDFLARE_DNS_RECORD_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{
+              \"type\": \"A\",
+              \"name\": \"${CLOUDFLARE_DNS_RECORD_NAME}\",
+              \"content\": \"${PUBLIC_IP}\",
+              \"proxied\": true,
+              \"ttl\": 1
+            }")
+
+          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare DNS update failed."
+            echo "$RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "DNS record updated successfully."
+          
+      - name: Deployment summary
+        run: |
+          echo "Deployment completed successfully."
+          echo "Task definition family: ${{ vars.ECS_TASK_FAMILY }}"
+          echo "Public IP: ${{ steps.get_ip.outputs.public_ip }}"
+          echo "DNS record: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}"
