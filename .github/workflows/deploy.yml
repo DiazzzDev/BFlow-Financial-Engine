@@ -19,9 +19,117 @@ jobs:
     name: Security checks
     uses: ./.github/workflows/security.yml
 
+  validate-environment:
+    name: Validate deployment environment
+    needs: security
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Validate GitHub configuration
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
+
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
+
+        run: |
+          set -euo pipefail
+
+          required=(
+            AWS_ROLE_ARN
+            RDS_SECRET_ARN
+            AWS_REGION
+            ECR_REPOSITORY
+            ECS_CLUSTER_NAME
+            ECS_SERVICE_NAME
+            ECS_CONTAINER_NAME
+            ECS_TASK_FAMILY
+            ECS_EXECUTION_ROLE_ARN
+            ECS_TASK_ROLE_ARN
+            CLOUDWATCH_LOG_GROUP
+          )
+
+          for var in "${required[@]}"; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is not configured."
+              exit 1
+            fi
+          done
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Validate Secrets Manager secret
+        run: |
+          aws secretsmanager describe-secret \
+            --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
+            >/dev/null
+
+      - name: Validate ECR repository
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "${{ vars.ECR_REPOSITORY_NAME }}" \
+            >/dev/null
+
+      - name: Validate ECS cluster
+        run: |
+          aws ecs describe-clusters \
+            --clusters "${{ vars.ECS_CLUSTER_NAME }}" \
+            >/dev/null
+
+      - name: Validate ECS service
+        run: |
+          aws ecs describe-services \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+            >/dev/null
+
+      - name: Validate CloudWatch log group
+        run: |
+          aws logs describe-log-groups \
+            --log-group-name-prefix "${{ vars.CLOUDWATCH_LOG_GROUP }}" \
+            --query "logGroups[?logGroupName=='${{ vars.CLOUDWATCH_LOG_GROUP }}']" \
+            --output text \
+            | grep "${{ vars.CLOUDWATCH_LOG_GROUP }}"
+
+      - name: Validate IAM roles
+        run: |
+          aws iam get-role \
+            --role-name "$(basename '${{ vars.ECS_EXECUTION_ROLE_ARN }}')" \
+            >/dev/null
+
+          aws iam get-role \
+            --role-name "$(basename '${{ vars.ECS_TASK_ROLE_ARN }}')" \
+            >/dev/null
+
+      - name: Environment validation summary
+        run: |
+          echo "Environment validation completed successfully."
+
   deploy:
     name: Deploy to ECS
-    needs: security
+    
+    needs:
+    - security
+    - validate-environment
+
     runs-on: ubuntu-latest
 
     environment:
@@ -63,9 +171,18 @@ jobs:
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
-          RDS_SECRET_ARN: ${{ vars.RDS_SECRET_ARN }}
+          RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
         run: |
           envsubst < ecs/task-definition.template.json > ecs/task-definition.json
+
+      - name: Validate generated task definition
+        run: |
+          if grep -q '\${' ecs/task-definition.json; then
+            echo "::error::Task definition contains unresolved template variables."
+            exit 1
+          fi
+
+          jq empty ecs/task-definition.json
 
       - name: Render ECS task definition
         id: render-task-definition
@@ -95,6 +212,20 @@ jobs:
 
       - name: Wait for ECS stability
         run: |
-          aws ecs wait services-stable \
-            --cluster ${{ vars.ECS_CLUSTER_NAME }} \
-            --services ${{ vars.ECS_SERVICE_NAME }}
+          set -e
+
+          if ! aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}"; then
+
+            echo "========== SERVICE =========="
+            aws ecs describe-services \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --services "${{ vars.ECS_SERVICE_NAME }}"
+
+            echo "========== TASKS =========="
+            aws ecs list-tasks \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}"
+
+            exit 1
+          fi
