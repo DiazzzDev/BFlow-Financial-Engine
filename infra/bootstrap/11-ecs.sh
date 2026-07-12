@@ -11,16 +11,16 @@ OUTPUT_FILE="$SCRIPT_DIR/../outputs.env"
 
 create_cluster() {
 
-    if aws ecs describe-clusters \
-        --cluster "$ECS_CLUSTER_NAME" \
+    STATUS=$(aws ecs describe-clusters \
+        --clusters "$ECS_CLUSTER_NAME" \
         --region "$AWS_REGION" \
         --query "clusters[0].status" \
-        --output text | grep -q ACTIVE; then
+        --output text 2>/dev/null || echo "MISSING")
 
+    if [[ "$STATUS" == "ACTIVE" ]]; then
         echo "ECS cluster already exists."
 
-    else
-
+    elif [[ "$STATUS" == "INACTIVE" || "$STATUS" == "MISSING" || "$STATUS" == "None" ]]; then
         echo "Creating ECS cluster..."
 
         aws ecs create-cluster \
@@ -29,19 +29,22 @@ create_cluster() {
             --tags \
                 key=Project,value="$PROJECT_NAME" \
                 key=Environment,value="$ENVIRONMENT" \
-                key=ManagedBy,value="$MANAGED_BY" >/dev/null
+                key=ManagedBy,value="$MANAGED_BY" \
+            >/dev/null
 
+    else
+        echo "Unexpected cluster status: $STATUS"
+        exit 1
     fi
 
     CLUSTER_ARN=$(aws ecs describe-clusters \
-        --cluster "$ECS_CLUSTER_NAME" \
+        --clusters "$ECS_CLUSTER_NAME" \
         --region "$AWS_REGION" \
         --query "clusters[0].clusterArn" \
         --output text)
 
     append_output "ECS_CLUSTER_NAME" "$ECS_CLUSTER_NAME"
     append_output "ECS_CLUSTER_ARN" "$CLUSTER_ARN"
-
 }
 
 create_cluster
