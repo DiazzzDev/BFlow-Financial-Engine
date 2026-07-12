@@ -82,6 +82,12 @@ jobs:
             --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
             >/dev/null
 
+      - name: Validate Secrets Manager secret
+        run: |
+          aws secretsmanager describe-secret \
+            --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
+            >/dev/null      
+
       - name: Validate ECR repository
         run: |
           aws ecr describe-repositories \
