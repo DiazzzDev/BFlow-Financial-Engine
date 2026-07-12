@@ -49,8 +49,8 @@ jobs:
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
           CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
 
-          ECS_PRIVATE_SUBNET_1: ${{ vars.ECS_PRIVATE_SUBNET_1 }}
-          ECS_PRIVATE_SUBNET_2: ${{ vars.ECS_PRIVATE_SUBNET_2 }}
+          ECS_PUBLIC_SUBNET_1: ${{ vars.ECS_PUBLIC_SUBNET_1 }}
+          ECS_PUBLIC_SUBNET_2: ${{ vars.ECS_PUBLIC_SUBNET_2 }}
           ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
 
         run: |
@@ -68,8 +68,8 @@ jobs:
             ECS_EXECUTION_ROLE_ARN
             ECS_TASK_ROLE_ARN
             CLOUDWATCH_LOG_GROUP
-            ECS_PRIVATE_SUBNET_1
-            ECS_PRIVATE_SUBNET_2
+            ECS_PUBLIC_SUBNET_1
+            ECS_PUBLIC_SUBNET_2
             ECS_SECURITY_GROUP
           )
 
@@ -107,8 +107,8 @@ jobs:
 
           aws ec2 describe-subnets \
             --subnet-ids \
-              "${{ vars.ECS_PRIVATE_SUBNET_1 }}" \
-              "${{ vars.ECS_PRIVATE_SUBNET_2 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_1 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_2 }}" \
             >/dev/null
 
           aws ec2 describe-security-groups \
@@ -120,15 +120,14 @@ jobs:
         run: |
           PUBLIC_SUBNETS=$(aws ec2 describe-subnets \
             --subnet-ids \
-              "${{ vars.ECS_PRIVATE_SUBNET_1 }}" \
-              "${{ vars.ECS_PRIVATE_SUBNET_2 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_1 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_2 }}" \
             --query "Subnets[?MapPublicIpOnLaunch==\`true\`].SubnetId" \
             --output text)
 
-          if [ -n "$PUBLIC_SUBNETS" ]; then
-            echo "::error::ECS subnets must be private."
-            echo "$PUBLIC_SUBNETS"
-            exit 1
+          if [ -z "$PUBLIC_SUBNETS" ]; then
+              echo "::error::ECS subnets must be public."
+              exit 1
           fi
 
       - name: Validate CloudWatch log group
@@ -225,8 +224,8 @@ jobs:
 
       - name: Generate ECS network configuration
         env:
-          ECS_PRIVATE_SUBNET_1: ${{ vars.ECS_PRIVATE_SUBNET_1 }}
-          ECS_PRIVATE_SUBNET_2: ${{ vars.ECS_PRIVATE_SUBNET_2 }}
+          ECS_PUBLIC_SUBNET_1: ${{ vars.ECS_PUBLIC_SUBNET_1 }}
+          ECS_PUBLIC_SUBNET_2: ${{ vars.ECS_PUBLIC_SUBNET_2 }}
           ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
         run: |
           envsubst < ecs/network-config.template.json > ecs/network-config.json
