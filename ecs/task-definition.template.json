@@ -33,6 +33,10 @@
         {
           "name": "AWS_REGION",
           "value": "${AWS_REGION}"
+        },
+        {
+          "name": "DB_SSL_MODE",
+          "value": "require"
         }
       ],
 

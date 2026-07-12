@@ -31,7 +31,7 @@ SERVICES=$(aws ecs list-services \
     --cluster "$ECS_CLUSTER_NAME" \
     --region "$AWS_REGION" \
     --query "serviceArns[]" \
-    --output text)
+    --output text | tr '\t' '\n')
 
 
 if [[ -n "$SERVICES" ]]; then
@@ -83,7 +83,7 @@ TASK_DEFINITIONS=$(aws ecs list-task-definitions \
     --family-prefix "$TASK_FAMILY" \
     --region "$AWS_REGION" \
     --query "taskDefinitionArns[]" \
-    --output text)
+    --output text | tr '\t' '\n')
 
 
 if [[ -n "$TASK_DEFINITIONS" ]]; then

@@ -260,73 +260,89 @@ jobs:
       - name: Check ECS service status
         id: ecs-service-check
         run: |
-          SERVICE_EXISTS=$(aws ecs describe-services \
+          SERVICE_STATUS=$(aws ecs describe-services \
             --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
             --services "${{ vars.ECS_SERVICE_NAME }}" \
-            --query "services | length(@)" \
-            --output text 2>/dev/null || echo "0")
+            --query "services[0].status" \
+            --output text 2>/dev/null)
+          SERVICE_STATUS="${SERVICE_STATUS:-MISSING}"
+          [ "$SERVICE_STATUS" = "None" ] && SERVICE_STATUS="MISSING"
 
-          echo "exists=$SERVICE_EXISTS" >> $GITHUB_OUTPUT
-
-          if [ "$SERVICE_EXISTS" -eq "1" ]; then
-            echo "ECS service exists."
-          else
-            echo "ECS service does not exist. Initial deployment required."
-          fi
+          echo "status=$SERVICE_STATUS" >> $GITHUB_OUTPUT
+          echo "Service status: $SERVICE_STATUS"
 
       - name: Deploy ECS service
         run: |
-          SERVICE_EXISTS=$(aws ecs describe-services \
-          --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-          --services "${{ vars.ECS_SERVICE_NAME }}" \
-          --query "services | length(@)" \
-          --output text 2>/dev/null || echo "0")
+          STATUS="${{ steps.ecs-service-check.outputs.status }}"
 
-          if [ "$SERVICE_EXISTS" -eq "1" ]; then
-
-            echo "Updating existing ECS service..."
-
-            aws ecs update-service \
-              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-              --service "${{ vars.ECS_SERVICE_NAME }}" \
-              --task-definition "${{ steps.register-task.outputs.task_definition }}" \
-              --force-new-deployment
-
+          if [ "$STATUS" = "ACTIVE" ]; then
+              echo "Updating existing ECS service..."
+              aws ecs update-service \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service "${{ vars.ECS_SERVICE_NAME }}" \
+                --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                --force-new-deployment
           else
-
-            echo "Creating ECS service..."
-
-            aws ecs create-service \
-              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-              --service-name "${{ vars.ECS_SERVICE_NAME }}" \
-              --task-definition "${{ steps.register-task.outputs.task_definition }}" \
-              --desired-count 1 \
-              --launch-type FARGATE \
-              --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
-              --network-configuration file://ecs/network-config.json \
-              --tags \
-                key=Project,value=bflow \
-                key=Environment,value=production \
-                key=ManagedBy,value=github-actions
-
+              echo "Creating ECS service (status was: $STATUS)..."
+              if ! aws ecs create-service \
+                    --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                    --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                    --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                    --desired-count 1 \
+                    --launch-type FARGATE \
+                    --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
+                    --network-configuration file://ecs/network-config.json \
+                    --tags \
+                      key=Project,value=bflow \
+                      key=Environment,value=production \
+                      key=ManagedBy,value=github-actions \
+                    2> create_error.log; then
+                  if grep -q "ServiceAlreadyExistsException\|already exists" create_error.log; then
+                      echo "Service was created concurrently or status check was stale — falling back to update."
+                      aws ecs update-service \
+                        --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                        --service "${{ vars.ECS_SERVICE_NAME }}" \
+                        --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                        --force-new-deployment
+                  else
+                      cat create_error.log
+                      exit 1
+                  fi
+              fi
           fi
 
       - name: Wait for ECS stability
         run: |
-          set -e
-
-          if ! aws ecs wait services-stable \
+          aws ecs wait services-stable \
             --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-            --services "${{ vars.ECS_SERVICE_NAME }}"; then
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+          || {
+              echo "========== SERVICE =========="
+              aws ecs describe-services \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --services "${{ vars.ECS_SERVICE_NAME }}"
 
-            echo "========== SERVICE =========="
-            aws ecs describe-services \
-              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-              --services "${{ vars.ECS_SERVICE_NAME }}"
+              echo "========== RUNNING TASKS =========="
+              RUNNING_ARNS=$(aws ecs list-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                --desired-status RUNNING \
+                --query "taskArns[]" \
+                --output text)
+              [ -n "$RUNNING_ARNS" ] && aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks $RUNNING_ARNS
 
-            echo "========== TASKS =========="
-            aws ecs list-tasks \
-              --cluster "${{ vars.ECS_CLUSTER_NAME }}"
+              echo "========== STOPPED TASKS =========="
+              STOPPED_ARNS=$(aws ecs list-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                --desired-status STOPPED \
+                --query "taskArns[]" \
+                --output text)
+              [ -n "$STOPPED_ARNS" ] && aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks $STOPPED_ARNS
 
-            exit 1
-          fi
+              exit 1
+          }
