@@ -37,6 +37,22 @@
         {
           "name": "DB_SSL_MODE",
           "value": "require"
+        },
+        {
+          "name": "COGNITO_ISSUER_URI",
+          "value": "${COGNITO_ISSUER_URI}"
+        },
+        {
+          "name": "AWS_SES_FROM_EMAIL",
+          "value": "noreply@bflow-studio.com"
+        },
+        {
+          "name": "LOGO_URL",
+          "value": "https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png"
+        },
+        {
+          "name": "FRONTEND_URL",
+          "value": "https://www.bflow-studio.com/"
         }
       ],
 

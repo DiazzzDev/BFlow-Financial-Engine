@@ -210,6 +210,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
           CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
           RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
+          COGNITO_ISSUER_URI: ${{ vars.COGNITO_ISSUER_URI }}
         run: |
           envsubst < ecs/task-definition.template.json > ecs/task-definition.json
 
