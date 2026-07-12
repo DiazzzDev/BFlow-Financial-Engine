@@ -49,6 +49,10 @@ jobs:
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
           CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
 
+          ECS_PRIVATE_SUBNET_1: ${{ vars.ECS_PRIVATE_SUBNET_1 }}
+          ECS_PRIVATE_SUBNET_2: ${{ vars.ECS_PRIVATE_SUBNET_2 }}
+          ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
+
         run: |
           set -euo pipefail
 
@@ -64,6 +68,9 @@ jobs:
             ECS_EXECUTION_ROLE_ARN
             ECS_TASK_ROLE_ARN
             CLOUDWATCH_LOG_GROUP
+            ECS_PRIVATE_SUBNET_1
+            ECS_PRIVATE_SUBNET_2
+            ECS_SECURITY_GROUP
           )
 
           for var in "${required[@]}"; do
@@ -82,12 +89,6 @@ jobs:
             --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
             >/dev/null
 
-      - name: Validate Secrets Manager secret
-        run: |
-          aws secretsmanager describe-secret \
-            --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
-            >/dev/null      
-
       - name: Validate ECR repository
         run: |
           REPOSITORY_NAME=$(basename "${{ vars.ECR_REPOSITORY }}")
@@ -101,20 +102,46 @@ jobs:
             --clusters "${{ vars.ECS_CLUSTER_NAME }}" \
             >/dev/null
 
-      - name: Validate ECS service
+      - name: Validate ECS networking
         run: |
-          aws ecs describe-services \
-            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
-            --services "${{ vars.ECS_SERVICE_NAME }}" \
+
+          aws ec2 describe-subnets \
+            --subnet-ids \
+              "${{ vars.ECS_PRIVATE_SUBNET_1 }}" \
+              "${{ vars.ECS_PRIVATE_SUBNET_2 }}" \
             >/dev/null
+
+          aws ec2 describe-security-groups \
+            --group-ids \
+              "${{ vars.ECS_SECURITY_GROUP }}" \
+            >/dev/null      
+
+      - name: Validate subnet configuration
+        run: |
+          PUBLIC_SUBNETS=$(aws ec2 describe-subnets \
+            --subnet-ids \
+              "${{ vars.ECS_PRIVATE_SUBNET_1 }}" \
+              "${{ vars.ECS_PRIVATE_SUBNET_2 }}" \
+            --query "Subnets[?MapPublicIpOnLaunch==\`true\`].SubnetId" \
+            --output text)
+
+          if [ -n "$PUBLIC_SUBNETS" ]; then
+            echo "::error::ECS subnets must be private."
+            echo "$PUBLIC_SUBNETS"
+            exit 1
+          fi
 
       - name: Validate CloudWatch log group
         run: |
-          aws logs describe-log-groups \
+          LOG_GROUP_EXISTS=$(aws logs describe-log-groups \
             --log-group-name-prefix "${{ vars.CLOUDWATCH_LOG_GROUP }}" \
-            --query "logGroups[?logGroupName=='${{ vars.CLOUDWATCH_LOG_GROUP }}']" \
-            --output text \
-            | grep "${{ vars.CLOUDWATCH_LOG_GROUP }}"
+            --query "logGroups[?logGroupName=='${{ vars.CLOUDWATCH_LOG_GROUP }}'] | length(@)" \
+            --output text)
+
+          if [ "$LOG_GROUP_EXISTS" -ne "1" ]; then
+            echo "::error::CloudWatch log group does not exist."
+            exit 1
+          fi
 
       - name: Validate IAM roles
         run: |
@@ -145,6 +172,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq  
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -191,6 +223,23 @@ jobs:
 
           jq empty ecs/task-definition.json
 
+      - name: Generate ECS network configuration
+        env:
+          ECS_PRIVATE_SUBNET_1: ${{ vars.ECS_PRIVATE_SUBNET_1 }}
+          ECS_PRIVATE_SUBNET_2: ${{ vars.ECS_PRIVATE_SUBNET_2 }}
+          ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
+        run: |
+          envsubst < ecs/network-config.template.json > ecs/network-config.json
+
+      - name: Validate generated network configuration
+        run: |
+          if grep -q '\${' ecs/network-config.json; then
+            echo "::error::Network configuration contains unresolved variables."
+            exit 1
+          fi
+
+          jq empty ecs/network-config.json    
+
       - name: Render ECS task definition
         id: render-task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -209,13 +258,59 @@ jobs:
 
           echo "task_definition=$TASK_DEFINITION_ARN" >> $GITHUB_OUTPUT
 
-      - name: Update ECS service
+      - name: Check ECS service status
+        id: ecs-service-check
         run: |
-          aws ecs update-service \
-            --cluster ${{ vars.ECS_CLUSTER_NAME }} \
-            --service ${{ vars.ECS_SERVICE_NAME }} \
-            --task-definition ${{ steps.register-task.outputs.task_definition }} \
-            --force-new-deployment
+          SERVICE_EXISTS=$(aws ecs describe-services \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+            --query "services | length(@)" \
+            --output text 2>/dev/null || echo "0")
+
+          echo "exists=$SERVICE_EXISTS" >> $GITHUB_OUTPUT
+
+          if [ "$SERVICE_EXISTS" -eq "1" ]; then
+            echo "ECS service exists."
+          else
+            echo "ECS service does not exist. Initial deployment required."
+          fi
+
+      - name: Deploy ECS service
+        run: |
+          SERVICE_EXISTS=$(aws ecs describe-services \
+          --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+          --services "${{ vars.ECS_SERVICE_NAME }}" \
+          --query "services | length(@)" \
+          --output text 2>/dev/null || echo "0")
+
+          if [ "$SERVICE_EXISTS" -eq "1" ]; then
+
+            echo "Updating existing ECS service..."
+
+            aws ecs update-service \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --service "${{ vars.ECS_SERVICE_NAME }}" \
+              --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+              --force-new-deployment
+
+          else
+
+            echo "Creating ECS service..."
+
+            aws ecs create-service \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+              --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
+              --network-configuration file://ecs/network-config.json \
+              --tags \
+                key=Project,value=bflow \
+                key=Environment,value=production \
+                key=ManagedBy,value=github-actions
+
+          fi
 
       - name: Wait for ECS stability
         run: |
