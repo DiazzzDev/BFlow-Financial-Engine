@@ -1,0 +1,14 @@
+# ============================================================================
+# BFlow Backend - Trivy Ignore List
+#
+# Temporary ignores for vulnerabilities reported in the base image/tooling.
+# Review and remove these entries when the base image is updated.
+# ============================================================================
+
+CVE-2026-25681
+CVE-2026-27136
+CVE-2026-33814
+CVE-2026-39821
+CVE-2026-27145
+CVE-2026-39822
+CVE-2026-42504

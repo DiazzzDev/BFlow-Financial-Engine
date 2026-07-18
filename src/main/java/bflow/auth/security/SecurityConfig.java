@@ -19,6 +19,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import bflow.common.response.ApiResponse;
 
 /**
  * Main security configuration for the application.
@@ -79,13 +80,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint((req, res, e) -> {
                             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             res.setContentType("application/json");
+                            ApiResponse<Void> body = ApiResponse.error(
+                                "Authentication required",
+                                req.getRequestURI()
+                            );
                             res.getWriter().write(
-                        """
-                                {
-                                  "error": "unauthorized",
-                                  "message": "Authentication required"
-                                }
-                            """);
+                                objectMapper.writeValueAsString(body)
+                            );
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
@@ -93,8 +94,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
-                                "/actuator/info",
-                                "/actuator/startup"
+                                "/actuator/info"
                         ).permitAll()
                         .requestMatchers("/api/v1/legal/**").permitAll()
                         .requestMatchers(

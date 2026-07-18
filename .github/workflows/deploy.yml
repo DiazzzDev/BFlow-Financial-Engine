@@ -1,0 +1,491 @@
+name: BFlow Studio Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  security:
+    name: Security checks
+    uses: ./.github/workflows/security.yml
+
+  validate-environment:
+    name: Validate deployment environment
+    needs: security
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Validate GitHub configuration
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
+
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
+
+          ECS_PUBLIC_SUBNET_1: ${{ vars.ECS_PUBLIC_SUBNET_1 }}
+          ECS_PUBLIC_SUBNET_2: ${{ vars.ECS_PUBLIC_SUBNET_2 }}
+          ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
+
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+
+        run: |
+          set -euo pipefail
+
+          required=(
+            AWS_ROLE_ARN
+            RDS_SECRET_ARN
+            AWS_REGION
+            ECR_REPOSITORY
+            ECS_CLUSTER_NAME
+            ECS_SERVICE_NAME
+            ECS_CONTAINER_NAME
+            ECS_TASK_FAMILY
+            ECS_EXECUTION_ROLE_ARN
+            ECS_TASK_ROLE_ARN
+            CLOUDWATCH_LOG_GROUP
+            ECS_PUBLIC_SUBNET_1
+            ECS_PUBLIC_SUBNET_2
+            ECS_SECURITY_GROUP
+            CLOUDFLARE_API_TOKEN
+            CLOUDFLARE_ZONE_ID
+            CLOUDFLARE_DNS_RECORD_ID
+            CLOUDFLARE_DNS_RECORD_NAME
+          )
+
+          for var in "${required[@]}"; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is not configured."
+              exit 1
+            fi
+          done
+
+      - name: Validate Secrets Manager secret
+        run: |
+          aws secretsmanager describe-secret \
+            --secret-id "${{ secrets.RDS_SECRET_ARN }}" \
+            >/dev/null
+
+      - name: Validate ECR repository
+        run: |
+          REPOSITORY_NAME=$(basename "${{ vars.ECR_REPOSITORY }}")
+
+          aws ecr describe-repositories \
+            --repository-names "$REPOSITORY_NAME"
+
+      - name: Validate ECS cluster
+        run: |
+          aws ecs describe-clusters \
+            --clusters "${{ vars.ECS_CLUSTER_NAME }}" \
+            >/dev/null
+
+      - name: Validate ECS networking
+        run: |
+
+          aws ec2 describe-subnets \
+            --subnet-ids \
+              "${{ vars.ECS_PUBLIC_SUBNET_1 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_2 }}" \
+            >/dev/null
+
+          aws ec2 describe-security-groups \
+            --group-ids \
+              "${{ vars.ECS_SECURITY_GROUP }}" \
+            >/dev/null      
+
+      - name: Validate subnet configuration
+        run: |
+          PUBLIC_SUBNETS=$(aws ec2 describe-subnets \
+            --subnet-ids \
+              "${{ vars.ECS_PUBLIC_SUBNET_1 }}" \
+              "${{ vars.ECS_PUBLIC_SUBNET_2 }}" \
+            --query "Subnets[?MapPublicIpOnLaunch==\`true\`].SubnetId" \
+            --output text)
+
+          if [ -z "$PUBLIC_SUBNETS" ]; then
+              echo "::error::ECS subnets must be public."
+              exit 1
+          fi
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate Cloudflare configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+        run: |
+          set -euo pipefail
+
+          echo "Validating Cloudflare API token..."
+          TOKEN_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$TOKEN_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare API token is invalid or expired."
+            echo "$TOKEN_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "Validating Cloudflare zone..."
+          ZONE_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$ZONE_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare zone ID is invalid, or token lacks access to it."
+            echo "$ZONE_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "Validating Cloudflare DNS record..."
+          RECORD_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records/${CLOUDFLARE_DNS_RECORD_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          if [ "$(echo "$RECORD_CHECK" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare DNS record ID does not exist in this zone."
+            echo "$RECORD_CHECK" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          RECORD_NAME=$(echo "$RECORD_CHECK" | jq -r '.result.name')
+          RECORD_TYPE=$(echo "$RECORD_CHECK" | jq -r '.result.type')
+
+          if [ "$RECORD_NAME" != "$CLOUDFLARE_DNS_RECORD_NAME" ]; then
+            echo "::error::DNS record name mismatch. Expected '${CLOUDFLARE_DNS_RECORD_NAME}', got '${RECORD_NAME}'."
+            exit 1
+          fi
+
+          if [ "$RECORD_TYPE" != "A" ]; then
+            echo "::error::DNS record is type '${RECORD_TYPE}', expected 'A'."
+            exit 1
+          fi
+
+          echo "Cloudflare configuration validated successfully."    
+
+      - name: Validate CloudWatch log group
+        run: |
+          LOG_GROUP_EXISTS=$(aws logs describe-log-groups \
+            --log-group-name-prefix "${{ vars.CLOUDWATCH_LOG_GROUP }}" \
+            --query "logGroups[?logGroupName=='${{ vars.CLOUDWATCH_LOG_GROUP }}'] | length(@)" \
+            --output text)
+
+          if [ "$LOG_GROUP_EXISTS" -ne "1" ]; then
+            echo "::error::CloudWatch log group does not exist."
+            exit 1
+          fi
+
+      - name: Validate IAM roles
+        run: |
+          aws iam get-role \
+            --role-name "$(basename '${{ vars.ECS_EXECUTION_ROLE_ARN }}')" \
+            >/dev/null
+
+          aws iam get-role \
+            --role-name "$(basename '${{ vars.ECS_TASK_ROLE_ARN }}')" \
+            >/dev/null
+
+      - name: Environment validation summary
+        run: |
+          echo "Environment validation completed successfully."
+
+  deploy:
+    name: Deploy to ECS
+    
+    needs:
+    - security
+    - validate-environment
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq  
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+
+          tags: |
+            ${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate task definition
+        env:
+          ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
+          RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
+          COGNITO_ISSUER_URI: ${{ vars.COGNITO_ISSUER_URI }}
+        run: |
+          envsubst < ecs/task-definition.template.json > ecs/task-definition.json
+
+      - name: Validate generated task definition
+        run: |
+          if grep -q '\${' ecs/task-definition.json; then
+            echo "::error::Task definition contains unresolved template variables."
+            exit 1
+          fi
+
+          jq empty ecs/task-definition.json
+
+      - name: Generate ECS network configuration
+        env:
+          ECS_PUBLIC_SUBNET_1: ${{ vars.ECS_PUBLIC_SUBNET_1 }}
+          ECS_PUBLIC_SUBNET_2: ${{ vars.ECS_PUBLIC_SUBNET_2 }}
+          ECS_SECURITY_GROUP: ${{ vars.ECS_SECURITY_GROUP }}
+        run: |
+          envsubst < ecs/network-config.template.json > ecs/network-config.json
+
+      - name: Validate generated network configuration
+        run: |
+          if grep -q '\${' ecs/network-config.json; then
+            echo "::error::Network configuration contains unresolved variables."
+            exit 1
+          fi
+
+          jq empty ecs/network-config.json    
+
+      - name: Render ECS task definition
+        id: render-task-definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs/task-definition.json
+          container-name: ${{ vars.ECS_CONTAINER_NAME }}
+          image: ${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Register new task definition
+        id: register-task
+        run: |
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://${{ steps.render-task-definition.outputs.task-definition }} \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+
+          echo "task_definition=$TASK_DEFINITION_ARN" >> $GITHUB_OUTPUT
+
+      - name: Check ECS service status
+        id: ecs-service-check
+        run: |
+          SERVICE_STATUS=$(aws ecs describe-services \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+            --query "services[0].status" \
+            --output text 2>/dev/null)
+          SERVICE_STATUS="${SERVICE_STATUS:-MISSING}"
+          [ "$SERVICE_STATUS" = "None" ] && SERVICE_STATUS="MISSING"
+
+          echo "status=$SERVICE_STATUS" >> $GITHUB_OUTPUT
+          echo "Service status: $SERVICE_STATUS"
+
+      - name: Deploy ECS service
+        run: |
+          STATUS="${{ steps.ecs-service-check.outputs.status }}"
+
+          if [ "$STATUS" = "ACTIVE" ]; then
+              echo "Updating existing ECS service..."
+              aws ecs update-service \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service "${{ vars.ECS_SERVICE_NAME }}" \
+                --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                --force-new-deployment
+          else
+              echo "Creating ECS service (status was: $STATUS)..."
+              if ! aws ecs create-service \
+                    --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                    --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                    --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                    --desired-count 1 \
+                    --launch-type FARGATE \
+                    --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
+                    --network-configuration file://ecs/network-config.json \
+                    --tags \
+                      key=Project,value=bflow \
+                      key=Environment,value=production \
+                      key=ManagedBy,value=github-actions \
+                    2> create_error.log; then
+                  if grep -q "ServiceAlreadyExistsException\|already exists" create_error.log; then
+                      echo "Service was created concurrently or status check was stale — falling back to update."
+                      aws ecs update-service \
+                        --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                        --service "${{ vars.ECS_SERVICE_NAME }}" \
+                        --task-definition "${{ steps.register-task.outputs.task_definition }}" \
+                        --force-new-deployment
+                  else
+                      cat create_error.log
+                      exit 1
+                  fi
+              fi
+          fi
+
+      - name: Wait for ECS stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+          || {
+              echo "========== SERVICE =========="
+              aws ecs describe-services \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --services "${{ vars.ECS_SERVICE_NAME }}"
+
+              echo "========== RUNNING TASKS =========="
+              RUNNING_ARNS=$(aws ecs list-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                --desired-status RUNNING \
+                --query "taskArns[]" \
+                --output text)
+              [ -n "$RUNNING_ARNS" ] && aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks $RUNNING_ARNS
+
+              echo "========== STOPPED TASKS =========="
+              STOPPED_ARNS=$(aws ecs list-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+                --desired-status STOPPED \
+                --query "taskArns[]" \
+                --output text)
+              [ -n "$STOPPED_ARNS" ] && aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks $STOPPED_ARNS
+
+              exit 1
+          }
+
+      - name: Get new task public IP
+        id: get_ip
+        run: |
+          for i in {1..5}; do
+            TASK_ARN=$(aws ecs list-tasks \
+              --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+              --service-name "${{ vars.ECS_SERVICE_NAME }}" \
+              --desired-status RUNNING \
+              --query "taskArns[0]" \
+              --output text)
+
+            if [ -n "$TASK_ARN" ] && [ "$TASK_ARN" != "None" ]; then
+              ENI_ID=$(aws ecs describe-tasks \
+                --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+                --tasks "$TASK_ARN" \
+                --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+                --output text)
+
+              PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+                --network-interface-ids "$ENI_ID" \
+                --query "NetworkInterfaces[0].Association.PublicIp" \
+                --output text)
+
+              if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "None" ]; then
+                break
+              fi
+            fi
+
+            echo "Public IP not ready yet, retrying in 10s..."
+            sleep 10
+          done
+
+          if [ -z "$PUBLIC_IP" ] || [ "$PUBLIC_IP" = "None" ]; then
+            echo "::error::Could not resolve task public IP after retries."
+            exit 1
+          fi
+
+          echo "Public IP: $PUBLIC_IP"
+          echo "public_ip=$PUBLIC_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Update Cloudflare DNS record
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_DNS_RECORD_ID: ${{ vars.CLOUDFLARE_DNS_RECORD_ID }}
+          CLOUDFLARE_DNS_RECORD_NAME: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PUBLIC_IP: ${{ steps.get_ip.outputs.public_ip }}
+        run: |
+          RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records/${CLOUDFLARE_DNS_RECORD_ID}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{
+              \"type\": \"A\",
+              \"name\": \"${CLOUDFLARE_DNS_RECORD_NAME}\",
+              \"content\": \"${PUBLIC_IP}\",
+              \"proxied\": true,
+              \"ttl\": 1
+            }")
+
+          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare DNS update failed."
+            echo "$RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          echo "DNS record updated successfully."
+          
+      - name: Deployment summary
+        run: |
+          echo "Deployment completed successfully."
+          echo "Task definition family: ${{ vars.ECS_TASK_FAMILY }}"
+          echo "Public IP: ${{ steps.get_ip.outputs.public_ip }}"
+          echo "DNS record: ${{ vars.CLOUDFLARE_DNS_RECORD_NAME }}"
