@@ -3,6 +3,9 @@ version: 2
 updates:
   - package-ecosystem: "maven"
     directory: "/"
+
+    target-branch: "develop"
+
     schedule:
       interval: "weekly"
 
