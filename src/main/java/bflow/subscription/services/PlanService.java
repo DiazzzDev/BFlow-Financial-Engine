@@ -3,11 +3,9 @@ package bflow.subscription.services;
 import bflow.common.exception.NotFoundException;
 import bflow.subscription.entities.Plan;
 import bflow.subscription.repository.RepositoryPlan;
-import bflow.subscription.repository.RepositorySubscription;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,9 +16,6 @@ public class PlanService {
         private static final String FREE_PLAN_CODE = "FREE";
         /** Repository for plan lookup and persistence. */
         private final RepositoryPlan repositoryPlan;
-
-        /** Repository for subscription lookup and persistence. */
-        private final RepositorySubscription repositorySubscription;
 
         /**
          * Retrieve the configured free plan.
@@ -51,19 +46,6 @@ public class PlanService {
                         new NotFoundException(
                                 "Plan not found"
                         ));
-    }
-
-    /**
-     * Retrieve all active plans available for subscription.
-     *
-     * @return list of active plans
-     */
-    public List<Plan> getActivePlans() {
-
-        return repositoryPlan.findAll()
-                .stream()
-                .filter(Plan::isActive)
-                .toList();
     }
 
 }

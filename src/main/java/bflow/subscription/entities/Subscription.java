@@ -68,14 +68,14 @@ public class Subscription {
 
     /** Current price charged for the subscription. */
     @Column(nullable = false, precision = MONEY_PRECISION, scale = 2)
-    private BigDecimal currentPrice;
+    private BigDecimal billingAmount;
 
     /** When the subscription starts. */
     @Column(nullable = false)
     private Instant startsAt;
 
     /** When the subscription ends. */
-    @Column(nullable = false)
+    @Column
     private Instant endsAt;
 
     /** Whether the subscription renews automatically. */
@@ -86,13 +86,18 @@ public class Subscription {
     @Column
     private Instant canceledAt;
 
-        /** Timestamp when the subscription record was created. */
-        @CreationTimestamp
-        private Instant createdAt;
+    /** Momento en que se envió el último 
+     * recordatorio de renovación (solo planes anuales). */
+    @Column
+    private Instant reminderSentAt;
 
-        /** Timestamp when the subscription record was last updated. */
-        @UpdateTimestamp
-        private Instant updatedAt;
+    /** Timestamp when the subscription record was created. */
+    @CreationTimestamp
+    private Instant createdAt;
+
+    /** Timestamp when the subscription record was last updated. */
+    @UpdateTimestamp
+    private Instant updatedAt;
 
     /** Next billing date for the subscription. */
     @Column(name = "next_billing_at")

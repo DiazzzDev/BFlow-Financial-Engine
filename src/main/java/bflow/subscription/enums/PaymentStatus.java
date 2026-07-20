@@ -2,15 +2,15 @@ package bflow.subscription.enums;
 
 public enum PaymentStatus {
 
-    /** Payment has been created but not yet completed. */
     PENDING,
 
-    /** Payment completed successfully. */
-    PAID,
+    PROCESSING,
 
-    /** Payment failed during processing. */
+    SUCCEEDED,
+
     FAILED,
 
-    /** Payment has been refunded. */
+    CANCELED,
+
     REFUNDED
 }

@@ -1,6 +1,7 @@
 package bflow.subscription.repository;
 
 import bflow.subscription.entities.Payment;
+import bflow.subscription.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,13 +20,17 @@ public interface RepositoryPayment extends JpaRepository<Payment, UUID> {
      */
     List<Payment> findByUserId(UUID userId);
 
-    /**
-     * Find a payment by its external transaction identifier.
-     *
-     * @param externalTransactionId external payment id
-     * @return optional payment matching the identifier
-     */
-    Optional<Payment> findByExternalTransactionId(
-            String externalTransactionId
-    );
+    Optional<Payment> findByProviderPaymentId(String providerPaymentId);
+
+    Optional<Payment> findByReference(String reference);
+
+    Optional<Payment> findByIdempotencyKey(UUID idempotencyKey);
+
+    boolean existsByIdempotencyKey(UUID idempotencyKey);
+
+    List<Payment> findBySubscriptionId(UUID subscriptionId);
+
+    List<Payment> findByStatus(PaymentStatus status);
+
+    boolean existsByProviderPaymentId(String providerPaymentId);
 }

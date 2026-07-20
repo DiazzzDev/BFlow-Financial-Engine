@@ -1,6 +1,7 @@
 package bflow.subscription.enums;
 
 public enum SubscriptionStatus {
+    PENDING_ACTIVATION,
 
     /** Subscription is currently active. */
     ACTIVE,

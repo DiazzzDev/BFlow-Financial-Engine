@@ -18,4 +18,6 @@ public interface RepositoryPlan
      * @return optional plan matching the code
      */
     Optional<Plan> findByCode(String code);
+
+    Optional<Plan> findByProviderLinkId(String providerLinkId);
 }

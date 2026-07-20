@@ -113,4 +113,28 @@ public final class EmailTemplateService {
                 html
         );
     }
+
+    public void sendRenewalReminderEmail(
+        final String toEmail,
+        final String userName,
+        final String planName,
+        final String amount,
+        final String renewalDate,
+        final String checkoutUrl
+    ) {
+        Context context = new Context();
+        context.setVariable("userName", userName);
+        context.setVariable("planName", planName);
+        context.setVariable("amount", amount);
+        context.setVariable("renewalDate", renewalDate);
+        context.setVariable("checkoutUrl", checkoutUrl);
+        context.setVariable("year", Year.now().getValue());
+        context.setVariable("supportEmail", supportEmail);
+        context.setVariable("logoUrl", logoUrl);
+
+        String html = templateEngine.process("renewal-reminder", context);
+        sesEmailService.sendEmail(
+                toEmail, "Your " + planName + " plan is renewing soon", html
+        );
+        }
 }

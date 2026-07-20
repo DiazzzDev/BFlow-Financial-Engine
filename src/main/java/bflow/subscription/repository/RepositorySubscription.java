@@ -1,6 +1,7 @@
 package bflow.subscription.repository;
 
 import bflow.subscription.entities.Subscription;
+import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -13,18 +14,6 @@ import java.util.UUID;
 @Repository
 public interface RepositorySubscription
         extends JpaRepository<Subscription, UUID> {
-
-    /**
-     * Find a subscription for a user that matches a specific status.
-     *
-     * @param userId the user identifier
-     * @param status subscription status
-     * @return optional subscription matching user and status
-     */
-    Optional<Subscription> findByUserIdAndStatus(
-            UUID userId,
-            SubscriptionStatus status
-    );
 
     /**
      * Check whether a user already has any subscription.
@@ -42,24 +31,24 @@ public interface RepositorySubscription
      */
     Optional<Subscription> findByUserId(UUID userId);
 
-    /**
-     * Find subscriptions by their status.
-     *
-     * @param status subscription status
-     * @return list of subscriptions matching the status
-     */
-    List<Subscription> findByStatus(
-            SubscriptionStatus status
+    List<Subscription> findByPlan_IdAndUser_EmailAndStatusIn(
+            UUID planId, String email, List<SubscriptionStatus> statuses);
+
+    boolean existsByUser_IdAndPlan_IdAndStatusIn(
+            UUID userId, UUID planId, List<SubscriptionStatus> statuses);
+
+    List<Subscription> findAllByUser_IdOrderByCreatedAtDesc(UUID userId);
+
+    List<Subscription> 
+    findAllByStatusAndNextBillingAtBefore(
+        SubscriptionStatus status, Instant threshold
     );
 
-    /**
-     * Find subscriptions with auto-renew enabled that will bill
-     * before a given date.
-     *
-     * @param date threshold billing date
-     * @return list of subscriptions due for renewal
-     */
-    List<Subscription> findByAutoRenewTrueAndNextBillingAtBefore(
-            Instant date
-    );
+    List<Subscription> 
+    findAllByPlan_BillingPeriodAndStatusAndNextBillingAtBetweenAndReminderSentAtIsNull(
+            BillingPeriod billingPeriod,
+            SubscriptionStatus status,
+            Instant from,
+            Instant to
+        );
 }
