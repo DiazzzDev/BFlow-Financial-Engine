@@ -97,6 +97,7 @@ public class SecurityConfig {
                                 "/actuator/startup"
                         ).permitAll()
                         .requestMatchers("/api/v1/legal/**").permitAll()
+                        .requestMatchers("/api/v1/webhooks/wompi").permitAll()
                         .requestMatchers(
                                 "/api/auth/verify-email"
                         ).permitAll()

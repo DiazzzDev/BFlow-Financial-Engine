@@ -1,5 +1,6 @@
 package bflow.subscription.gateway.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -7,6 +8,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.UpperCamelCaseStrategy.class)
 public record WompiWebhookPayload(
         String idCuenta,
@@ -16,17 +18,23 @@ public record WompiWebhookPayload(
         String resultadoTransaccion,
         boolean esProductiva,
         EnlacePagoInfo enlacePago,
-        @JsonProperty("cliente") ClienteInfo cliente
+        ClienteInfo cliente
 ) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.UpperCamelCaseStrategy.class)
     public record EnlacePagoInfo(
-            Long id,
+            String id,
             String identificadorEnlaceComercio,
-            String nombreProducto
+            String nombreProducto,
+            String descripcionProducto
     ) { }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.UpperCamelCaseStrategy.class)
     public record ClienteInfo(
-        String nombre,
-        String email
+            String nombre,
+            @JsonProperty("EMail") String email,
+            String idSuscripcion,
+            String diaPagoSuscripcion
     ) { }
 }

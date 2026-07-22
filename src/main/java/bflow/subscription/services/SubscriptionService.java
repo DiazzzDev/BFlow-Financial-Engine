@@ -1,6 +1,7 @@
 package bflow.subscription.services;
 
 import bflow.auth.entities.User;
+import bflow.subscription.WompiApiClient;
 import bflow.subscription.dto.SubscriptionResponse;
 import bflow.subscription.entities.Plan;
 import bflow.subscription.entities.Subscription;
@@ -9,6 +10,7 @@ import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositorySubscription;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
@@ -27,6 +30,7 @@ public class SubscriptionService {
 
     private final RepositorySubscription repositorySubscription;
     private final PlanService planService;
+    private final WompiApiClient wompiApiClient;
 
     @Transactional(readOnly = true)
     public List<SubscriptionResponse> findMySubscriptions(final UUID userId) {
@@ -37,14 +41,14 @@ public class SubscriptionService {
     @Transactional
     public void cancel(final UUID userId, final UUID subscriptionId) {
         Subscription subscription = repositorySubscription
-            .findById(subscriptionId)
+                .findById(subscriptionId)
                 .orElseThrow(() -> new EntityNotFoundException(
-                    "Suscripción no encontrada"
+                        "Suscripción no encontrada"
                 ));
 
         if (!subscription.getUser().getId().equals(userId)) {
             throw new AccessDeniedException(
-                "No autorizado para cancelar esta suscripción"
+                    "No autorizado para cancelar esta suscripción"
             );
         }
 
@@ -52,14 +56,35 @@ public class SubscriptionService {
             return; // idempotente: cancelar dos veces no es error
         }
 
-        // LIMITACIÓN CONOCIDA: esto solo cancela localmente. Wompi no ofrece
-        // (según su documentación pública) un endpoint para dar de baja a un
-        // suscriptor individual sin desactivar el enlace completo del plan.
-        // Confirmar con soporte de Wompi antes de ir a producción.
+        if (subscription.getPlan().getCode().equals("FREE")) {
+            throw new IllegalStateException("El plan gratuito no se puede cancelar");
+        }
+
+        if (subscription.getStatus() != SubscriptionStatus.ACTIVE
+                && subscription.getStatus() != SubscriptionStatus.PAST_DUE) {
+            throw new IllegalStateException(
+                    "Solo se pueden cancelar suscripciones activas o con pago vencido, estado actual: "
+                            + subscription.getStatus()
+            );
+        }
+
+        if (subscription.getProviderLinkId() != null) {
+            try {
+                wompiApiClient.deactivateRecurringLink(subscription.getProviderLinkId());
+                log.info("Enlace recurrente {} desactivado en Wompi para subscription {}",
+                        subscription.getProviderLinkId(), subscription.getId());
+            } catch (Exception e) {
+                log.error("No se pudo desactivar el enlace {} en Wompi para subscription {}. "
+                                + "Requiere desactivación manual en el panel para evitar cobros futuros.",
+                        subscription.getProviderLinkId(), subscription.getId(), e);
+            }
+        }
+
         subscription.setStatus(SubscriptionStatus.CANCELED);
         subscription.setCanceledAt(Instant.now());
         subscription.setAutoRenew(false);
         subscription.setEndsAt(Instant.now());
+        subscription.setNextBillingAt(null);
         repositorySubscription.save(subscription);
     }
 

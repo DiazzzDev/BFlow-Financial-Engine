@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/webhooks/wompi")
+@RequestMapping("/api/v1/webhooks/wompi")
 @RequiredArgsConstructor
 public final class WompiWebhookController {
 

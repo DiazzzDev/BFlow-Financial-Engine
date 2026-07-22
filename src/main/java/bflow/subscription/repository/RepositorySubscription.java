@@ -6,6 +6,7 @@ import bflow.subscription.enums.SubscriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -51,4 +52,18 @@ public interface RepositorySubscription
             Instant from,
             Instant to
         );
+    
+    List<Subscription> findByProviderLinkIdAndUser_EmailAndStatusIn(
+            String providerLinkId,
+            String email,
+            List<SubscriptionStatus> statuses
+        );
+
+    List<Subscription> findAllByStatusAndCreatedAtBefore(
+            SubscriptionStatus status, Instant threshold);
+
+    Optional<Subscription> findByProviderSubscriberId(String providerSubscriberId);
+
+    List<Subscription> findByUser_EmailAndBillingAmountAndStatus(
+            String email, BigDecimal billingAmount, SubscriptionStatus status);            
 }

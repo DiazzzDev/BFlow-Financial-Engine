@@ -1,13 +1,11 @@
 package bflow.subscription.services;
 
 import bflow.subscription.entities.Payment;
-import bflow.subscription.entities.Plan;
 import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.PaymentStatus;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.gateway.dto.WompiWebhookPayload;
 import bflow.subscription.repository.RepositoryPayment;
-import bflow.subscription.repository.RepositoryPlan;
 import bflow.subscription.repository.RepositorySubscription;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -27,13 +26,13 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WompiWebhookService {
 
-    private final RepositoryPlan repositoryPlan;
     private final RepositorySubscription repositorySubscription;
     private final RepositoryPayment repositoryPayment;
     private final ObjectMapper objectMapper;
@@ -43,7 +42,6 @@ public class WompiWebhookService {
 
     @Transactional
     public void process(final String rawBody, final String signature) {
-
         if (!isValidSignature(rawBody, signature)) {
             log.warn("HMAC inválido en webhook de Wompi");
             throw new SecurityException("Firma de webhook inválida");
@@ -51,82 +49,65 @@ public class WompiWebhookService {
 
         WompiWebhookPayload payload = parse(rawBody);
 
-        log.debug("Payload de webhook parseado: idTransaccion={}, enlacePago={}, resultado={}",
-                payload.idTransaccion(), payload.enlacePago().id(), payload.resultadoTransaccion());
-
-        // Idempotencia: si ya procesamos esta transacción, no hagas nada más.
-        if (repositoryPayment.existsByProviderPaymentId(
-                payload.idTransaccion())
-            ) {
+        if (repositoryPayment.existsByProviderPaymentId(payload.idTransaccion())) {
+            return;
+        }
+        if (!"ExitosaAprobada".equals(payload.resultadoTransaccion())) {
             return;
         }
 
-        if (!"ExitosaAprobada".equals(payload.resultadoTransaccion())) {
-            return; // no interesa registrar intentos fallidos por ahora
-        }
-
-        Plan plan = repositoryPlan.findByProviderLinkId(
-                payload.enlacePago().id().toString())
-                .orElseThrow(() -> new IllegalStateException(
-                    "Webhook para un enlace no reconocido: "
-                    + payload.enlacePago().id())
-                );
+        String idSuscripcion = payload.cliente().idSuscripcion();
 
         Subscription subscription = repositorySubscription
-                .findByPlan_IdAndUser_EmailAndStatusIn(
-                        plan.getId(),
-                        payload.cliente().email(),
-                        List.of(
-                            SubscriptionStatus.PENDING_ACTIVATION,
-                            SubscriptionStatus.ACTIVE,
-                            SubscriptionStatus.PAST_DUE
-                        )
-                )
-                .stream().findFirst()
+                .findByProviderSubscriberId(idSuscripcion)
+                .or(() -> repositorySubscription
+                        .findByUser_EmailAndBillingAmountAndStatus(
+                                payload.cliente().email(),
+                                payload.monto(),
+                                SubscriptionStatus.PENDING_ACTIVATION)
+                        .stream().findFirst())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró suscripción para email "
-                            + payload.cliente().email()
-                            + " en plan "
-                            + plan.getId()
-                        )
-                );
+                        "No se encontró suscripción para email " + payload.cliente().email()
+                                + " idSuscripcion=" + idSuscripcion));
 
-        Payment payment = new Payment();
-        payment.setSubscription(subscription);
-        payment.setProviderPaymentId(payload.idTransaccion());
-        payment.setAmount(payload.monto());
-        payment.setStatus(PaymentStatus.SUCCEEDED);
-        repositoryPayment.save(payment);
+        if (subscription.getProviderSubscriberId() == null) {
+            subscription.setProviderSubscriberId(idSuscripcion);
+        }
 
-        log.info("Payment creado: id={}, subscriptionId={}, monto={}",
-                payment.getId(), subscription.getId(), payload.monto());
-
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setNextBillingAt(computeNextBillingAt(plan));
-        repositorySubscription.save(subscription);
+        activate(subscription, payload.idTransaccion(), payload.monto());
     }
 
-    private boolean isValidSignature(
-        final String rawBody, final String signature
-    ) {
+    /** Reusable: activa una suscripción y registra el pago. Usado por webhook y reconciliación. */
+    public void activate(final Subscription subscription, final String providerPaymentId, final BigDecimal monto) {
+        Payment payment = new Payment();
+        payment.setUser(subscription.getUser());
+        payment.setSubscription(subscription);
+        payment.setProviderPaymentId(providerPaymentId);
+        payment.setAmount(monto);
+        payment.setCurrency("USD");
+        payment.setProvider("WOMPI");
+        payment.setReference(providerPaymentId); // Wompi no manda una referencia propia distinta al idTransaccion; la reusamos
+        payment.setIdempotencyKey(UUID.randomUUID());
+        payment.setStatus(PaymentStatus.SUCCEEDED);
+        payment.setProcessedAt(Instant.now());
+        repositoryPayment.save(payment);
+
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setNextBillingAt(computeNextBillingAt(subscription));
+        repositorySubscription.save(subscription);
+
+        log.info("Subscription {} activada (providerPaymentId={})", subscription.getId(), providerPaymentId);
+    }
+
+    private boolean isValidSignature(final String rawBody, final String signature) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            
-            mac.init(new SecretKeySpec(apiSecret.getBytes(
-                StandardCharsets.UTF_8),
-                "HmacSHA256"
-            ));
-
-            byte[] computed = mac.doFinal(
-                rawBody.getBytes(StandardCharsets.UTF_8)
-            );
-
+            mac.init(new SecretKeySpec(apiSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] computed = mac.doFinal(rawBody.getBytes(StandardCharsets.UTF_8));
             String computedHex = HexFormat.of().formatHex(computed);
-
             return MessageDigest.isEqual(
                     computedHex.getBytes(StandardCharsets.UTF_8),
-                    signature.getBytes(StandardCharsets.UTF_8)
-            );
+                    signature.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             return false;
         }
@@ -136,27 +117,21 @@ public class WompiWebhookService {
         try {
             return objectMapper.readValue(rawBody, WompiWebhookPayload.class);
         } catch (Exception e) {
-            throw new IllegalArgumentException(
-                "Payload de webhook inválido", e
-            );
+            throw new IllegalArgumentException("Payload de webhook inválido", e);
         }
     }
 
-    private Instant computeNextBillingAt(final Plan plan) {
-        return switch (plan.getBillingPeriod()) {
-            case MONTHLY -> computeNextMonthly(plan);
-            case YEARLY -> Instant.now().plus(
-                365, ChronoUnit.DAYS
-            );
+    private Instant computeNextBillingAt(final Subscription subscription) {
+        return switch (subscription.getPlan().getBillingPeriod()) {
+            case MONTHLY -> computeNextMonthly(subscription);
+            case YEARLY -> Instant.now().plus(365, ChronoUnit.DAYS);
         };
     }
 
-    private Instant computeNextMonthly(final Plan plan) {
+    private Instant computeNextMonthly(final Subscription subscription) {
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         ZonedDateTime next = now.withDayOfMonth(
-            Math.min(
-                plan.getBillingDay(), now.toLocalDate().lengthOfMonth()
-            ));
+                Math.min(subscription.getBillingDay(), now.toLocalDate().lengthOfMonth()));
         if (!next.isAfter(now)) {
             next = next.plusMonths(1);
         }

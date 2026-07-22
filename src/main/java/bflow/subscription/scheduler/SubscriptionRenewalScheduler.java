@@ -4,6 +4,7 @@ import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositorySubscription;
+import bflow.subscription.services.SubscriptionReconciliationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +24,9 @@ public class SubscriptionRenewalScheduler {
     private static final int ANNUAL_REMINDER_WINDOW_DAYS = 14;
 
     private final RepositorySubscription repositorySubscription;
+
+    private final SubscriptionReconciliationService subscriptionReconciliationService;
+
     // private final EmailService emailService; // conecta tu servicio de correo real aquí
 
     /** Corre diario: si Wompi debió cobrar y no llegó webhook, marca PAST_DUE. */
@@ -91,5 +95,11 @@ public class SubscriptionRenewalScheduler {
             subscription.setReminderSentAt(now);
             repositorySubscription.save(subscription);
         }
+    }
+
+    @Scheduled(cron = "0 0 */6 * * *") // cada 6h, alineado al grace period
+    @Transactional
+    public void reconcilePending() {
+        subscriptionReconciliationService.reconcilePendingActivations();
     }
 }

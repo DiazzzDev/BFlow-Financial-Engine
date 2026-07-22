@@ -82,6 +82,22 @@ public class Subscription {
     @Column(nullable = false)
     private boolean autoRenew = true;
 
+    /** Id del enlace de pago recurrente en Wompi, único por suscripción. */
+    @Column(name = "provider_link_id")
+    private String providerLinkId;
+
+    /** URL de checkout entregada por Wompi para esta suscripción. */
+    @Column(name = "checkout_url")
+    private String checkoutUrl;
+
+    /** Día del mes en que Wompi cobrará esta suscripción específica. */
+    @Column(name = "billing_day")
+    private Integer billingDay;
+
+    /** Id real del suscriptor asignado por Wompi (Cliente.IdSuscripcion en el webhook). */
+    @Column(name = "provider_subscriber_id")
+    private String providerSubscriberId;
+
     /** When the subscription was cancelled, if applicable. */
     @Column
     private Instant canceledAt;
