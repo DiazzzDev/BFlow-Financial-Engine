@@ -65,5 +65,7 @@ public interface RepositorySubscription
     Optional<Subscription> findByProviderSubscriberId(String providerSubscriberId);
 
     List<Subscription> findByUser_EmailAndBillingAmountAndStatus(
-            String email, BigDecimal billingAmount, SubscriptionStatus status);            
+            String email, BigDecimal billingAmount, SubscriptionStatus status);
+
+    Optional<Subscription> findByCheckoutReferenceAndStatus(String checkoutReference, SubscriptionStatus status);
 }

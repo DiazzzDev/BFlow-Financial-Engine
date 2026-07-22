@@ -2,6 +2,7 @@ package bflow.subscription.services;
 
 import bflow.subscription.entities.Payment;
 import bflow.subscription.entities.Subscription;
+import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.PaymentStatus;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.gateway.dto.WompiWebhookPayload;
@@ -25,7 +26,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -56,15 +56,20 @@ public class WompiWebhookService {
             return;
         }
 
-        String idSuscripcion = payload.cliente().idSuscripcion();
+        Subscription subscription = payload.cliente().idSuscripcion() != null
+                ? matchRecurring(payload)
+                : matchOneTime(payload);
 
+        activate(subscription, payload.idTransaccion(), payload.monto());
+    }
+
+    private Subscription matchRecurring(final WompiWebhookPayload payload) {
+        String idSuscripcion = payload.cliente().idSuscripcion();
         Subscription subscription = repositorySubscription
                 .findByProviderSubscriberId(idSuscripcion)
                 .or(() -> repositorySubscription
                         .findByUser_EmailAndBillingAmountAndStatus(
-                                payload.cliente().email(),
-                                payload.monto(),
-                                SubscriptionStatus.PENDING_ACTIVATION)
+                                payload.cliente().email(), payload.monto(), SubscriptionStatus.PENDING_ACTIVATION)
                         .stream().findFirst())
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró suscripción para email " + payload.cliente().email()
@@ -73,8 +78,15 @@ public class WompiWebhookService {
         if (subscription.getProviderSubscriberId() == null) {
             subscription.setProviderSubscriberId(idSuscripcion);
         }
+        return subscription;
+    }
 
-        activate(subscription, payload.idTransaccion(), payload.monto());
+    private Subscription matchOneTime(final WompiWebhookPayload payload) {
+        String reference = payload.enlacePago().identificadorEnlaceComercio();
+        return repositorySubscription
+                .findByCheckoutReferenceAndStatus(reference, SubscriptionStatus.PENDING_ACTIVATION)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró suscripción para checkoutReference " + reference));
     }
 
     /** Reusable: activa una suscripción y registra el pago. Usado por webhook y reconciliación. */
@@ -86,14 +98,18 @@ public class WompiWebhookService {
         payment.setAmount(monto);
         payment.setCurrency("USD");
         payment.setProvider("WOMPI");
-        payment.setReference(providerPaymentId); // Wompi no manda una referencia propia distinta al idTransaccion; la reusamos
+        payment.setReference(providerPaymentId);
         payment.setIdempotencyKey(UUID.randomUUID());
         payment.setStatus(PaymentStatus.SUCCEEDED);
         payment.setProcessedAt(Instant.now());
         repositoryPayment.save(payment);
 
+        Instant nextBilling = computeNextBillingAt(subscription);
         subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setNextBillingAt(computeNextBillingAt(subscription));
+        subscription.setNextBillingAt(nextBilling);
+        if (subscription.getPlan().getBillingPeriod() == BillingPeriod.YEARLY) {
+            subscription.setEndsAt(nextBilling);
+        }
         repositorySubscription.save(subscription);
 
         log.info("Subscription {} activada (providerPaymentId={})", subscription.getId(), providerPaymentId);

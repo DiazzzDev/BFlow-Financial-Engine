@@ -90,6 +90,10 @@ public class Subscription {
     @Column(name = "checkout_url")
     private String checkoutUrl;
 
+    /** Referencia propia usada para matchear el webhook de pagos únicos (plan anual). */
+    @Column(name = "checkout_reference")
+    private String checkoutReference;
+
     /** Día del mes en que Wompi cobrará esta suscripción específica. */
     @Column(name = "billing_day")
     private Integer billingDay;

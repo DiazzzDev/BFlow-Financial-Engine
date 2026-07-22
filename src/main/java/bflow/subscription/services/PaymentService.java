@@ -6,6 +6,7 @@ import bflow.subscription.dto.CheckoutRequest;
 import bflow.subscription.dto.CheckoutResponse;
 import bflow.subscription.entities.Plan;
 import bflow.subscription.entities.Subscription;
+import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositoryPlan;
 import bflow.subscription.repository.RepositorySubscription;
@@ -36,10 +37,7 @@ public class PaymentService {
     private final WompiApiClient wompiApiClient;
 
     @Transactional
-    public CheckoutResponse createCheckout(
-        final UUID userId,
-        final CheckoutRequest request
-    ) {
+    public CheckoutResponse createCheckout(final UUID userId, final CheckoutRequest request) {
         log.info("createCheckout solicitado: userId={}, planId={}", userId, request.planId());
 
         Plan plan = repositoryPlan.findById(request.planId())
@@ -47,24 +45,9 @@ public class PaymentService {
 
         if (repositorySubscription.existsByUser_IdAndPlan_IdAndStatusIn(
                 userId, plan.getId(),
-                List.of(
-                    SubscriptionStatus.ACTIVE,
-                    SubscriptionStatus.PENDING_ACTIVATION,
-                    SubscriptionStatus.PAST_DUE
-                ))) {
-            throw new IllegalStateException(
-                "Ya existe una suscripción activa o pendiente para este plan"
-            );
+                List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PENDING_ACTIVATION, SubscriptionStatus.PAST_DUE))) {
+            throw new IllegalStateException("Ya existe una suscripción activa o pendiente para este plan");
         }
-
-        int diaDePago = clampDiaDePago(LocalDate.now(ZoneOffset.UTC).getDayOfMonth());
-
-        WompiApiClient.RecurringLinkResponse link = wompiApiClient.createRecurringLink(
-            diaDePago,
-            plan.getName(),
-            plan.getPrice(),
-            plan.getName() // TODO: usar plan.getDescription() si agregas esa columna
-        );
 
         Subscription subscription = new Subscription();
         subscription.setUser(repositoryUser.getReferenceById(userId));
@@ -72,28 +55,35 @@ public class PaymentService {
         subscription.setStatus(SubscriptionStatus.PENDING_ACTIVATION);
         subscription.setBillingAmount(plan.getPrice());
         subscription.setStartsAt(Instant.now());
-        subscription.setAutoRenew(true);
-        subscription.setProviderLinkId(link.idEnlace());
-        subscription.setCheckoutUrl(link.urlEnlace());
-        subscription.setBillingDay(diaDePago);
+
+        if (plan.getBillingPeriod() == BillingPeriod.YEARLY) {
+            String checkoutReference = UUID.randomUUID().toString();
+            var link = wompiApiClient.createPaymentLink(checkoutReference, plan.getPrice(), plan.getName());
+
+            subscription.setAutoRenew(false); // pago único: no hay cobro automático posible
+            subscription.setCheckoutReference(checkoutReference);
+            subscription.setProviderLinkId(String.valueOf(link.idEnlace()));
+            subscription.setCheckoutUrl(link.urlEnlace());
+        } else {
+            int diaDePago = clampDiaDePago(LocalDate.now(ZoneOffset.UTC).getDayOfMonth());
+            var link = wompiApiClient.createRecurringLink(diaDePago, plan.getName(), plan.getPrice(), plan.getName());
+
+            subscription.setAutoRenew(true);
+            subscription.setBillingDay(diaDePago);
+            subscription.setProviderLinkId(link.id());
+            subscription.setCheckoutUrl(link.urlCortaSuscribirse());
+        }
 
         try {
             repositorySubscription.saveAndFlush(subscription);
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException(
-                "Ya existe una suscripción activa o pendiente para este plan",
-                e
-            );
+            throw new IllegalStateException("Ya existe una suscripción activa o pendiente para este plan", e);
         }
 
-        log.info(
-            "Subscription {} creada en PENDING_ACTIVATION para userId={}, planId={}, idEnlace={}",
-                subscription.getId(), userId, plan.getId(), link.idEnlace());
+        log.info("Subscription {} creada en PENDING_ACTIVATION para userId={}, planId={}, providerLinkId={}",
+                subscription.getId(), userId, plan.getId(), subscription.getProviderLinkId());
 
-        return new CheckoutResponse(
-            subscription.getId(),
-            link.urlEnlace()
-        );
+        return new CheckoutResponse(subscription.getId(), subscription.getCheckoutUrl());
     }
 
     private int clampDiaDePago(int day) {

@@ -90,17 +90,48 @@ public class WompiApiClient {
                 .toBodilessEntity();
     }
 
+    public PaymentLinkResponse createPaymentLink(
+        String identificadorEnlaceComercio, BigDecimal monto, String nombreProducto) {
+        var formaPago = Map.of(
+                "permitirTarjetaCreditoDebido", true,
+                "permitirPagoConPuntoAgricola", false,
+                "permitirPagoEnCuotasAgricola", false,
+                "permitirPagoEnBitcoin", false,
+                "permitePagoQuickPay", false
+        );
+        var body = Map.of(
+                "identificadorEnlaceComercio", identificadorEnlaceComercio,
+                "monto", monto,
+                "nombreProducto", nombreProducto,
+                "formaPago", formaPago
+        );
+        return restClient.post()
+        .uri("/EnlacePago")
+        .header("Authorization", "Bearer " + getAccessToken())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(body)
+        .retrieve()
+        .body(PaymentLinkResponse.class);
+    }
+
+    public record PaymentLinkResponse(
+            long idEnlace,           // ⚠️ doc dice Entero, no string — verificar contra POST real, ya nos pasó antes con recurrente
+            String urlQrCodeEnlace,
+            String urlEnlace,
+            boolean estaProductivo
+    ) { }
+
     public record TokenResponse(
             @JsonProperty("access_token") String accessToken,
             @JsonProperty("expires_in") int expiresIn
     ) { }
 
     public record RecurringLinkResponse(
-            String idEnlace,
-            String urlEnlace,
-            String urlEnlaceLargo,
-            String urlQrCodeEnlace,
-            boolean estaProductivo
+            String id,
+            String urlCortaSuscribirse,
+            String urlLargaSuscribirse,
+            String urlSuscribirseQr,
+            boolean estaActivo
     ) { }
 
     public record SubscriberInfo(
