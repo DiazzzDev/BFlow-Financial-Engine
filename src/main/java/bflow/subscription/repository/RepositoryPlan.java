@@ -8,8 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RepositoryPlan
-        extends JpaRepository<Plan, UUID> {
+public interface RepositoryPlan extends JpaRepository<Plan, UUID> {
 
     /**
      * Find a plan by its unique code.
@@ -19,5 +18,12 @@ public interface RepositoryPlan
      */
     Optional<Plan> findByCode(String code);
 
+    /**
+     * Find a plan by its provider link identifier.
+     *
+     * @param providerLinkId the Wompi provider link identifier
+     * @return optional plan matching the identifier
+     */
     Optional<Plan> findByProviderLinkId(String providerLinkId);
 }
+

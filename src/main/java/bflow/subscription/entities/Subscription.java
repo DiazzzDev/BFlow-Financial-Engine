@@ -25,23 +25,20 @@ import java.util.UUID;
 @Table(
         name = "subscriptions",
         indexes = {
-        @Index(
-            name = "idx_subscription_user",
-            columnList = "user_id"
-        ),
-        @Index(
-            name = "idx_subscription_status",
-            columnList = "status"
-        ),
-        @Index(
-            name = "idx_subscription_next_billing",
-            columnList = "next_billing_at"
-        )
+                @Index(name = "idx_subscription_user", columnList = "user_id"),
+                @Index(name = "idx_subscription_status", columnList = "status"),
+                @Index(
+                        name = "idx_subscription_next_billing",
+                        columnList = "next_billing_at"
+                )
         }
 )
 @Getter
 @Setter
 public class Subscription {
+
+    /** Precision used for money columns. */
+    private static final int MONEY_PRECISION = 10;
 
     /** Primary key for the subscription entity. */
     @Id
@@ -63,9 +60,6 @@ public class Subscription {
     @Column(nullable = false)
     private SubscriptionStatus status;
 
-    /** Precision used for monetary columns. */
-    private static final int MONEY_PRECISION = 10;
-
     /** Current price charged for the subscription. */
     @Column(nullable = false, precision = MONEY_PRECISION, scale = 2)
     private BigDecimal billingAmount;
@@ -82,32 +76,34 @@ public class Subscription {
     @Column(nullable = false)
     private boolean autoRenew = true;
 
-    /** Id del enlace de pago recurrente en Wompi, único por suscripción. */
+    /** Wompi recurring payment link identifier for the subscription. */
     @Column(name = "provider_link_id")
     private String providerLinkId;
 
-    /** URL de checkout entregada por Wompi para esta suscripción. */
+    /** Checkout URL returned by Wompi for this subscription. */
     @Column(name = "checkout_url")
     private String checkoutUrl;
 
-    /** Referencia propia usada para matchear el webhook de pagos únicos (plan anual). */
+    /** Reference used to match one-time annual payment webhooks. */
     @Column(name = "checkout_reference")
     private String checkoutReference;
 
-    /** Día del mes en que Wompi cobrará esta suscripción específica. */
+    /** Day of the month selected for payment processing. */
     @Column(name = "billing_day")
     private Integer billingDay;
 
-    /** Id real del suscriptor asignado por Wompi (Cliente.IdSuscripcion en el webhook). */
+    /** Provider subscriber identifier assigned by Wompi. */
     @Column(name = "provider_subscriber_id")
     private String providerSubscriberId;
 
-    /** When the subscription was cancelled, if applicable. */
+    /** When the subscription was canceled, if applicable. */
     @Column
     private Instant canceledAt;
 
-    /** Momento en que se envió el último 
-     * recordatorio de renovación (solo planes anuales). */
+    /**
+     * Timestamp when the last renewal reminder was sent.
+     * Used for annual plans.
+     */
     @Column
     private Instant reminderSentAt;
 
@@ -123,3 +119,4 @@ public class Subscription {
     @Column(name = "next_billing_at")
     private Instant nextBillingAt;
 }
+

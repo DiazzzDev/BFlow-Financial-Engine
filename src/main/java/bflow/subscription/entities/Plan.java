@@ -36,34 +36,45 @@ public class Plan {
     @GeneratedValue
     private UUID id;
 
+    /** Unique code that identifies the plan. */
     @Column(nullable = false, unique = true, length = PLAN_CODE_LENGTH)
     private String code;
 
+    /** Display name of the plan. */
     @Column(nullable = false, length = PLAN_NAME_LENGTH)
     private String name;
 
+    /** Price charged for the plan. */
     @Column(nullable = false, precision = MONEY_PRECISION, scale = 2)
     private BigDecimal price;
 
+    /** Billing cadence applied to the plan. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BillingPeriod billingPeriod;
 
+    /** Whether the plan is currently active for purchase. */
     @Column(nullable = false)
     private boolean active = true;
 
+    /** Provider identifier for recurring payment links. */
     @Column
     private String providerLinkId;
 
+    /** Checkout URL returned by the payment provider. */
     @Column
     private String checkoutUrl;
 
+    /** Billing day selected for monthly subscriptions. */
     @Column
     private Integer billingDay;
 
+    /** Timestamp when the plan record was created. */
     @CreationTimestamp
     private Instant createdAt;
 
+    /** Timestamp when the plan record was last updated. */
     @UpdateTimestamp
     private Instant updatedAt;
 }
+

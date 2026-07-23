@@ -1,6 +1,7 @@
 package bflow.common.exception;
 
 import bflow.common.response.ApiResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -9,11 +10,20 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+
+import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import tools.jackson.databind.exc.InvalidFormatException;
 
 /**
  * Global controller advice to handle application-wide exceptions.
@@ -360,5 +370,66 @@ public final class GlobalExceptionHandler {
         }
 
         return false;
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(
+        final EntityNotFoundException ex,
+        final HttpServletRequest request
+    ) {
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error(
+            ex.getMessage(),
+            request.getRequestURI()
+        ));
+    }
+
+    @ExceptionHandler(RestClientException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRestClientException(
+        final RestClientException ex,
+        final HttpServletRequest request
+    ) {
+        log.error("Error comunicándose con Wompi", ex);
+        return ResponseEntity
+            .status(HttpStatus.BAD_GATEWAY)
+            .body(ApiResponse.error(
+                "No fue posible comunicarse con el proveedor de pagos.",
+                request.getRequestURI()
+        ));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleHttpMessageNotReadable(
+            HttpServletRequest request,
+            HttpMessageNotReadableException ex
+    ) {
+
+        String message = "El cuerpo de la solicitud es inválido.";
+
+        Throwable cause = ex.getMostSpecificCause();
+
+        if (cause instanceof InvalidFormatException invalidFormat) {
+
+            String field = invalidFormat.getPath()
+                    .stream()
+                    .findFirst()
+                    .map(ref -> ref.getPropertyName())
+                    .orElse("desconocido");
+
+            if (invalidFormat.getTargetType() == UUID.class) {
+                message = "El campo '%s' debe ser un UUID válido."
+                        .formatted(field);
+            } else {
+                message = "El campo '%s' tiene un formato inválido."
+                        .formatted(field);
+            }
+        }
+
+        return ApiResponse.error(
+                message,
+                request.getRequestURI()
+        );
     }
 }

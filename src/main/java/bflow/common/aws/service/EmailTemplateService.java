@@ -114,6 +114,16 @@ public final class EmailTemplateService {
         );
     }
 
+    /**
+     * Send a renewal reminder email for an upcoming subscription renewal.
+     *
+     * @param toEmail recipient email address
+     * @param userName recipient display name
+     * @param planName the subscription plan name
+     * @param amount the renewal amount
+     * @param renewalDate the renewal date to display
+     * @param checkoutUrl checkout URL for the renewal flow
+     */
     public void sendRenewalReminderEmail(
         final String toEmail,
         final String userName,

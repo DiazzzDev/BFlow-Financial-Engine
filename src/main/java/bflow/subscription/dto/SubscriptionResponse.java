@@ -1,5 +1,6 @@
 package bflow.subscription.dto;
 
+import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.SubscriptionStatus;
 
 import java.math.BigDecimal;
@@ -15,16 +16,21 @@ public record SubscriptionResponse(
         Instant endsAt,
         Instant nextBillingAt
 ) {
-    public static SubscriptionResponse from(
-        final bflow.subscription.entities.Subscription s
-    ) {
+    /**
+     * Build a response view from the persistence entity.
+     *
+     * @param subscription the subscription entity
+     * @return a public-facing subscription response
+     */
+    public static SubscriptionResponse from(final Subscription subscription) {
         return new SubscriptionResponse(
-                s.getId(),
-                s.getPlan().getName(),
-                s.getStatus(),
-                s.getBillingAmount(),
-                s.getStartsAt(),
-                s.getEndsAt(),
-                s.getNextBillingAt());
+                subscription.getId(),
+                subscription.getPlan().getName(),
+                subscription.getStatus(),
+                subscription.getBillingAmount(),
+                subscription.getStartsAt(),
+                subscription.getEndsAt(),
+                subscription.getNextBillingAt()
+        );
     }
 }

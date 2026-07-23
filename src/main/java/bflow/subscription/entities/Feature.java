@@ -16,16 +16,27 @@ import java.util.UUID;
 @Setter
 public class Feature {
 
+    /** Maximum length for the feature code column. */
+    private static final int MAX_CODE_LENGTH = 100;
+
+    /** Maximum length for the feature name column. */
+    private static final int MAX_NAME_LENGTH = 150;
+
+    /** Unique identifier for the feature. */
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    /** Stable code used to identify the feature. */
+    @Column(nullable = false, unique = true, length = MAX_CODE_LENGTH)
     private String code;
 
-    @Column(nullable = false, length = 150)
+    /** Human-readable feature name. */
+    @Column(nullable = false, length = MAX_NAME_LENGTH)
     private String name;
 
-    @Column(nullable =false)
+    /** Whether the feature supports quantity-based limits. */
+    @Column(nullable = false)
     private boolean limitable;
 }
+

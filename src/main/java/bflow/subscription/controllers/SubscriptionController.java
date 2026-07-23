@@ -11,7 +11,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,23 +27,45 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public final class SubscriptionController {
 
+    /** Service used to retrieve subscription state for the current user. */
     private final SubscriptionService subscriptionService;
+
+    /** Service used to create checkout sessions for subscription plans. */
     private final PaymentService paymentService;
+
+    /** Service used to resolve the authenticated user identifier. */
     private final CurrentUserService currentUserService;
 
+    /**
+     * Retrieve the subscriptions owned by the currently authenticated user.
+     *
+     * @param authentication authenticated user context
+     * @param request the incoming HTTP request
+     * @return a standard API response with the subscriptions list
+     */
     @GetMapping
     public ApiResponse<List<SubscriptionResponse>> mySubscriptions(
             final Authentication authentication,
             final HttpServletRequest request
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
-        List<SubscriptionResponse> result = 
-            subscriptionService.findMySubscriptions(userId);
+        List<SubscriptionResponse> result = subscriptionService
+                .findMySubscriptions(userId);
         return ApiResponse.success(
-            "Suscripciones obtenidas", result, request.getRequestURI()
+                "Suscripciones obtenidas",
+                result,
+                request.getRequestURI()
         );
     }
 
+    /**
+     * Create a checkout session for a plan purchase.
+     *
+     * @param checkoutRequest the requested checkout payload
+     * @param authentication authenticated user context
+     * @param request the incoming HTTP request
+     * @return a standard API response with the checkout result
+     */
     @PostMapping("/checkout")
     public ApiResponse<CheckoutResponse> createCheckout(
             @Valid @RequestBody final CheckoutRequest checkoutRequest,
@@ -46,15 +74,24 @@ public final class SubscriptionController {
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         CheckoutResponse result = paymentService.createCheckout(
-            userId, checkoutRequest
+                userId,
+                checkoutRequest
         );
         return ApiResponse.success(
-            "Checkout creado", 
-            result, 
-            request.getRequestURI()
+                "Checkout creado",
+                result,
+                request.getRequestURI()
         );
     }
 
+    /**
+     * Cancel an existing subscription for the current user.
+     *
+     * @param id the subscription identifier
+     * @param authentication authenticated user context
+     * @param request the incoming HTTP request
+     * @return a standard API response with no body
+     */
     @PatchMapping("/{id}/cancel")
     public ApiResponse<Void> cancel(
             @PathVariable final UUID id,
@@ -64,9 +101,9 @@ public final class SubscriptionController {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         subscriptionService.cancel(userId, id);
         return ApiResponse.success(
-            "Suscripción cancelada",
-             null, 
-             request.getRequestURI()
+                "Suscripción cancelada",
+                null,
+                request.getRequestURI()
         );
     }
 }

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -29,24 +30,58 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    /** Maximum safe day of month accepted for billing. */
     private static final int MAX_SAFE_BILLING_DAY = 28;
 
+    /** Repository used to access plan data. */
     private final RepositoryPlan repositoryPlan;
+
+    /** Repository used to access subscription data. */
     private final RepositorySubscription repositorySubscription;
+
+    /** Repository used to resolve the current user entity. */
     private final RepositoryUser repositoryUser;
+
+    /** Client used to talk to the Wompi payment API. */
     private final WompiApiClient wompiApiClient;
 
+    private static final ZoneId WOMPI_ZONE = ZoneId.of("America/El_Salvador");
+
+    /**
+     * Create a checkout session for a requested plan.
+     *
+     * @param userId the current user identifier
+     * @param request the checkout request payload
+     * @return a checkout response containing the subscription and URL
+     */
     @Transactional
-    public CheckoutResponse createCheckout(final UUID userId, final CheckoutRequest request) {
-        log.info("createCheckout solicitado: userId={}, planId={}", userId, request.planId());
+    public CheckoutResponse createCheckout(
+            final UUID userId,
+            final CheckoutRequest request
+    ) {
+        log.info(
+                "createCheckout solicitado: userId={}, planId={}",
+                userId,
+                request.planId()
+        );
 
         Plan plan = repositoryPlan.findById(request.planId())
-                .orElseThrow(() -> new EntityNotFoundException("Plan no encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Plan no encontrado"
+                ));
 
-        if (repositorySubscription.existsByUser_IdAndPlan_IdAndStatusIn(
-                userId, plan.getId(),
-                List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PENDING_ACTIVATION, SubscriptionStatus.PAST_DUE))) {
-            throw new IllegalStateException("Ya existe una suscripción activa o pendiente para este plan");
+        if (repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
+                userId,
+                plan.getId(),
+                List.of(
+                        SubscriptionStatus.ACTIVE,
+                        SubscriptionStatus.PENDING_ACTIVATION,
+                        SubscriptionStatus.PAST_DUE
+                ))) {
+            throw new IllegalStateException(
+                    "Ya existe una suscripción activa o pendiente "
+                            + "para este plan"
+            );
         }
 
         Subscription subscription = new Subscription();
@@ -58,15 +93,26 @@ public class PaymentService {
 
         if (plan.getBillingPeriod() == BillingPeriod.YEARLY) {
             String checkoutReference = UUID.randomUUID().toString();
-            var link = wompiApiClient.createPaymentLink(checkoutReference, plan.getPrice(), plan.getName());
+            var link = wompiApiClient.createPaymentLink(
+                    checkoutReference,
+                    plan.getPrice(),
+                    plan.getName()
+            );
 
-            subscription.setAutoRenew(false); // pago único: no hay cobro automático posible
+            subscription.setAutoRenew(false);
             subscription.setCheckoutReference(checkoutReference);
             subscription.setProviderLinkId(String.valueOf(link.idEnlace()));
             subscription.setCheckoutUrl(link.urlEnlace());
         } else {
-            int diaDePago = clampDiaDePago(LocalDate.now(ZoneOffset.UTC).getDayOfMonth());
-            var link = wompiApiClient.createRecurringLink(diaDePago, plan.getName(), plan.getPrice(), plan.getName());
+            int diaDePago = clampDiaDePago(
+                    LocalDate.now(WOMPI_ZONE).getDayOfMonth()
+            );
+            var link = wompiApiClient.createRecurringLink(
+                    diaDePago,
+                    plan.getName(),
+                    plan.getPrice(),
+                    plan.getName()
+            );
 
             subscription.setAutoRenew(true);
             subscription.setBillingDay(diaDePago);
@@ -77,16 +123,35 @@ public class PaymentService {
         try {
             repositorySubscription.saveAndFlush(subscription);
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException("Ya existe una suscripción activa o pendiente para este plan", e);
+            throw new IllegalStateException(
+                    "Ya existe una suscripción activa o pendiente "
+                            + "para este plan",
+                    e
+            );
         }
 
-        log.info("Subscription {} creada en PENDING_ACTIVATION para userId={}, planId={}, providerLinkId={}",
-                subscription.getId(), userId, plan.getId(), subscription.getProviderLinkId());
+        log.info(
+                "Subscription {} creada en PENDING_ACTIVATION para userId={}, "
+                        + "planId={}, providerLinkId={}",
+                subscription.getId(),
+                userId,
+                plan.getId(),
+                subscription.getProviderLinkId()
+        );
 
-        return new CheckoutResponse(subscription.getId(), subscription.getCheckoutUrl());
+        return new CheckoutResponse(
+                subscription.getId(),
+                subscription.getCheckoutUrl()
+        );
     }
 
-    private int clampDiaDePago(int day) {
+    /**
+     * Clamp the billing day to a safe value accepted by the provider.
+     *
+     * @param day the requested day of month
+     * @return a safe billing day
+     */
+    private int clampDiaDePago(final int day) {
         return Math.min(day, MAX_SAFE_BILLING_DAY);
     }
 }

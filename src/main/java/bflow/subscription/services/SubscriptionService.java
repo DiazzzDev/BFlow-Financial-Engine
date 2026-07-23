@@ -25,19 +25,42 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SubscriptionService {
 
+    /** Number of days in a year, used for annual subscription timing. */
     private static final int DAYS_PER_YEAR = 365;
+
+    /** Number of days in a month, used for monthly subscription timing. */
     private static final int DAYS_PER_MONTH = 30;
 
+    /** Repository used to access subscription data. */
     private final RepositorySubscription repositorySubscription;
+
+    /** Service that resolves plan information. */
     private final PlanService planService;
+
+    /** Client used to deactivate recurring Wompi links. */
     private final WompiApiClient wompiApiClient;
 
+    /**
+     * Retrieve the subscriptions owned by the given user.
+     *
+     * @param userId the user identifier
+     * @return the current user's subscriptions as response DTOs
+     */
     @Transactional(readOnly = true)
     public List<SubscriptionResponse> findMySubscriptions(final UUID userId) {
-        return repositorySubscription.findAllByUser_IdOrderByCreatedAtDesc(userId)
-                .stream().map(SubscriptionResponse::from).toList();
+        return repositorySubscription
+                .findAllByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(SubscriptionResponse::from)
+                .toList();
     }
 
+    /**
+     * Cancel an existing subscription if the user is allowed to do so.
+     *
+     * @param userId the current user identifier
+     * @param subscriptionId the subscription identifier to cancel
+     */
     @Transactional
     public void cancel(final UUID userId, final UUID subscriptionId) {
         Subscription subscription = repositorySubscription
@@ -53,30 +76,45 @@ public class SubscriptionService {
         }
 
         if (subscription.getStatus() == SubscriptionStatus.CANCELED) {
-            return; // idempotente: cancelar dos veces no es error
+            return;
         }
 
         if (subscription.getPlan().getCode().equals("FREE")) {
-            throw new IllegalStateException("El plan gratuito no se puede cancelar");
+            throw new IllegalStateException(
+                    "El plan gratuito no se puede cancelar"
+            );
         }
 
         if (subscription.getStatus() != SubscriptionStatus.ACTIVE
                 && subscription.getStatus() != SubscriptionStatus.PAST_DUE) {
             throw new IllegalStateException(
-                    "Solo se pueden cancelar suscripciones activas o con pago vencido, estado actual: "
+                    "Solo se pueden cancelar suscripciones activas o con pago "
+                            + "vencido, estado actual: "
                             + subscription.getStatus()
             );
         }
 
         if (subscription.getProviderLinkId() != null) {
             try {
-                wompiApiClient.deactivateRecurringLink(subscription.getProviderLinkId());
-                log.info("Enlace recurrente {} desactivado en Wompi para subscription {}",
-                        subscription.getProviderLinkId(), subscription.getId());
+                wompiApiClient.deactivateRecurringLink(
+                        subscription.getProviderLinkId()
+                );
+                log.info(
+                        "Enlace recurrente {} desactivado en Wompi para "
+                                + "subscription {}",
+                        subscription.getProviderLinkId(),
+                        subscription.getId()
+                );
             } catch (Exception e) {
-                log.error("No se pudo desactivar el enlace {} en Wompi para subscription {}. "
-                                + "Requiere desactivación manual en el panel para evitar cobros futuros.",
-                        subscription.getProviderLinkId(), subscription.getId(), e);
+                log.error(
+                        "No se pudo desactivar el enlace {} en Wompi para "
+                                + "subscription {}. Requiere desactivación "
+                                + "manual en el panel para evitar "
+                                + "cobros futuros.",
+                        subscription.getProviderLinkId(),
+                        subscription.getId(),
+                        e
+                );
             }
         }
 
@@ -130,3 +168,4 @@ public class SubscriptionService {
         return repositorySubscription.save(subscription);
     }
 }
+

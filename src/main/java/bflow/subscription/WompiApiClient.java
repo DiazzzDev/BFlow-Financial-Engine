@@ -1,6 +1,9 @@
 package bflow.subscription;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -12,31 +15,64 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class WompiApiClient {
 
+    /** Default token expiry margin before the token expires. */
+    private static final int TOKEN_MARGIN_SECONDS = 30;
+
+    /** REST client configured against the Wompi API. */
     private final RestClient restClient;
+
+    /** OAuth client identifier. */
     private final String clientId;
+
+    /** OAuth client secret. */
     private final String clientSecret;
+
+    /** Wompi application identifier. */
     private final String idAplicativo;
 
+    private final ObjectMapper objectMapper;
+
+    /** Cached access token. */
     private volatile String cachedToken;
+
+    /** Instant at which the cached token expires. */
     private volatile Instant tokenExpiry = Instant.EPOCH;
 
+    /**
+     * Create the Wompi API client.
+     *
+     * @param builder the REST client builder
+     * @param clientId the OAuth client identifier
+     * @param clientSecret the OAuth client secret
+     * @param idAplicativo the Wompi app identifier
+     */
     public WompiApiClient(
             RestClient.Builder builder,
+            ObjectMapper objectMapper,
             @Value("${wompi.client-id}") String clientId,
             @Value("${wompi.client-secret}") String clientSecret,
             @Value("${wompi.app-id}") String idAplicativo
     ) {
         this.restClient = builder.baseUrl("https://api.wompi.sv").build();
+        this.objectMapper = objectMapper;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.idAplicativo = idAplicativo;
     }
 
+    /**
+     * Retrieve a valid access token from the Wompi identity service.
+     *
+     * @return a cached or freshly fetched access token
+     */
     private synchronized String getAccessToken() {
-        if (Instant.now().isBefore(tokenExpiry)) return cachedToken;
+        if (Instant.now().isBefore(tokenExpiry)) {
+            return cachedToken;
+        }
 
         var response = RestClient.create("https://id.wompi.sv")
                 .post()
@@ -48,33 +84,82 @@ public class WompiApiClient {
                 .body(TokenResponse.class);
 
         cachedToken = response.accessToken();
-        tokenExpiry = Instant.now().plusSeconds(response.expiresIn() - 30); // margen
+        tokenExpiry = Instant.now().plusSeconds(
+                response.expiresIn() - TOKEN_MARGIN_SECONDS
+        );
         return cachedToken;
     }
 
+    /**
+     * Create a recurring payment link for a subscription plan.
+     *
+     * @param diaDePago the day of month for the charge
+     * @param nombre the display name for the link
+     * @param monto the amount to charge
+     * @param descripcion the product description
+     * @return a recurring link response
+     */
     public RecurringLinkResponse createRecurringLink(
-        int diaDePago,
-        String nombre,
-        BigDecimal monto,
-        String descripcion
+            final int diaDePago,
+            final String nombre,
+            final BigDecimal monto,
+            final String descripcion
     ) {
+        log.info("createRecurringLink usando idAplicativo={}", idAplicativo);
+
         var body = Map.of(
-            "diaDePago", diaDePago,
-            "nombre", nombre,
-            "idAplicativo", idAplicativo,
-            "monto", monto,
-            "descripcionProducto", descripcion
+                "diaDePago", diaDePago,
+                "nombre", nombre,
+                "idAplicativo", idAplicativo,
+                "monto", monto,
+                "descripcionProducto", descripcion
         );
-        return restClient.post()
-            .uri("/EnlacePagoRecurrente")
-            .header("Authorization", "Bearer " + getAccessToken())
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(body)
-            .retrieve()
-            .body(RecurringLinkResponse.class);
+
+        String raw = restClient.post()
+                .uri("/EnlacePagoRecurrente")
+                .header("Authorization", "Bearer " + getAccessToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(String.class);
+
+        log.info("RAW createRecurringLink: {}", raw);
+
+        JsonNode node;
+        try {
+            node = objectMapper.readTree(raw);
+        } catch (Exception e) {
+            throw new IllegalStateException("Respuesta de Wompi no es JSON válido: " + raw, e);
+        }
+
+        String id = firstNonNullText(node, "id", "idEnlace");
+        String urlSuscribirse = firstNonNullText(node, "urlCortaSuscribirse", "urlEnlace", "urlLargaSuscribirse");
+
+        if (id == null || urlSuscribirse == null) {
+            throw new IllegalStateException(
+                    "Respuesta de Wompi sin los campos esperados (id/url). JSON crudo: " + raw);
+        }
+
+        return new RecurringLinkResponse(id, urlSuscribirse);
     }
 
-    public List<SubscriberInfo> getSubscribers(String idEnlace) {
+    private String firstNonNullText(JsonNode node, String... candidateFields) {
+        for (String field : candidateFields) {
+            JsonNode value = node.get(field);
+            if (value != null && !value.isNull()) {
+                return value.asText();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retrieve subscribers associated with a recurring link.
+     *
+     * @param idEnlace the recurring link identifier
+     * @return the discovered subscribers
+     */
+    public List<SubscriberInfo> getSubscribers(final String idEnlace) {
         return restClient.get()
             .uri("/EnlacePagoRecurrente/{id}/suscripciones", idEnlace)
             .header("Authorization", "Bearer " + getAccessToken())
@@ -82,7 +167,12 @@ public class WompiApiClient {
             .body(new ParameterizedTypeReference<List<SubscriberInfo>>() {});
     }
 
-    public void deactivateRecurringLink(String idEnlace) {
+    /**
+     * Deactivate a recurring payment link.
+     *
+     * @param idEnlace the recurring link identifier
+     */
+    public void deactivateRecurringLink(final String idEnlace) {
         restClient.post()
                 .uri("/EnlacePagoRecurrente/{id}", idEnlace)
                 .header("Authorization", "Bearer " + getAccessToken())
@@ -90,8 +180,19 @@ public class WompiApiClient {
                 .toBodilessEntity();
     }
 
+    /**
+     * Create a one-time payment link.
+     *
+     * @param identificadorEnlaceComercio the merchant link identifier
+     * @param monto the amount to charge
+     * @param nombreProducto the product name
+     * @return a payment link response
+     */
     public PaymentLinkResponse createPaymentLink(
-        String identificadorEnlaceComercio, BigDecimal monto, String nombreProducto) {
+            final String identificadorEnlaceComercio,
+            final BigDecimal monto,
+            final String nombreProducto
+    ) {
         var formaPago = Map.of(
                 "permitirTarjetaCreditoDebido", true,
                 "permitirPagoConPuntoAgricola", false,
@@ -115,7 +216,7 @@ public class WompiApiClient {
     }
 
     public record PaymentLinkResponse(
-            long idEnlace,           // ⚠️ doc dice Entero, no string — verificar contra POST real, ya nos pasó antes con recurrente
+            long idEnlace,
             String urlQrCodeEnlace,
             String urlEnlace,
             boolean estaProductivo
@@ -126,13 +227,7 @@ public class WompiApiClient {
             @JsonProperty("expires_in") int expiresIn
     ) { }
 
-    public record RecurringLinkResponse(
-            String id,
-            String urlCortaSuscribirse,
-            String urlLargaSuscribirse,
-            String urlSuscribirseQr,
-            boolean estaActivo
-    ) { }
+    public record RecurringLinkResponse(String id, String urlCortaSuscribirse) { }
 
     public record SubscriberInfo(
             String id,
@@ -141,7 +236,7 @@ public class WompiApiClient {
             BigDecimal monto,
             int pagosRealizados,
             String estado,
-            String idSuscriptor,      // es el email del suscriptor
+            String idSuscriptor,
             String nombreSuscriptor,
             Instant fechaInicio,
             Integer diaPago
