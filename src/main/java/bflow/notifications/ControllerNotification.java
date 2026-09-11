@@ -1,6 +1,7 @@
 package bflow.notifications;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.service.NotificationService;
@@ -34,6 +35,9 @@ public final class ControllerNotification {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Get all notifications for the authenticated user.
      *
@@ -52,7 +56,7 @@ public final class ControllerNotification {
         UUID userId = currentUserService.getCurrentUserId(authentication);
 
         return ApiResponse.success(
-                        "Notifications retrieved",
+                        messageService.get("notification.list.retrieved"),
                         service.getUserNotifications(userId),
                         "/api/v1/notifications"
         );
@@ -76,7 +80,9 @@ public final class ControllerNotification {
         UUID userId = currentUserService.getCurrentUserId(authentication);
 
         return ApiResponse.success(
-                        "Unread count retrieved",
+                        messageService.get(
+                                "notification.unreadCount.retrieved"
+                        ),
                         service.getUnreadCount(userId),
                         "/api/v1/notifications/unread-count"
         );
@@ -104,7 +110,7 @@ public final class ControllerNotification {
         service.markAsRead(id, userId);
 
         return ApiResponse.success(
-                        "Notification marked as read",
+                        messageService.get("notification.markedRead"),
                         null,
                         "/api/v1/notifications/" + id + "/read"
         );

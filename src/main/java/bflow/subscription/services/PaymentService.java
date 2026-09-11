@@ -1,6 +1,7 @@
 package bflow.subscription.services;
 
 import bflow.auth.repository.RepositoryUser;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.WompiApiClient;
 import bflow.subscription.dto.CheckoutRequest;
 import bflow.subscription.dto.CheckoutResponse;
@@ -44,6 +45,9 @@ public class PaymentService {
     /** Client used to talk to the Wompi payment API. */
     private final WompiApiClient wompiApiClient;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Time zone used by Wompi for billing date calculations.
      */
@@ -69,7 +73,7 @@ public class PaymentService {
 
         Plan plan = repositoryPlan.findById(request.planId())
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Plan no encontrado"
+                        messageService.get("subscription.plan.notFound")
                 ));
 
         if (repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
@@ -81,8 +85,9 @@ public class PaymentService {
                         SubscriptionStatus.PAST_DUE
                 ))) {
             throw new IllegalStateException(
-                    "Ya existe una suscripción activa o pendiente "
-                            + "para este plan"
+                    messageService.get(
+                            "subscription.alreadyActiveOrPending"
+                    )
             );
         }
 
@@ -126,8 +131,9 @@ public class PaymentService {
             repositorySubscription.saveAndFlush(subscription);
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException(
-                    "Ya existe una suscripción activa o pendiente "
-                            + "para este plan",
+                    messageService.get(
+                            "subscription.alreadyActiveOrPending"
+                    ),
                     e
             );
         }

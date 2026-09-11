@@ -4,6 +4,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.WalletAccessDeniedException;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.services.ServiceExpense;
 import bflow.income.DTO.IncomeRequest;
@@ -54,6 +55,9 @@ public class ReceiptUploadService {
      */
     private final RepositoryUser repositoryUser;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Service used to create the Expense a receipt is confirmed
      * into.
@@ -102,24 +106,26 @@ public class ReceiptUploadService {
         StoredFile file = repositoryStoredFile
                 .findByIdAndUserId(request.getFileId(), userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "File not found or access denied"));
+                        messageService.get("receipt.file.accessDenied")));
 
         if (file.getStatus() != FileStatus.UPLOADED) {
             throw new IllegalStateException(
-                    "File is not ready to be used as a receipt "
-                            + "(status: " + file.getStatus() + ")");
+                    messageService.get(
+                            "receipt.file.notReadyWithStatus",
+                            file.getStatus()
+                    ));
         }
 
         if (repositoryReceiptUpload.existsByStoredFileId(file.getId())) {
             throw new IllegalStateException(
-                    "This file was already registered as a receipt");
+                    messageService.get("receipt.alreadyRegistered"));
         }
 
         Wallet wallet = repositoryWalletUser
                 .findByWalletIdAndUserId(request.getWalletId(), userId)
                 .map(walletUser -> walletUser.getWallet())
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "Wallet not found or access denied"));
+                        messageService.get("receipt.wallet.accessDenied")));
 
         ReceiptUpload receipt = new ReceiptUpload();
         receipt.setUser(repositoryUser.getReferenceById(userId));
@@ -183,12 +189,14 @@ public class ReceiptUploadService {
         ReceiptUpload receipt = repositoryReceiptUpload
                 .findByIdAndUserId(receiptId, userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "Receipt not found or access denied"));
+                        messageService.get("receipt.accessDenied")));
 
         if (receipt.getStatus() != ReceiptStatus.EXTRACTED) {
             throw new IllegalStateException(
-                    "Receipt cannot be confirmed from status "
-                            + receipt.getStatus());
+                    messageService.get(
+                            "receipt.cannotConfirm.wrongStatus",
+                            receipt.getStatus()
+                    ));
         }
 
         UUID resultingId;
@@ -248,11 +256,11 @@ public class ReceiptUploadService {
         ReceiptUpload receipt = repositoryReceiptUpload
                 .findByIdAndUserId(receiptId, userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "Receipt not found or access denied"));
+                        messageService.get("receipt.accessDenied")));
 
         if (receipt.getStatus() == ReceiptStatus.CONFIRMED) {
             throw new IllegalStateException(
-                    "A confirmed receipt cannot be discarded");
+                    messageService.get("receipt.confirmed.cannotDiscard"));
         }
 
         receipt.setStatus(ReceiptStatus.DISCARDED);

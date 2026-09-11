@@ -1,6 +1,7 @@
 package bflow.common.financial;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,9 @@ public class ControllerTransactionHistory {
      */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieves the unified transaction history for the authenticated user.
      *
@@ -67,7 +71,7 @@ public class ControllerTransactionHistory {
                 );
 
         return ApiResponse.success(
-                "Transaction history retrieved successfully",
+                messageService.get("transactionHistory.retrieved"),
                 history,
                 request.getRequestURI()
         );
@@ -108,7 +112,7 @@ public class ControllerTransactionHistory {
                 );
 
         return ApiResponse.success(
-                "Wallet transaction history retrieved successfully",
+                messageService.get("transactionHistory.wallet.retrieved"),
                 history,
                 request.getRequestURI()
         );

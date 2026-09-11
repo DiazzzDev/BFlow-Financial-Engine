@@ -1,6 +1,7 @@
 package bflow.storage.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.storage.DTO.FileResponse;
 import bflow.storage.DTO.PresignedDownloadResponse;
@@ -40,6 +41,9 @@ public final class ControllerFileUpload {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Requests a presigned S3 upload URL for a new file. Creates the
      * corresponding {@code StoredFile} record in {@code PENDING}
@@ -70,7 +74,7 @@ public final class ControllerFileUpload {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
-                        "Presigned upload URL generated successfully",
+                        messageService.get("file.presignedUpload.generated"),
                         response,
                         request.getRequestURI()
                 ));
@@ -102,7 +106,7 @@ public final class ControllerFileUpload {
                 .completeUpload(userId, id);
 
         return ResponseEntity.ok(ApiResponse.success(
-                "File upload completed successfully",
+                messageService.get("file.upload.completed"),
                 response,
                 request.getRequestURI()
         ));
@@ -135,7 +139,7 @@ public final class ControllerFileUpload {
                 .createDownloadUrl(userId, id);
 
         return ResponseEntity.ok(ApiResponse.success(
-                "Presigned download URL generated successfully",
+                messageService.get("file.presignedDownload.generated"),
                 response,
                 request.getRequestURI()
         ));

@@ -36,7 +36,8 @@ public class UserService {
      */
     public User findById(final UUID id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new IllegalStateException(
+                        messageService.get("user.notFound")));
     }
 
     /**

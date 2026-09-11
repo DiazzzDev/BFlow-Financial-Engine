@@ -1,5 +1,6 @@
 package bflow.storage.service;
 
+import bflow.common.i18n.MessageService;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
 import bflow.storage.repository.RepositoryStoredFile;
@@ -29,6 +30,9 @@ public class FileStatusTransitionService {
     /** Repository for stored file records. */
     private final RepositoryStoredFile repositoryStoredFile;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Transitions a stored file to a new status and commits
      * immediately, independent of the caller's transaction.
@@ -42,7 +46,9 @@ public class FileStatusTransitionService {
 
         StoredFile file = repositoryStoredFile.findById(fileId)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Stored file not found: " + fileId));
+                        messageService.get(
+                                "file.notFoundInternal", fileId
+                        )));
 
         file.setStatus(status);
 

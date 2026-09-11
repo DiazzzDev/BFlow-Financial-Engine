@@ -5,11 +5,13 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.i18n.MessageService;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,6 +39,9 @@ public final class NotificationService {
      * Service for sending Thymeleaf-templated emails.
      */
     private final EmailTemplateService emailTemplateService;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Send a warning notification about budget usage.
@@ -168,7 +173,9 @@ public final class NotificationService {
                 notificationId).orElseThrow();
 
         if (!notification.getUserId().equals(userId)) {
-            throw new RuntimeException("Access denied");
+            throw new AccessDeniedException(
+                    messageService.get("wallet.accessDenied")
+            );
         }
 
         notification.setRead(true);

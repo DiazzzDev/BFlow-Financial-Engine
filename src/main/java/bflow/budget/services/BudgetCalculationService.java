@@ -4,6 +4,7 @@ import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.RepositoryExpense;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,9 @@ public final class BudgetCalculationService {
      */
     private final RepositoryWalletUser repositoryWalletUser;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Calculate budget response from a budget entity.
      *
@@ -59,7 +63,7 @@ public final class BudgetCalculationService {
 
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                    "Budget amount must be greater than 0"
+                    messageService.get("budget.amount.positive")
             );
         }
 
@@ -133,7 +137,9 @@ public final class BudgetCalculationService {
 
         if (scope == null) {
             throw new IllegalStateException(
-                    "Budget " + budget.getId() + " has no scope defined"
+                    messageService.get(
+                            "budget.internal.noScopeDefined", budget.getId()
+                    )
             );
         }
 
@@ -186,9 +192,11 @@ public final class BudgetCalculationService {
     private void requireCategory(final Budget budget) {
         if (budget.getCategory() == null) {
             throw new IllegalStateException(
-                    "Budget " + budget.getId()
-                            + " has scope " + budget.getScope()
-                            + " but no category set"
+                    messageService.get(
+                            "budget.internal.noCategorySet",
+                            budget.getId(),
+                            budget.getScope()
+                    )
             );
         }
     }
@@ -196,10 +204,9 @@ public final class BudgetCalculationService {
     private void requireCurrency(final Budget budget) {
         if (budget.getCurrency() == null) {
             throw new IllegalStateException(
-                    "Budget " + budget.getId()
-                            + " has scope CATEGORY_GLOBAL but no "
-                            + "currency set — cannot determine which "
-                            + "wallets to include in the spend total"
+                    messageService.get(
+                            "budget.internal.noCurrencySet", budget.getId()
+                    )
             );
         }
     }

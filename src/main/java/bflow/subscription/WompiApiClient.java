@@ -1,8 +1,11 @@
 package bflow.subscription;
 
+import bflow.common.i18n.MessageService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,25 +20,35 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class WompiApiClient {
 
     /** Default token expiry margin before the token expires. */
     private static final int TOKEN_MARGIN_SECONDS = 30;
 
-    /** REST client configured against the Wompi API. */
-    private final RestClient restClient;
-
-    /** OAuth client identifier. */
-    private final String clientId;
-
-    /** OAuth client secret. */
-    private final String clientSecret;
-
-    /** Wompi application identifier. */
-    private final String idAplicativo;
+    /** Builder used to construct the REST client on startup. */
+    private final RestClient.Builder restClientBuilder;
 
     /** JSON mapper used to parse Wompi API responses. */
     private final ObjectMapper objectMapper;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
+    /** OAuth client identifier. */
+    @Value("${wompi.client-id}")
+    private String clientId;
+
+    /** OAuth client secret. */
+    @Value("${wompi.client-secret}")
+    private String clientSecret;
+
+    /** Wompi application identifier. */
+    @Value("${wompi.app-id}")
+    private String idAplicativo;
+
+    /** REST client configured against the Wompi API. */
+    private RestClient restClient;
 
     /** Cached access token. */
     private volatile String cachedToken;
@@ -44,29 +57,14 @@ public class WompiApiClient {
     private volatile Instant tokenExpiry = Instant.EPOCH;
 
     /**
-     * Creates the Wompi API client.
-     *
-     * @param builder the REST client builder
-     * @param mapper the JSON object mapper
-     * @param oauthClientId the OAuth client identifier
-     * @param oauthClientSecret the OAuth client secret
-     * @param applicationId the Wompi application identifier
+     * Builds the REST client once all configuration properties have
+     * been injected.
      */
-    public WompiApiClient(
-        final RestClient.Builder builder,
-        final ObjectMapper mapper,
-        @Value("${wompi.client-id}")
-        final String oauthClientId,
-        @Value("${wompi.client-secret}")
-        final String oauthClientSecret,
-        @Value("${wompi.app-id}")
-        final String applicationId
-    ) {
-        this.restClient = builder.baseUrl("https://api.wompi.sv").build();
-        this.objectMapper = mapper;
-        this.clientId = oauthClientId;
-        this.clientSecret = oauthClientSecret;
-        this.idAplicativo = applicationId;
+    @PostConstruct
+    private void init() {
+        this.restClient = restClientBuilder
+                .baseUrl("https://api.wompi.sv")
+                .build();
     }
 
     /**
@@ -134,8 +132,9 @@ public class WompiApiClient {
         try {
             node = objectMapper.readTree(raw);
         } catch (Exception e) {
+            log.error("Wompi response is not valid JSON: {}", raw, e);
             throw new IllegalStateException(
-                "Respuesta de Wompi no es JSON válido: " + raw, e
+                messageService.get("payment.gateway.invalidResponse"), e
             );
         }
 
@@ -146,9 +145,12 @@ public class WompiApiClient {
         );
 
         if (id == null || urlSuscribirse == null) {
+            log.error(
+                "Wompi response is missing expected fields (id/url). "
+                + "Raw JSON: {}", raw
+            );
             throw new IllegalStateException(
-                "Respuesta de Wompi sin los campos esperados "
-                + "(id/url). JSON crudo: " + raw
+                messageService.get("payment.gateway.invalidResponse")
             );
         }
 

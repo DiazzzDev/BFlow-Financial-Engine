@@ -4,6 +4,7 @@ import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.InvalidStorageKeyException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.StorageException;
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,6 +58,9 @@ public final class S3StorageService implements StorageService {
     @Value("${aws.s3.max-file-size-bytes}")
     private long maxFileSizeBytes;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * {@inheritDoc}
      */
@@ -88,7 +92,9 @@ public final class S3StorageService implements StorageService {
                     "Failed to upload object '{}' to bucket '{}'",
                     key, bucket, ex
             );
-            throw new StorageException("Unable to store file", ex);
+            throw new StorageException(
+                    messageService.get("file.storage.uploadFailed"), ex
+            );
         }
     }
 
@@ -122,14 +128,16 @@ public final class S3StorageService implements StorageService {
             );
         } catch (NoSuchKeyException ex) {
             throw new ResourceNotFoundException(
-                    "File not found in storage: " + key
+                    messageService.get("file.storage.notFound", key)
             );
         } catch (SdkException ex) {
             log.error(
                     "Failed to download object '{}' from bucket '{}'",
                     key, bucket, ex
             );
-            throw new StorageException("Unable to retrieve file", ex);
+            throw new StorageException(
+                    messageService.get("file.storage.downloadFailed"), ex
+            );
         }
     }
 
@@ -153,7 +161,9 @@ public final class S3StorageService implements StorageService {
                     "Failed to delete object '{}' from bucket '{}'",
                     key, bucket, ex
             );
-            throw new StorageException("Unable to delete file", ex);
+            throw new StorageException(
+                    messageService.get("file.storage.deleteFailed"), ex
+            );
         }
     }
 
@@ -185,7 +195,7 @@ public final class S3StorageService implements StorageService {
                     key, bucket, ex
             );
             throw new StorageException(
-                    "Unable to check file existence", ex
+                    messageService.get("file.storage.existsCheckFailed"), ex
             );
         } catch (SdkException ex) {
             log.error(
@@ -194,7 +204,7 @@ public final class S3StorageService implements StorageService {
                     key, bucket, ex
             );
             throw new StorageException(
-                    "Unable to check file existence", ex
+                    messageService.get("file.storage.existsCheckFailed"), ex
             );
         }
     }
@@ -210,21 +220,20 @@ public final class S3StorageService implements StorageService {
 
         if (!StringUtils.hasText(key)) {
             throw new InvalidStorageKeyException(
-                    "Storage key must not be empty"
+                    messageService.get("file.key.empty")
             );
         }
 
         if (key.startsWith("/") || key.contains("..")) {
             throw new InvalidStorageKeyException(
-                    "Storage key is malformed: " + key
+                    messageService.get("file.key.malformed", key)
             );
         }
 
         if (!key.startsWith(USERS_PREFIX)
                 && !key.startsWith(TMP_PREFIX)) {
             throw new InvalidStorageKeyException(
-                    "Storage key must be scoped under 'users/{userId}/' "
-                            + "or 'tmp/': " + key
+                    messageService.get("file.key.invalidScope", key)
             );
         }
     }
@@ -244,20 +253,19 @@ public final class S3StorageService implements StorageService {
 
         if (contentLength <= 0) {
             throw new InvalidFileException(
-                    "File size must be greater than zero"
+                    messageService.get("file.size.zero")
             );
         }
 
         if (contentLength > maxFileSizeBytes) {
             throw new InvalidFileException(
-                    "File exceeds the maximum allowed size of "
-                            + maxFileSizeBytes + " bytes"
+                    messageService.get("file.tooLarge", maxFileSizeBytes)
             );
         }
 
         if (!StringUtils.hasText(contentType)) {
             throw new InvalidFileException(
-                    "Content type must be provided"
+                    messageService.get("file.contentType.required")
             );
         }
     }

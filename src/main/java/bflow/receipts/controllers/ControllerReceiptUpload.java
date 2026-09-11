@@ -1,6 +1,7 @@
 package bflow.receipts.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.receipts.DTO.ReceiptConfirmRequest;
 import bflow.receipts.DTO.ReceiptUploadRequest;
@@ -36,6 +37,9 @@ public final class ControllerReceiptUpload {
     /** Service responsible for resolving the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Registers an uploaded photo as a receipt for a wallet.
      * Camera-first flow: file already uploaded via the existing
@@ -63,7 +67,7 @@ public final class ControllerReceiptUpload {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
-                        "Receipt registered; awaiting processing",
+                        messageService.get("receipt.registered"),
                         response, request.getRequestURI()));
     }
 
@@ -91,7 +95,7 @@ public final class ControllerReceiptUpload {
                 receiptUploadService.getStatus(userId, id);
 
         return ResponseEntity.ok(ApiResponse.success(
-                "Receipt status retrieved", response,
+                messageService.get("receipt.status.retrieved"), response,
                 request.getRequestURI()));
     }
 
@@ -122,7 +126,7 @@ public final class ControllerReceiptUpload {
                 receiptUploadService.confirm(userId, id, body);
 
         return ResponseEntity.ok(ApiResponse.success(
-                "Receipt confirmed", response,
+                messageService.get("receipt.confirmed"), response,
                 request.getRequestURI()));
     }
 
@@ -149,7 +153,7 @@ public final class ControllerReceiptUpload {
         receiptUploadService.discard(userId, id);
 
         return ResponseEntity.ok(ApiResponse.success(
-                "Receipt discarded", null,
+                messageService.get("receipt.discarded"), null,
                 request.getRequestURI()));
     }
 }

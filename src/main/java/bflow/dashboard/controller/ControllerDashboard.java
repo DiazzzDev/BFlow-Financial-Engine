@@ -1,6 +1,7 @@
 package bflow.dashboard.controller;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.dashboard.dto.ActivityBreakdownResponse;
 import bflow.dashboard.dto.AveragesResponse;
@@ -38,6 +39,9 @@ public final class ControllerDashboard {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieves the "Balance total" widget data.
      *
@@ -59,7 +63,7 @@ public final class ControllerDashboard {
                 .getBalanceSummary(userId);
 
         return ApiResponse.success(
-                "Balance summary retrieved successfully",
+                messageService.get("dashboard.balance.retrieved"),
                 balance,
                 request.getRequestURI()
         );
@@ -88,7 +92,7 @@ public final class ControllerDashboard {
                 .getStatistics(userId, year);
 
         return ApiResponse.success(
-                "Statistics retrieved successfully",
+                messageService.get("dashboard.statistics.retrieved"),
                 statistics,
                 request.getRequestURI()
         );
@@ -114,7 +118,7 @@ public final class ControllerDashboard {
         AveragesResponse averages = serviceDashboard.getAverages(userId);
 
         return ApiResponse.success(
-                "Averages retrieved successfully",
+                messageService.get("dashboard.averages.retrieved"),
                 averages,
                 request.getRequestURI()
         );
@@ -141,7 +145,7 @@ public final class ControllerDashboard {
                 .getRecentActivity(userId);
 
         return ApiResponse.success(
-                "Recent activity retrieved successfully",
+                messageService.get("dashboard.recentActivity.retrieved"),
                 activity,
                 request.getRequestURI()
         );
@@ -168,7 +172,7 @@ public final class ControllerDashboard {
                 .getSpendingSummary(userId);
 
         return ApiResponse.success(
-                "Spending summary retrieved successfully",
+                messageService.get("dashboard.spending.retrieved"),
                 spending,
                 request.getRequestURI()
         );
@@ -195,7 +199,7 @@ public final class ControllerDashboard {
                 .getBudgetsHealth(userId);
 
         return ApiResponse.success(
-                "Budgets health retrieved successfully",
+                messageService.get("dashboard.budgetsHealth.retrieved"),
                 health,
                 request.getRequestURI()
         );
@@ -223,7 +227,7 @@ public final class ControllerDashboard {
                 .getActivityBreakdown(userId);
 
         return ApiResponse.success(
-                "Activity breakdown retrieved successfully",
+                messageService.get("dashboard.activityBreakdown.retrieved"),
                 breakdown,
                 request.getRequestURI()
         );
