@@ -5,6 +5,7 @@ import bflow.budget.services.BudgetValidationService;
 import bflow.common.exception.InvalidBudgetDateException;
 import bflow.common.exception.InvalidBudgetScopeException;
 import bflow.common.exception.InvalidBudgetThresholdException;
+import bflow.common.i18n.MessageService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,9 @@ class BudgetValidationServiceTest {
 
     @BeforeEach
     void setUp() {
-        validationService = new BudgetValidationService();
+        validationService = new BudgetValidationService(
+                org.mockito.Mockito.mock(MessageService.class)
+        );
     }
 
     // ---- validateStartDate ----

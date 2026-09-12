@@ -6,6 +6,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.i18n.MessageService;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
@@ -51,6 +52,9 @@ class NotificationServiceTest {
     @Mock
     private EmailTemplateService emailTemplateService;
 
+    @Mock
+    private MessageService messageService;
+
     private NotificationService notificationService;
 
     @BeforeEach
@@ -59,7 +63,8 @@ class NotificationServiceTest {
                 notificationRepository,
                 emailService,
                 repositoryUser,
-                emailTemplateService
+                emailTemplateService,
+                messageService
         );
 
         // Shared stub — not every test in this class triggers a

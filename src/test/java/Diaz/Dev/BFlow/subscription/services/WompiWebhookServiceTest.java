@@ -8,6 +8,7 @@ import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.auth.entities.User;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.services.WompiWebhookService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,12 +39,19 @@ class WompiWebhookServiceTest {
 
     @Mock private RepositorySubscription repositorySubscription;
     @Mock private RepositoryPayment repositoryPayment;
+    @Mock private MessageService messageService;
 
     private WompiWebhookService service;
 
     @BeforeEach
     void setUp() {
-        service = new WompiWebhookService(repositorySubscription, repositoryPayment, new ObjectMapper());
+        lenient().when(messageService.get(eq("payment.amount.mismatch")))
+                .thenReturn("Monto del pago no coincide con el monto "
+                        + "esperado de la suscripción");
+        service = new WompiWebhookService(
+                repositorySubscription, repositoryPayment,
+                new ObjectMapper(), messageService
+        );
         ReflectionTestUtils.setField(service, "apiSecret", SECRET);
     }
 

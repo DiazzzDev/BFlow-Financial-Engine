@@ -6,6 +6,7 @@ import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.InvalidStorageKeyException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.StorageException;
+import bflow.common.i18n.MessageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,11 +48,13 @@ class S3StorageServiceTest {
 
     @Mock private S3Client s3Client;
 
+    @Mock private MessageService messageService;
+
     private S3StorageService service;
 
     @BeforeEach
     void setUp() {
-        service = new S3StorageService(s3Client);
+        service = new S3StorageService(s3Client, messageService);
         ReflectionTestUtils.setField(service, "bucket", "bflow-files-dev");
         ReflectionTestUtils.setField(
                 service, "maxFileSizeBytes", MAX_FILE_SIZE_BYTES);
