@@ -1,10 +1,12 @@
 package Diaz.Dev.BFlow.notifications;
 
 import bflow.auth.entities.User;
+import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.i18n.MessageService;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
@@ -50,6 +52,9 @@ class NotificationServiceTest {
     @Mock
     private EmailTemplateService emailTemplateService;
 
+    @Mock
+    private MessageService messageService;
+
     private NotificationService notificationService;
 
     @BeforeEach
@@ -58,7 +63,8 @@ class NotificationServiceTest {
                 notificationRepository,
                 emailService,
                 repositoryUser,
-                emailTemplateService
+                emailTemplateService,
+                messageService
         );
 
         // Shared stub — not every test in this class triggers a
@@ -102,10 +108,10 @@ class NotificationServiceTest {
         // addressed by name, not a single blast email.
         verify(emailTemplateService).sendBudgetGroupSuccessEmail(
                 eq("alice@example.com"), eq("Alice"),
-                eq("Household"), eq(response));
+                eq("Household"), eq(response), eq(SupportedLanguage.ES));
         verify(emailTemplateService).sendBudgetGroupSuccessEmail(
                 eq("bob@example.com"), eq("Bob"),
-                eq("Household"), eq(response));
+                eq("Household"), eq(response), eq(SupportedLanguage.ES));
 
         // This flow must go through the templated path, never the
         // legacy plain-text sendEmail used by the personal flow.
@@ -121,6 +127,6 @@ class NotificationServiceTest {
 
         verify(notificationRepository, never()).save(any());
         verify(emailTemplateService, never())
-                .sendBudgetGroupSuccessEmail(any(), any(), any(), any());
+                .sendBudgetGroupSuccessEmail(any(), any(), any(), any(), any());
     }
 }

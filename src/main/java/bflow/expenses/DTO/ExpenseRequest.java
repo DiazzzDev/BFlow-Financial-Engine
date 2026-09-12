@@ -15,11 +15,11 @@ import java.util.UUID;
 public class ExpenseRequest extends BaseTransactionRequest {
 
     /** Indicates whether the expense is tax deductible. */
-    @NotNull
+    @NotNull(message = "{expense.taxDeductible.required}")
     private Boolean taxDeductible = false;
 
     /** Indicates whether the expense is reimbursable. */
-    @NotNull
+    @NotNull(message = "{expense.reimbursable.required}")
     private Boolean reimbursable = false;
 
     /**

@@ -1,8 +1,10 @@
 package bflow.legal.service;
 
+import bflow.common.i18n.MessageService;
 import bflow.legal.dto.LegalDocumentResponse;
 import bflow.legal.enums.LegalDocumentType;
 import bflow.legal.exception.LegalDocumentNotFoundException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -13,10 +15,14 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public final class LegalServiceImpl implements LegalService {
 
     /** Base path for legal document resources. */
     private static final String BASE_PATH = "legal/";
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     @Override
     public LegalDocumentResponse getDocument(
@@ -40,7 +46,7 @@ public final class LegalServiceImpl implements LegalService {
 
             if (!resource.exists()) {
                 throw new LegalDocumentNotFoundException(
-                        "Legal document not found"
+                        messageService.get("legal.document.notFound")
                 );
             }
 
@@ -70,7 +76,7 @@ public final class LegalServiceImpl implements LegalService {
             );
 
             throw new LegalDocumentNotFoundException(
-                    "Unable to read legal document"
+                    messageService.get("legal.document.readError")
             );
         }
     }
@@ -81,7 +87,7 @@ public final class LegalServiceImpl implements LegalService {
                 && !lang.equalsIgnoreCase("en")) {
 
             throw new IllegalArgumentException(
-                    "Unsupported language"
+                    messageService.get("legal.language.unsupported")
             );
         }
     }

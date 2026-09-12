@@ -16,7 +16,7 @@ public class IncomeRequest extends BaseTransactionRequest {
     /**
      * Whether this income is taxable.
      */
-    @NotNull
+    @NotNull(message = "{income.taxable.required}")
     private Boolean taxable = false;
 
     /**

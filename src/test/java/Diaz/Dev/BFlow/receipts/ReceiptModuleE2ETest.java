@@ -5,6 +5,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.CurrentUserService;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.FileAccessDeniedException;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.services.ServiceExpense;
@@ -138,6 +139,8 @@ class ReceiptModuleE2ETest {
     @Mock private Authentication authentication;
     @Mock private HttpServletRequest httpServletRequest;
 
+    @Mock private MessageService messageService;
+
     /** In-memory "database" backing repositoryReceiptUpload. */
     private final Map<UUID, ReceiptUpload> store = new HashMap<>();
 
@@ -189,6 +192,17 @@ class ReceiptModuleE2ETest {
         when(currentUserService.getCurrentUserId(authentication))
                 .thenReturn(userId);
 
+        // Echo the status/argument back into the stubbed message so
+        // assertions on "FAILED"/"DISCARDED"/etc. below still see it,
+        // regardless of what the real Spanish/English wording is.
+        when(messageService.get(
+                eq("receipt.cannotConfirm.wrongStatus"), any()
+        )).thenAnswer(inv ->
+                "Receipt cannot be confirmed from status "
+                        + inv.getArgument(1));
+        when(messageService.get(eq("receipt.confirmed.cannotDiscard")))
+                .thenReturn("A confirmed receipt cannot be discarded");
+
         // Real event publisher stand-in for Spring's AFTER_COMMIT
         // proxy: since there is no real transaction in this test,
         // publishing is wired to synchronously invoke the listener,
@@ -208,11 +222,11 @@ class ReceiptModuleE2ETest {
 
         ReceiptUploadService receiptUploadService = new ReceiptUploadService(
                 repositoryReceiptUpload, repositoryStoredFile,
-                repositoryWalletUser, repositoryUser, serviceExpense,
-                serviceIncome, storageService, publisher);
+                repositoryWalletUser, repositoryUser, messageService,
+                serviceExpense, serviceIncome, storageService, publisher);
 
         controller = new ControllerReceiptUpload(
-                receiptUploadService, currentUserService);
+                receiptUploadService, currentUserService, messageService);
 
         ReceiptStatusTransitionService statusTransitionService =
                 new ReceiptStatusTransitionService(repositoryReceiptUpload);

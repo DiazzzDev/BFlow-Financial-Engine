@@ -1,6 +1,7 @@
 package bflow.income;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.income.DTO.IncomeRequest;
 import bflow.income.DTO.IncomeResponse;
@@ -39,6 +40,9 @@ public class ControllerIncome {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Creates a new income entry for the authenticated user's wallet.
      *
@@ -62,7 +66,7 @@ public class ControllerIncome {
         IncomeResponse response = serviceIncome.newIncome(request, userId);
 
         return ApiResponse.success(
-                        "Income created successfully",
+                        messageService.get("income.created"),
                         response,
                         "/api/v1/incomes"
         );
@@ -99,7 +103,7 @@ public class ControllerIncome {
         );
 
         return ApiResponse.success(
-                        "Income updated successfully",
+                        messageService.get("income.updated"),
                         response,
                         "/api/v1/incomes"
         );

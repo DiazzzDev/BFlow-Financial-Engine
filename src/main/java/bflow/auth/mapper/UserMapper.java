@@ -101,6 +101,7 @@ public class UserMapper {
                 .pictureUrl(user.getPictureUrl())
                 .roles(user.getRoles())
                 .status(user.getStatus())
+                .language(user.getLanguage())
                 .build();
     }
 }

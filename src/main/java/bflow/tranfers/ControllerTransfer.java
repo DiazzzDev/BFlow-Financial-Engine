@@ -1,6 +1,7 @@
 package bflow.tranfers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
@@ -39,6 +40,9 @@ public final class ControllerTransfer {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieves a transfer by its unique identifier.
      * @param id the transfer UUID.
@@ -64,7 +68,7 @@ public final class ControllerTransfer {
 
         // Return success response
         ApiResponse<TransferenceResponse> response = ApiResponse.success(
-                "Transfer retrieved successfully",
+                messageService.get("transfer.retrieved"),
                 transfer,
                 request.getRequestURI()
         );
@@ -97,7 +101,7 @@ public final class ControllerTransfer {
 
         // Return success response
         ApiResponse<Page<TransferenceResponse>> response = ApiResponse.success(
-                "Transfers retrieved successfully",
+                messageService.get("transfers.retrieved"),
                 transfers,
                 request.getRequestURI()
         );
@@ -132,7 +136,7 @@ public final class ControllerTransfer {
 
         // Return success response
         ApiResponse<Page<TransferenceResponse>> response = ApiResponse.success(
-                "Transfers retrieved successfully",
+                messageService.get("transfers.retrieved"),
                 transfers,
                 request.getRequestURI()
         );
@@ -172,7 +176,7 @@ public final class ControllerTransfer {
 
         ApiResponse<TransferenceResponse> response =
                 ApiResponse.success(
-                        "Transfer completed successfully",
+                        messageService.get("transfer.completed"),
                         transferResponse,
                         httpRequest.getRequestURI()
                 );

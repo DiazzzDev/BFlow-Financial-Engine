@@ -10,6 +10,7 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.mapper.UserMapper;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.security.CognitoIdTokenValidator;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.dto.CurrentSubscriptionResponse;
 import bflow.subscription.services.PlanLimitService;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,9 @@ public class AuthSyncService {
      */
     private final PlanLimitService planLimitService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Synchronizes the authenticated Cognito user with the local database
      * and returns the initial session data required by the client.
@@ -78,7 +82,9 @@ public class AuthSyncService {
         String picture = idToken.getClaimAsString("picture");
 
         if (!accessJwt.getSubject().equals(sub)) {
-            throw new IllegalArgumentException("Token subject mismatch");
+            throw new IllegalArgumentException(
+                    messageService.get("auth.tokenSubjectMismatch")
+            );
         }
 
         Optional<User> existingBySub = repositoryUser.findByCognitoSub(sub);

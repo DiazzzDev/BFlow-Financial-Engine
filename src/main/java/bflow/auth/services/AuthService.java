@@ -6,6 +6,8 @@ import bflow.auth.mapper.UserMapper;
 import bflow.auth.repository.RepositoryUser;
 import bflow.common.exception.ResourceNotFoundException;
 import java.util.UUID;
+
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -26,6 +28,9 @@ public class AuthService {
     /** Mapper for building user-facing response DTOs. */
     private final UserMapper userMapper;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Finds a user by their unique identifier.
      * @param userId the user UUID.
@@ -33,7 +38,8 @@ public class AuthService {
      */
     public User findById(final UUID userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new IllegalStateException(
+                        messageService.get("user.notFound")));
     }
 
     /**
@@ -50,7 +56,7 @@ public class AuthService {
 
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             throw new ResourceNotFoundException(
-                    "Invalid authentication type"
+                    messageService.get("auth.invalidAuthenticationType")
             );
         }
 

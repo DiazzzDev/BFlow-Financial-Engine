@@ -2,12 +2,18 @@ package bflow.budget.services;
 
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetStatus;
+import bflow.common.i18n.MessageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
 @Component
+@RequiredArgsConstructor
 public class BudgetLifecycleService {
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Calculate the end date of a budget based on its period type.
@@ -22,7 +28,7 @@ public class BudgetLifecycleService {
             case WEEKLY -> budget.getStartDate().plusWeeks(1);
             case MONTHLY -> budget.getStartDate().plusMonths(1);
             default -> throw new IllegalStateException(
-                    "Unsupported budget period"
+                    messageService.get("budget.period.unsupported")
             );
         };
     }

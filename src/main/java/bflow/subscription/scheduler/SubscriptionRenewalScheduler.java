@@ -104,11 +104,12 @@ public class SubscriptionRenewalScheduler {
         for (Subscription subscription : dueSoon) {
             emailTemplateService.sendRenewalReminderEmail(
                     subscription.getUser().getEmail(),
-                    subscription.getUser().getEmail(), //Temporal
+                    subscription.getUser().getName(),
                     subscription.getPlan().getName(),
                     subscription.getBillingAmount().toString(),
                     subscription.getNextBillingAt().toString(),
-                    subscription.getCheckoutUrl()
+                    subscription.getCheckoutUrl(),
+                    subscription.getUser().getLanguage()
             );
 
             subscription.setReminderSentAt(now);

@@ -1,6 +1,7 @@
 package bflow.wallet.service;
 
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.wallet.DTO.WalletPair;
 import bflow.wallet.repository.RepositoryWallet;
 import bflow.wallet.entities.Wallet;
@@ -19,6 +20,9 @@ public class WalletLockService {
 
     /** Repository used to fetch and lock wallet rows. */
     private final RepositoryWallet repositoryWallet;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Locks the two wallets involved in a transfer, always acquiring
@@ -42,7 +46,7 @@ public class WalletLockService {
             oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException(
-                                "Wallet not found"
+                                messageService.get("wallet.notFound")
                         ));
 
             newWallet = oldWallet;
@@ -52,13 +56,13 @@ public class WalletLockService {
             oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException(
-                                "Origin wallet not found"
+                                messageService.get("wallet.origin.notFound")
                         ));
 
             newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException(
-                                "Target wallet not found"
+                                messageService.get("wallet.target.notFound")
                         ));
 
         } else {
@@ -66,13 +70,13 @@ public class WalletLockService {
             newWallet = repositoryWallet.findByIdForUpdate(newWalletId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException(
-                                "Target wallet not found"
+                                messageService.get("wallet.target.notFound")
                         ));
 
             oldWallet = repositoryWallet.findByIdForUpdate(oldWalletId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException(
-                                "Origin wallet not found"
+                                messageService.get("wallet.origin.notFound")
                         ));
         }
 

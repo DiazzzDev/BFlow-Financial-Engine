@@ -1,6 +1,7 @@
 package bflow.wallet.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.income.DTO.IncomeResponse;
 import bflow.wallet.DTO.UpdateWalletRequest;
@@ -51,6 +52,9 @@ public final class ControllerWallet {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieves the wallets accessible to the authenticated user.
      *
@@ -81,7 +85,7 @@ public final class ControllerWallet {
                 .getUserWallets(userId, query, role, scope, pageable);
 
         return ApiResponse.success(
-                "Wallets retrieved successfully",
+                messageService.get("wallet.list.retrieved"),
                 wallets,
                 request.getRequestURI()
         );
@@ -110,7 +114,7 @@ public final class ControllerWallet {
         WalletInfoResponse info = serviceWallet.getWalletInfo(id, userId);
 
         return ApiResponse.success(
-                "Wallet info retrieved successfully",
+                messageService.get("wallet.info.retrieved"),
                 info,
                 request.getRequestURI()
         );
@@ -146,7 +150,7 @@ public final class ControllerWallet {
 
         // Return success response
         ApiResponse<WalletResponse> response = ApiResponse.success(
-                "Wallet retrieved successfully",
+                messageService.get("wallet.retrieved"),
                 walletResponse,
                 request.getRequestURI()
         );
@@ -182,7 +186,7 @@ public final class ControllerWallet {
 
         // Return success response
         ApiResponse<Page<ExpenseResponse>> response = ApiResponse.success(
-                "Wallet expenses retrieved successfully",
+                messageService.get("wallet.expenses.retrieved"),
                 expenseResponse,
                 request.getRequestURI()
         );
@@ -218,7 +222,7 @@ public final class ControllerWallet {
 
         // Return success response
         ApiResponse<Page<IncomeResponse>> response = ApiResponse.success(
-                "Wallet incomes retrieved successfully",
+                messageService.get("wallet.incomes.retrieved"),
                 incomeResponse,
                 request.getRequestURI()
         );
@@ -257,7 +261,7 @@ public final class ControllerWallet {
                 );
 
         return ApiResponse.success(
-                "Wallet members retrieved successfully.",
+                messageService.get("wallet.members.retrieved"),
                 members,
                 request.getRequestURI()
         );
@@ -296,7 +300,7 @@ public final class ControllerWallet {
 
         // Return success response with 201 CREATED
         ApiResponse<WalletResponse> response = ApiResponse.success(
-                "Wallet created successfully",
+                messageService.get("wallet.created"),
                 walletResponse,
                 httpRequest.getRequestURI()
         );
@@ -340,7 +344,7 @@ public final class ControllerWallet {
 
         // Return success response with 201 CREATED
         ApiResponse<WalletResponse> response = ApiResponse.success(
-                "Wallet modified successfully",
+                messageService.get("wallet.updated"),
                 walletResponse,
                 httpRequest.getRequestURI()
         );

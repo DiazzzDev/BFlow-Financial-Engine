@@ -8,6 +8,7 @@ import bflow.income.DTO.IncomeResponse;
 import bflow.income.RepositoryIncome;
 import bflow.income.entity.Income;
 import bflow.common.financial.TransactionMapper;
+import bflow.common.i18n.MessageService;
 import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.subscription.FeatureCodes;
 import bflow.subscription.services.PlanLimitService;
@@ -87,6 +88,9 @@ public class ServiceWallet {
      */
     private final PlanLimitService planLimitService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Maximum number of upcoming recurring transactions to include.
      */
@@ -138,7 +142,7 @@ public class ServiceWallet {
         WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         Wallet wallet = walletUser.getWallet();
@@ -215,7 +219,7 @@ public class ServiceWallet {
         WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         return convertToDTO(walletUser);
@@ -243,7 +247,7 @@ public class ServiceWallet {
         repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         Page<Expense> expenses = repositoryExpense
@@ -275,7 +279,7 @@ public class ServiceWallet {
         repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         Page<Income> incomes = repositoryIncome
@@ -306,7 +310,7 @@ public class ServiceWallet {
                 .findByWalletIdAndUserId(walletId, currentUserId)
                 .orElseThrow(() ->
                         new AccessDeniedException(
-                                "You don't have access to this wallet."
+                                messageService.get("wallet.accessDenied")
                         ));
 
         return repositoryWalletUser
@@ -340,7 +344,7 @@ public class ServiceWallet {
         // Retrieve authenticated user
         User user = repositoryUser.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "User not found"
+                        messageService.get("user.notFound")
                 ));
 
         // Create Wallet entity with proper BigDecimal handling
@@ -392,13 +396,13 @@ public class ServiceWallet {
         WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         Wallet wallet = walletUser.getWallet();
 
         if (walletUser.getRole() != WalletRole.OWNER) {
-            String errorMessage = "Only owners can update the wallet";
+            String errorMessage = messageService.get("wallet.owner.onlyUpdate");
             throw new AccessDeniedException(errorMessage);
         }
 
@@ -452,7 +456,7 @@ public class ServiceWallet {
     public void addBalance(final Wallet wallet, final BigDecimal amount) {
         if (amount.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Amount cannot be negative: " + amount
+                    messageService.get("wallet.amount.negative", amount)
             );
         }
         BigDecimal newBalance = wallet.getBalance().add(amount);
@@ -470,13 +474,15 @@ public class ServiceWallet {
     public void subtractBalance(final Wallet wallet, final BigDecimal amount) {
         if (amount.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Amount cannot be negative: " + amount
+                    messageService.get("wallet.amount.negative", amount)
             );
         }
         BigDecimal newBalance = wallet.getBalance().subtract(amount);
         if (newBalance.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Insufficient balance: " + wallet.getBalance()
+                    messageService.get(
+                            "wallet.balance.insufficient", wallet.getBalance()
+                    )
             );
         }
         wallet.setBalance(newBalance);
@@ -500,7 +506,7 @@ public class ServiceWallet {
     ) {
         if (oldAmount.signum() < 0 || newAmount.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Amounts must be non-negative"
+                    messageService.get("wallet.amount.nonNegative")
             );
         }
 
@@ -510,7 +516,7 @@ public class ServiceWallet {
 
         if (adjustedBalance.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Insufficient balance for adjustment"
+                    messageService.get("wallet.balance.insufficientForAdjustment")
             );
         }
 
@@ -539,7 +545,7 @@ public class ServiceWallet {
     ) {
         if (oldAmount.signum() < 0 || newAmount.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Amounts must be non-negative"
+                    messageService.get("wallet.amount.nonNegative")
             );
         }
 
@@ -551,7 +557,7 @@ public class ServiceWallet {
 
         if (adjustedBalance.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Insufficient balance for adjustment"
+                    messageService.get("wallet.balance.insufficientForAdjustment")
             );
         }
 
@@ -572,7 +578,7 @@ public class ServiceWallet {
     ) {
         if (amount.signum() < 0) {
             throw new IllegalArgumentException(
-                    "Amount cannot be negative: " + amount
+                    messageService.get("wallet.amount.negative", amount)
             );
         }
         // Add back the amount since we're reversing an expense
@@ -638,12 +644,12 @@ public class ServiceWallet {
         WalletUser walletUser = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         if (walletUser.getRole() != WalletRole.OWNER) {
             throw new AccessDeniedException(
-                    "Only owners can delete the wallet"
+                    messageService.get("wallet.owner.onlyDelete")
             );
         }
 
@@ -651,8 +657,7 @@ public class ServiceWallet {
 
         if (hasFinancialHistory(walletId)) {
             throw new IllegalStateException(
-       "Wallet cannot be permanently deleted because it has financial history. "
-                        + "Archive the wallet instead."
+                    messageService.get("wallet.cannotDelete.hasHistory")
             );
         }
 

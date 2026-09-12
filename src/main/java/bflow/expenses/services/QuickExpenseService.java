@@ -4,6 +4,7 @@ import bflow.auth.services.UserService;
 import bflow.budget.services.BudgetService;
 import bflow.category.entity.Category;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.QuickExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.RepositoryExpense;
@@ -77,6 +78,9 @@ public class QuickExpenseService {
      */
     private final BudgetService budgetService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Create a quick expense for a user.
      *
@@ -94,7 +98,7 @@ public class QuickExpenseService {
         WalletUser walletUser = walletUserRepository
             .findFirstByUserIdAndRole(userId, WalletRole.OWNER)
             .orElseThrow(() ->
-                new RuntimeException("No wallet found")
+                new RuntimeException(messageService.get("noWalletFound"))
         );
 
         // Lock the wallet row for the duration of this transaction so
@@ -103,7 +107,7 @@ public class QuickExpenseService {
         Wallet wallet = repositoryWallet
                 .findByIdForUpdate(walletUser.getWallet().getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Wallet not found"
+                        messageService.get("wallet.notFound")
                 ));
 
         BigDecimal amount =

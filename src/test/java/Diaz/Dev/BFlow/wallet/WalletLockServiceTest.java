@@ -1,6 +1,7 @@
 package Diaz.Dev.BFlow.wallet;
 
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.wallet.DTO.WalletPair;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.repository.RepositoryWallet;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +36,9 @@ class WalletLockServiceTest {
 
     @Mock
     private RepositoryWallet repositoryWallet;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private WalletLockService walletLockService;
@@ -53,6 +58,13 @@ class WalletLockServiceTest {
 
         higherWallet = new Wallet();
         higherWallet.setId(higherId);
+
+        lenient().when(messageService.get("wallet.notFound"))
+                .thenReturn("Wallet not found.");
+        lenient().when(messageService.get("wallet.origin.notFound"))
+                .thenReturn("Origin wallet not found.");
+        lenient().when(messageService.get("wallet.target.notFound"))
+                .thenReturn("Target wallet not found.");
     }
 
     @Test
@@ -102,7 +114,7 @@ class WalletLockServiceTest {
                 ResourceNotFoundException.class,
                 () -> walletLockService.lockWallets(lowerId, lowerId));
 
-        assertEquals("Wallet not found", ex.getMessage());
+        assertEquals("Wallet not found.", ex.getMessage());
     }
 
     @Test
@@ -114,7 +126,7 @@ class WalletLockServiceTest {
                 ResourceNotFoundException.class,
                 () -> walletLockService.lockWallets(lowerId, higherId));
 
-        assertEquals("Origin wallet not found", ex.getMessage());
+        assertEquals("Origin wallet not found.", ex.getMessage());
         verify(repositoryWallet, never()).findByIdForUpdate(higherId);
     }
 
@@ -129,7 +141,7 @@ class WalletLockServiceTest {
                 ResourceNotFoundException.class,
                 () -> walletLockService.lockWallets(lowerId, higherId));
 
-        assertEquals("Target wallet not found", ex.getMessage());
+        assertEquals("Target wallet not found.", ex.getMessage());
     }
 
     @Test
@@ -141,7 +153,7 @@ class WalletLockServiceTest {
                 ResourceNotFoundException.class,
                 () -> walletLockService.lockWallets(higherId, lowerId));
 
-        assertEquals("Target wallet not found", ex.getMessage());
+        assertEquals("Target wallet not found.", ex.getMessage());
         verify(repositoryWallet, never()).findByIdForUpdate(higherId);
     }
 
@@ -156,6 +168,6 @@ class WalletLockServiceTest {
                 ResourceNotFoundException.class,
                 () -> walletLockService.lockWallets(higherId, lowerId));
 
-        assertEquals("Origin wallet not found", ex.getMessage());
+        assertEquals("Origin wallet not found.", ex.getMessage());
     }
 }

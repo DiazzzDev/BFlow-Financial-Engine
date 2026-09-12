@@ -7,6 +7,8 @@ import bflow.auth.enums.NameSource;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
 import java.util.UUID;
+
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,9 @@ public class UserService {
     /** Repository for user core data. */
     private final RepositoryUser userRepository;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Finds a user by their unique identifier.
      * @param id the user's unique identifier (UUID).
@@ -31,7 +36,8 @@ public class UserService {
      */
     public User findById(final UUID id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new IllegalStateException(
+                        messageService.get("user.notFound")));
     }
 
     /**
@@ -58,6 +64,10 @@ public class UserService {
         if (request.getName() != null) {
             user.setName(request.getName().trim());
             user.setNameSource(NameSource.USER);
+        }
+
+        if (request.getLanguage() != null) {
+            user.setLanguage(request.getLanguage());
         }
 
         userRepository.save(user);
@@ -91,7 +101,9 @@ public class UserService {
         User user = findById(userId);
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new IllegalStateException("User account is not active");
+            throw new IllegalStateException(
+                    messageService.get("user.accountNotActive")
+            );
         }
     }
 
@@ -114,6 +126,7 @@ public class UserService {
                 .pictureUrl(user.getPictureUrl())
                 .roles(user.getRoles())
                 .status(user.getStatus())
+                .language(user.getLanguage())
                 .build();
     }
 }

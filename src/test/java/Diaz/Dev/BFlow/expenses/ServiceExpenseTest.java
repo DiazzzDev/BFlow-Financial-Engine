@@ -10,6 +10,7 @@ import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
 import bflow.common.exception.FileAccessDeniedException;
+import bflow.common.i18n.MessageService;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -90,6 +91,9 @@ class ServiceExpenseTest {
 
     @Mock
     private RecurringLinkService recurringLinkService;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private ServiceExpense serviceExpense;

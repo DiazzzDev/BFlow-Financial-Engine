@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Invitación a billetera</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    </style>
+
+    <!-- Preheader -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        Te han invitado a colaborar en una billetera compartida en BFlow.
+    </div>
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#0F1217;
+    background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+    -webkit-text-size-adjust:100%;
+    -ms-text-size-adjust:100%;
+">
+
+<table
+        role="presentation"
+        width="100%"
+        style="
+            width:100%;
+            background-color:#0F1217;
+            background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+        "
+>
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+
+            <!-- Main Container -->
+            <table
+                    role="presentation"
+                    width="600"
+                    style="
+                        width:100%;
+                        max-width:600px;
+                        border-radius:24px;
+                        overflow:hidden;
+                        border:3px solid #262A31;
+                        background-color:#1A1F26;
+                    "
+            >
+                <tr>
+                    <td style="padding:40px;">
+
+                        <!-- Header -->
+                        <table role="presentation" width="100%">
+                            <tr>
+
+                                <td align="left" valign="middle">
+
+                                    <h1 style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:30px;
+                                        line-height:40px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                        letter-spacing:-0.5px;
+                                    ">
+                                        Invitación a billetera
+                                    </h1>
+
+                                    <table role="presentation" style="margin-top:12px;">
+                                        <tr>
+                                            <td
+                                                    width="48"
+                                                    height="4"
+                                                    bgcolor="#F46A12"
+                                                    style="
+                                                        border-radius:999px;
+                                                        font-size:1px;
+                                                        line-height:1px;
+                                                    "
+                                            >
+                                                &nbsp;
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+
+                                <td align="right" valign="middle" width="90">
+
+                                    <img
+                                            th:src="${logoUrl}"
+                                            alt="BFlow"
+                                            width="78"
+                                            style="
+                                                display:block;
+                                                border:0;
+                                                outline:none;
+                                                text-decoration:none;
+                                            "
+                                    />
+
+                                </td>
+
+                            </tr>
+                        </table>
+
+                        <!-- Greeting -->
+                        <table role="presentation" width="100%" style="margin-top:36px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Hola,
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Main Content -->
+                        <table role="presentation" width="100%" style="margin-top:20px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            [[${inviterName}]]
+                                        </strong>
+                                        te ha invitado a colaborar en una billetera compartida en BFlow.
+                                    </p>
+
+                                    <p style="
+                                        margin:16px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Colabora en tiempo real, gestionen las transacciones juntos,
+                                        y mantengan a todos sincronizados con una sola billetera compartida.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Invitation Details -->
+                        <table
+                                role="presentation"
+                                width="100%"
+                                style="
+                                    margin-top:28px;
+                                    background-color:#13161C;
+                                    border:1px solid #262A31;
+                                    border-radius:14px;
+                                "
+                        >
+                            <tr>
+                                <td style="padding:20px;">
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:14px;
+                                        line-height:20px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        Detalles de la invitación
+                                    </p>
+
+                                    <p style="
+                                        margin:14px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Billetera
+                                    </p>
+
+                                    <p style="
+                                        margin:2px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:16px;
+                                        line-height:24px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        [[${walletName}]]
+                                    </p>
+
+                                    <p style="
+                                        margin:16px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Invitado por
+                                    </p>
+
+                                    <p style="
+                                        margin:2px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:22px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        [[${inviterName}]]
+                                    </p>
+
+                                    <p style="
+                                        margin:16px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Expira el
+                                    </p>
+
+                                    <p style="
+                                        margin:2px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:22px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        [[${expiresAt}]]
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- CTA -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td align="center">
+
+                                    <a
+                                            th:href="${invitationUrl}"
+                                            target="_blank"
+                                            style="
+                                                display:block;
+                                                width:100%;
+                                                box-sizing:border-box;
+                                                background-color:#F46A12;
+                                                color:#FFFFFF;
+                                                text-decoration:none;
+                                                font-family:'Poppins',Arial,sans-serif;
+                                                font-size:16px;
+                                                font-weight:600;
+                                                text-align:center;
+                                                padding:16px 24px;
+                                                border-radius:12px;
+                                                box-shadow:0 4px 14px rgba(244,106,18,0.20);
+                                            "
+                                    >
+                                        Aceptar invitación
+                                    </a>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Secondary Info -->
+                        <table role="presentation" width="100%" style="margin-top:28px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#737883;
+                                    ">
+                                        Si aún no tienes una cuenta de BFlow,
+                                        crea una usando este mismo correo electrónico.
+                                        Tu invitación estará disponible automáticamente
+                                        después de iniciar sesión.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Fallback URL -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        Si el botón no funciona, copia y pega este enlace en tu navegador:
+                                    </p>
+
+                                    <p style="
+                                        margin:10px 0 0 0;
+                                        word-break:break-all;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                    ">
+
+                                        <a
+                                                th:href="${invitationUrl}"
+                                                style="
+                                                    color:#F38533;
+                                                    text-decoration:none;
+                                                "
+                                        >
+                                            [[${invitationUrl}]]
+                                        </a>
+
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Divider -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td style="border-top:1px solid #262A31;"></td>
+                            </tr>
+                        </table>
+
+                        <!-- Footer -->
+                        <table role="presentation" width="100%" style="margin-top:24px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        © [[${year}]] BFlow Studio.
+                                        Colabora de forma más inteligente. Gestionen su dinero juntos.
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        ¿Necesitas ayuda?
+
+                                        <a
+                                                th:href="'mailto:' + ${supportEmail}"
+                                                style="
+                                                    color:#F38533;
+                                                    text-decoration:none;
+                                                "
+                                        >
+                                            [[${supportEmail}]]
+                                        </a>
+
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

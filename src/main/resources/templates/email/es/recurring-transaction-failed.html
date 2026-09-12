@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title th:text="${deactivated} ? 'Transacción recurrente pausada' : 'No se pudo procesar el pago'">No se pudo procesar el pago</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <!-- Poppins -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    </style>
+
+    <!-- Preheader -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        <span th:if="${deactivated}">Tu transacción recurrente "[[${transactionTitle}]]" se pausó tras varios intentos fallidos.</span>
+        <span th:unless="${deactivated}">No pudimos procesar tu transacción recurrente "[[${transactionTitle}]]" esta vez.</span>
+    </div>
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#0F1217;
+    background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+    -webkit-text-size-adjust:100%;
+    -ms-text-size-adjust:100%;
+">
+
+<table
+        role="presentation"
+        width="100%"
+        style="
+            width:100%;
+            background-color:#0F1217;
+            background-image:linear-gradient(180deg,#0F1217 0%,#1A1F26 100%);
+        "
+>
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+
+            <!-- Main Container -->
+            <table
+                    role="presentation"
+                    width="600"
+                    style="
+                        width:100%;
+                        max-width:600px;
+                        border-radius:24px;
+                        overflow:hidden;
+                        border:3px solid #262A31;
+                        background-color:#1A1F26;
+                    "
+            >
+                <tr>
+                    <td style="padding:40px;">
+
+                        <!-- Header -->
+                        <table role="presentation" width="100%">
+                            <tr>
+
+                                <td align="left" valign="middle">
+
+                                    <h1 style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:28px;
+                                        line-height:36px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                        letter-spacing:-0.5px;
+                                    "
+                                        th:text="${deactivated} ? 'Transacción recurrente pausada' : 'No se pudo procesar el pago'"
+                                    >
+                                        No se pudo procesar el pago
+                                    </h1>
+
+                                    <table role="presentation" style="margin-top:12px;">
+                                        <tr>
+                                            <td
+                                                    width="48"
+                                                    height="4"
+                                                    bgcolor="#E5484D"
+                                                    style="
+                                                        border-radius:999px;
+                                                        font-size:1px;
+                                                        line-height:1px;
+                                                    "
+                                            >
+                                                &nbsp;
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+
+                                <td align="right" valign="middle" width="90">
+
+                                    <img
+                                            th:src="${logoUrl}"
+                                            alt="BFlow"
+                                            width="78"
+                                            style="
+                                                display:block;
+                                                border:0;
+                                                outline:none;
+                                                text-decoration:none;
+                                            "
+                                    />
+
+                                </td>
+
+                            </tr>
+                        </table>
+
+                        <!-- Greeting -->
+                        <table role="presentation" width="100%" style="margin-top:36px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Hola
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            [[${userName}]]
+                                        </strong>
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Content -->
+                        <table role="presentation" width="100%" style="margin-top:20px;">
+                            <tr>
+                                <td>
+
+                                    <p
+                                            style="
+                                                margin:0;
+                                                font-family:'Poppins',Arial,sans-serif;
+                                                font-size:15px;
+                                                line-height:24px;
+                                                color:#A4A9B3;
+                                            "
+                                            th:unless="${deactivated}"
+                                    >
+                                        Intentamos procesar tu transacción recurrente
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            "[[${transactionTitle}]]"
+                                        </strong>
+                                        por
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            $[[${amount}]]
+                                        </strong>, pero no se completó.
+                                    </p>
+
+                                    <p
+                                            style="
+                                                margin:0;
+                                                font-family:'Poppins',Arial,sans-serif;
+                                                font-size:15px;
+                                                line-height:24px;
+                                                color:#A4A9B3;
+                                            "
+                                            th:if="${deactivated}"
+                                    >
+                                        No hemos podido procesar tu transacción recurrente
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            "[[${transactionTitle}]]"
+                                        </strong>
+                                        por
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            $[[${amount}]]
+                                        </strong>
+                                        después de varios intentos, así que la pausamos para evitar más cobros fallidos.
+                                    </p>
+
+                                    <p style="
+                                        margin:16px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:15px;
+                                        line-height:24px;
+                                        color:#A4A9B3;
+                                    ">
+                                        Este fue el intento
+                                        <strong style="color:#FFFFFF;font-weight:600;">
+                                            #[[${attempts}]]
+                                        </strong>.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Reason box -->
+                        <table
+                                role="presentation"
+                                width="100%"
+                                style="
+                                    margin-top:28px;
+                                    background-color:#13161C;
+                                    border:1px solid #262A31;
+                                    border-radius:14px;
+                                "
+                        >
+                            <tr>
+                                <td style="padding:20px;">
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:14px;
+                                        line-height:20px;
+                                        color:#FFFFFF;
+                                        font-weight:600;
+                                    ">
+                                        Qué pasó
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#737883;
+                                    ">
+                                        [[${reason}]]
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Deactivated warning -->
+                        <table
+                                role="presentation"
+                                width="100%"
+                                style="
+                                    margin-top:16px;
+                                    background-color:#241514;
+                                    border:1px solid #3A2320;
+                                    border-radius:14px;
+                                "
+                                th:if="${deactivated}"
+                        >
+                            <tr>
+                                <td style="padding:20px;">
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:14px;
+                                        line-height:20px;
+                                        color:#F38533;
+                                        font-weight:600;
+                                    ">
+                                        Esta transacción recurrente ahora está pausada
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:22px;
+                                        color:#A4A9B3;
+                                    ">
+                                        No volverá a ejecutarse hasta que la reactives. Agrega fondos o
+                                        actualiza la billetera, y luego vuelve a activarla desde tu panel.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Retry notice -->
+                        <table role="presentation" width="100%" style="margin-top:16px;" th:unless="${deactivated}">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:13px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        Lo intentaremos de nuevo automáticamente en la próxima fecha programada.
+                                        Si sigue fallando, esta transacción recurrente se
+                                        pausará automáticamente.
+                                    </p>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- CTA -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td align="center">
+
+                                    <a
+                                            th:href="${manageUrl}"
+                                            target="_blank"
+                                            style="
+                                                display:block;
+                                                width:100%;
+                                                box-sizing:border-box;
+                                                background-color:#F46A12;
+                                                color:#FFFFFF;
+                                                text-decoration:none;
+                                                font-family:'Poppins',Arial,sans-serif;
+                                                font-size:16px;
+                                                font-weight:600;
+                                                text-align:center;
+                                                padding:16px 24px;
+                                                border-radius:12px;
+                                                box-shadow:0 4px 14px rgba(244,106,18,0.20);
+                                            "
+                                    >
+                                        Gestionar transacciones recurrentes
+                                    </a>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Divider -->
+                        <table role="presentation" width="100%" style="margin-top:32px;">
+                            <tr>
+                                <td style="border-top:1px solid #262A31;"></td>
+                            </tr>
+                        </table>
+
+                        <!-- Footer -->
+                        <table role="presentation" width="100%" style="margin-top:24px;">
+                            <tr>
+                                <td>
+
+                                    <p style="
+                                        margin:0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        © [[${year}]] BFlow Studio.
+                                        La claridad financiera empieza con visibilidad.
+                                    </p>
+
+                                    <p style="
+                                        margin:8px 0 0 0;
+                                        font-family:'Poppins',Arial,sans-serif;
+                                        font-size:12px;
+                                        line-height:20px;
+                                        color:#636873;
+                                    ">
+                                        ¿Necesitas ayuda?
+
+                                        <a
+                                                th:href="'mailto:' + ${supportEmail}"
+                                                style="
+                                                    color:#F38533;
+                                                    text-decoration:none;
+                                                "
+                                        >
+                                            [[${supportEmail}]]
+                                        </a>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

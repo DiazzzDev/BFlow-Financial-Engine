@@ -1,6 +1,7 @@
 package Diaz.Dev.BFlow.subscription.services;
 
 import bflow.auth.entities.User;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.WompiApiClient;
 import bflow.subscription.entities.Plan;
 import bflow.subscription.entities.Subscription;
@@ -28,6 +29,7 @@ class SubscriptionServiceTest {
     @Mock private RepositorySubscription repositorySubscription;
     @Mock private PlanService planService;
     @Mock private WompiApiClient wompiApiClient;
+    @Mock private MessageService messageService;
 
     @InjectMocks private SubscriptionService service;
 
@@ -53,6 +55,8 @@ class SubscriptionServiceTest {
         UUID userId = UUID.randomUUID();
         Subscription free = subscriptionWith("FREE", SubscriptionStatus.ACTIVE, userId, null);
         when(repositorySubscription.findById(free.getId())).thenReturn(Optional.of(free));
+        when(messageService.get(eq("subscription.freePlan.cannotCancel")))
+                .thenReturn("El plan gratuito no se puede cancelar");
 
         // service = new SubscriptionService(repositorySubscription, planService, wompiApiClient);
         assertThatThrownBy(() -> service.cancel(userId, free.getId()))

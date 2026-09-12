@@ -29,27 +29,27 @@ public class UpdateWalletRequest {
     private static final int DESCRIPTION_MAX_LENGTH = 255;
 
     /** The display name of the wallet. */
-    @NotBlank(message = "Wallet name is required")
+    @NotBlank(message = "{wallet.name.required}")
     @Size(
             min = NAME_MIN_LENGTH,
             max = NAME_MAX_LENGTH,
-            message = "Wallet name must be between 2 and 100 characters"
+            message = "{wallet.name.size}"
     )
     @Pattern(
             regexp = "^[\\p{L}0-9 .,'\\-()]+$",
-            message = "Wallet name contains invalid characters"
+            message = "{wallet.name.invalidCharacters}"
     )
     private String name;
 
     /** The description of the wallet. */
-    @NotBlank(message = "Wallet description is required")
+    @NotBlank(message = "{wallet.description.required}")
     @Size(
             min = DESCRIPTION_MIN_LENGTH,
             max = DESCRIPTION_MAX_LENGTH,
-            message = "Description must be between 3 and 255 characters")
+            message = "{wallet.description.size}")
     @Pattern(
             regexp = "^[\\p{L}0-9 .,'\\-()]+$",
-            message = "Description contains invalid characters"
+            message = "{wallet.description.invalidCharacters}"
     )
     private String description;
 }

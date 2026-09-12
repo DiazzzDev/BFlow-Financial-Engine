@@ -1,6 +1,7 @@
 package bflow.wallet.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.wallet.DTO.WalletInvitationRequest;
 import bflow.wallet.DTO.WalletInvitationResponse;
@@ -42,6 +43,9 @@ public class ControllerWalletInvitation {
      */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Searches for users that can be invited to a wallet, by name or
      * email. Only the wallet owner can perform this search.
@@ -70,7 +74,7 @@ public class ControllerWalletInvitation {
             serviceWalletSharing.searchCollaborators(walletId, userId, query);
 
         return ApiResponse.success(
-                "Collaborators retrieved successfully.",
+                messageService.get("wallet.collaborators.retrieved"),
                 response,
                 httpRequest.getRequestURI()
         );
@@ -106,7 +110,7 @@ public class ControllerWalletInvitation {
                 );
 
         return ApiResponse.success(
-                "Invitation sent successfully.",
+                messageService.get("wallet.invitation.sent"),
                 response,
                 httpRequest.getRequestURI()
         );
@@ -140,7 +144,7 @@ public class ControllerWalletInvitation {
                 );
 
         return ApiResponse.success(
-                "Invitation accepted successfully.",
+                messageService.get("wallet.invitation.accepted"),
                 response,
                 httpRequest.getRequestURI()
         );
@@ -177,7 +181,7 @@ public class ControllerWalletInvitation {
                 );
 
         return ApiResponse.success(
-                "Invitation accepted successfully.",
+                messageService.get("wallet.invitation.accepted"),
                 response,
                 httpRequest.getRequestURI()
         );
@@ -210,7 +214,7 @@ public class ControllerWalletInvitation {
         );
 
         return ApiResponse.success(
-                "Invitation rejected successfully.",
+                messageService.get("wallet.invitation.rejected"),
                 null,
                 httpRequest.getRequestURI()
         );
@@ -246,7 +250,7 @@ public class ControllerWalletInvitation {
         );
 
         return ApiResponse.success(
-                "Invitation rejected successfully.",
+                messageService.get("wallet.invitation.rejected"),
                 null,
                 httpRequest.getRequestURI()
         );
@@ -279,7 +283,7 @@ public class ControllerWalletInvitation {
         );
 
         return ApiResponse.success(
-                "Invitation canceled successfully.",
+                messageService.get("wallet.invitation.canceled"),
                 null,
                 httpRequest.getRequestURI()
         );
@@ -315,7 +319,7 @@ public class ControllerWalletInvitation {
         );
 
         return ApiResponse.success(
-                "Member removed successfully.",
+                messageService.get("wallet.member.removed"),
                 null,
                 httpRequest.getRequestURI()
         );
@@ -351,7 +355,7 @@ public class ControllerWalletInvitation {
         serviceWalletSharing.leaveWallet(walletId, userId);
 
         return ApiResponse.success(
-                "You have left the wallet.",
+                messageService.get("wallet.left"),
                 null,
                 httpRequest.getRequestURI()
         );
@@ -380,7 +384,7 @@ public class ControllerWalletInvitation {
                 serviceWalletSharing.getPendingInvitations(userId);
 
         return ApiResponse.success(
-                "Pending invitations retrieved successfully.",
+                messageService.get("wallet.invitations.pending.retrieved"),
                 response,
                 httpRequest.getRequestURI()
         );
@@ -413,7 +417,7 @@ public class ControllerWalletInvitation {
                 serviceWalletSharing.getSentInvitations(walletId, userId);
 
         return ApiResponse.success(
-                "Sent invitations retrieved successfully.",
+                messageService.get("wallet.invitations.sent.retrieved"),
                 response,
                 httpRequest.getRequestURI()
         );

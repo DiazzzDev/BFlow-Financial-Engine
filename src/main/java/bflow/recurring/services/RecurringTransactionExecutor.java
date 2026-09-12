@@ -1,5 +1,6 @@
 package bflow.recurring.services;
 
+import bflow.auth.enums.SupportedLanguage;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.services.ServiceExpense;
 import bflow.income.DTO.IncomeRequest;
@@ -112,13 +113,14 @@ public class RecurringTransactionExecutor {
             recurring.setActive(false);
         }
 
-        // Ajusta getEmail()/getFirstName() a los getters reales de tu User.
         String email = recurring.getUser().getEmail();
         String userName = recurring.getUser().getName();
+        SupportedLanguage language = recurring.getUser().getLanguage();
 
         return new FailureNotification(
                 email, userName, recurring.getTitle(),
-                recurring.getAmount(), attempts, deactivated, reason
+                recurring.getAmount(), attempts, deactivated, reason,
+                language
         );
     }
 
@@ -200,6 +202,7 @@ public class RecurringTransactionExecutor {
             BigDecimal amount,
             int attempts,
             boolean deactivated,
-            String reason
+            String reason,
+            SupportedLanguage language
     ) { }
 }

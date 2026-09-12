@@ -2,6 +2,7 @@ package bflow.recurring.services;
 
 import bflow.auth.entities.User;
 import bflow.category.entity.Category;
+import bflow.common.i18n.MessageService;
 import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.recurring.entity.RecurringTransaction;
 import bflow.recurring.enums.RecurringFrequency;
@@ -38,6 +39,9 @@ public class RecurringLinkService {
      * Service responsible for validating recurring transaction plan limits.
      */
     private final PlanLimitService planLimitService;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Request payload for a new recurring transaction.
@@ -231,14 +235,17 @@ public class RecurringLinkService {
     private RecurringFrequency parseFrequency(final String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException(
-                    "recurrencePattern is required when recurring=true");
+                    messageService.get(
+                            "recurring.recurrencePattern.required"
+                    ));
         }
         try {
             return RecurringFrequency.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
-                    "Unsupported recurrencePattern '" + raw
-                            + "'. Supported values: DAILY, WEEKLY, MONTHLY");
+                    messageService.get(
+                            "recurring.recurrencePattern.unsupported", raw
+                    ));
         }
     }
 

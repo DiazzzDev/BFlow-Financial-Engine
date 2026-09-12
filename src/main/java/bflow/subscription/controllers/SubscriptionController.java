@@ -1,6 +1,7 @@
 package bflow.subscription.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.subscription.dto.CheckoutRequest;
 import bflow.subscription.dto.CheckoutResponse;
@@ -47,6 +48,9 @@ public final class SubscriptionController {
      */
     private final PlanLimitService planLimitService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieve the subscriptions owned by the currently authenticated user.
      *
@@ -67,7 +71,7 @@ public final class SubscriptionController {
         List<SubscriptionResponse> result = subscriptionService
                 .findMySubscriptions(userId);
         return ApiResponse.success(
-                "Suscripciones obtenidas",
+                messageService.get("subscription.list.retrieved"),
                 result,
                 request.getRequestURI()
         );
@@ -94,7 +98,8 @@ public final class SubscriptionController {
         CurrentSubscriptionResponse result =
                 planLimitService.getCurrentSubscriptionInfo(userId);
         return ApiResponse.success(
-                "Suscripción actual", result, request.getRequestURI()
+                messageService.get("subscription.current.retrieved"),
+                result, request.getRequestURI()
         );
     }
 
@@ -122,7 +127,7 @@ public final class SubscriptionController {
                 checkoutRequest
         );
         return ApiResponse.success(
-                "Checkout creado",
+                messageService.get("subscription.checkout.created"),
                 result,
                 request.getRequestURI()
         );
@@ -149,7 +154,7 @@ public final class SubscriptionController {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         subscriptionService.cancel(userId, id);
         return ApiResponse.success(
-                "Suscripción cancelada",
+                messageService.get("subscription.canceled"),
                 null,
                 request.getRequestURI()
         );

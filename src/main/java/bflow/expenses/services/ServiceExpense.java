@@ -12,6 +12,7 @@ import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.common.financial.TransactionMapper;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.RepositoryExpense;
@@ -99,6 +100,9 @@ public class ServiceExpense {
      */
     private final RepositoryStoredFile repositoryStoredFile;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
 
     /**
      * Creates a new expense entry for the specified wallet and user.
@@ -118,17 +122,17 @@ public class ServiceExpense {
         repositoryWalletUser
                 .findByWalletIdAndUserId(request.getWalletId(), userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "You do not have access to this wallet"));
+                        messageService.get("wallet.accessDenied")));
 
         Wallet wallet = repositoryWallet
                 .findByIdForUpdate(request.getWalletId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Wallet not found"
+                        messageService.get("wallet.notFound")
                 ));
 
         User contributor = repositoryUser.findById(userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "Authenticated user not found"
+                        messageService.get("authenticatedUser.notFound")
                 ));
 
         StoredFile receiptFile = resolveReceiptFile(
@@ -171,7 +175,7 @@ public class ServiceExpense {
 
         Expense expense = repositoryExpense.findById(expenseId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Expense not found"
+                        messageService.get("expense.notFound")
                 ));
 
         UUID oldWalletId = expense.getWallet().getId();
@@ -179,11 +183,11 @@ public class ServiceExpense {
 
         repositoryWalletUser.findByWalletIdAndUserId(oldWalletId, userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "You do not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
         repositoryWalletUser.findByWalletIdAndUserId(newWalletId, userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "You do not have access to the target wallet"
+                        messageService.get("wallet.target.accessDenied")
                 ));
 
         WalletPair wallets = walletLockService.lockWallets(
@@ -199,12 +203,14 @@ public class ServiceExpense {
 
         Category category = repositoryCategory.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Category not found"
+                        messageService.get("category.notFound")
                 ));
 
         if (category.getType() != CategoryType.EXPENSE) {
             throw new IllegalArgumentException(
-                    "Category must be of type EXPENSE"
+                    messageService.get(
+                            "category.invalidType.expense", category.getType()
+                    )
             );
         }
 
@@ -288,19 +294,19 @@ public class ServiceExpense {
 
         Expense expense = repositoryExpense.findById(expenseId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Expense not found"
+                        messageService.get("expense.notFound")
                 ));
 
         repositoryWalletUser.
                 findByWalletIdAndUserId(expense.getWallet().getId(), userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
-                        "You do not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         Wallet wallet = repositoryWallet
                 .findByIdForUpdate(expense.getWallet().getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Wallet not found"
+                        messageService.get("wallet.notFound")
                 ));
 
         serviceWallet.addBalance(wallet, expense.getAmount());
@@ -331,7 +337,7 @@ public class ServiceExpense {
                 .findById(request.getCategoryId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Category not found"
+                                messageService.get("category.notFound")
                         )
                 );
 
@@ -455,12 +461,12 @@ public class ServiceExpense {
         StoredFile receipt = repositoryStoredFile
                 .findByIdAndUserId(receiptFileId, userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "You do not have access to this file"
+                        messageService.get("receipt.accessDenied")
                 ));
 
         if (receipt.getStatus() != FileStatus.UPLOADED) {
             throw new IllegalStateException(
-                    "Receipt file is not ready for attachment"
+                    messageService.get("receipt.notReady")
             );
         }
 

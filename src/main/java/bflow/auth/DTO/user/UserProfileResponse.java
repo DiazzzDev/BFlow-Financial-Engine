@@ -1,5 +1,6 @@
 package bflow.auth.DTO.user;
 
+import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.enums.UserStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,4 +33,7 @@ public class UserProfileResponse {
 
     /** The user's current account status. */
     private UserStatus status;
+
+    /** The user's preferred language. */
+    private SupportedLanguage language;
 }

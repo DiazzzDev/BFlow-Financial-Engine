@@ -6,6 +6,7 @@ import bflow.common.aws.service.StorageService;
 import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.storage.DTO.FileResponse;
 import bflow.storage.DTO.PresignedDownloadResponse;
 import bflow.storage.DTO.PresignedUploadRequest;
@@ -72,6 +73,9 @@ public class FileUploadService {
 
     /** Persists status transitions in their own transaction. */
     private final FileStatusTransitionService fileStatusTransitionService;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /** Target S3 bucket, injected from configuration. */
     @Value("${aws.s3.bucket}")
@@ -193,7 +197,7 @@ public class FileUploadService {
         StoredFile file = repositoryStoredFile
                 .findByIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "File not found or access denied"
+                        messageService.get("file.accessDenied")
                 ));
 
         if (file.getStatus() == FileStatus.UPLOADED) {
@@ -202,8 +206,7 @@ public class FileUploadService {
 
         if (file.getStatus() == FileStatus.FAILED) {
             throw new IllegalStateException(
-                    "This upload already failed; "
-                            + "request a new presigned upload"
+                    messageService.get("file.upload.alreadyFailed")
             );
         }
 
@@ -216,8 +219,7 @@ public class FileUploadService {
 
         if (!uploaded) {
             throw new ResourceNotFoundException(
-                    "The file was not found in storage; "
-                            + "request a new presigned upload"
+                    messageService.get("file.notFoundInStorage.retry")
             );
         }
 
@@ -249,13 +251,14 @@ public class FileUploadService {
         StoredFile file = repositoryStoredFile
                 .findByIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new FileAccessDeniedException(
-                        "File not found or access denied"
+                        messageService.get("file.accessDenied")
                 ));
 
         if (file.getStatus() != FileStatus.UPLOADED) {
             throw new IllegalStateException(
-                    "File is not available for download "
-                            + "(status: " + file.getStatus() + ")"
+                    messageService.get(
+                            "file.download.notAvailable", file.getStatus()
+                    )
             );
         }
 
@@ -304,8 +307,9 @@ public class FileUploadService {
 
         if (!allowedContentTypes.contains(contentType)) {
             throw new InvalidFileException(
-                    "Content type '" + contentType
-                            + "' is not allowed"
+                    messageService.get(
+                            "file.contentType.notAllowed", contentType
+                    )
             );
         }
     }
@@ -320,8 +324,7 @@ public class FileUploadService {
 
         if (sizeBytes > maxFileSizeBytes) {
             throw new InvalidFileException(
-                    "File exceeds the maximum allowed size of "
-                            + maxFileSizeBytes + " bytes"
+                    messageService.get("file.tooLarge", maxFileSizeBytes)
             );
         }
     }

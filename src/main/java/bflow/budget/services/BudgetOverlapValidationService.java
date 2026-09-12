@@ -6,6 +6,7 @@ import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.PeriodType;
 import bflow.budget.repository.RepositoryBudget;
 import bflow.common.exception.BudgetOverlapException;
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,9 @@ public final class BudgetOverlapValidationService {
      * Repository for accessing Budget entities.
      */
     private final RepositoryBudget repositoryBudget;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Validate that creating a new budget does not overlap with existing ones.
@@ -52,7 +56,7 @@ public final class BudgetOverlapValidationService {
 
         if (exists) {
             throw new BudgetOverlapException(
-                    "A budget already exists for this scope and period"
+                    messageService.get("budget.overlap")
             );
         }
     }
@@ -94,7 +98,7 @@ public final class BudgetOverlapValidationService {
 
         if (exists) {
             throw new BudgetOverlapException(
-                    "A budget already exists for this scope and period"
+                    messageService.get("budget.overlap")
             );
         }
     }

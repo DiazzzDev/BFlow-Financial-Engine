@@ -1,6 +1,7 @@
 package bflow.expenses.controllers;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -35,6 +36,9 @@ public final class ControllerExpense {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Creates a new expense entry for the authenticated user's wallet.
      *
@@ -58,7 +62,7 @@ public final class ControllerExpense {
         ExpenseResponse response = serviceExpense.newExpense(request, userId);
 
         return ApiResponse.success(
-                        "Expense created successfully",
+                        messageService.get("expense.created"),
                         response,
                         "/api/v1/expenses"
         );
@@ -95,7 +99,7 @@ public final class ControllerExpense {
         );
 
         return ApiResponse.success(
-                        "Expense updated successfully",
+                        messageService.get("expense.updated"),
                         response,
                         "/api/v1/expenses"
         );

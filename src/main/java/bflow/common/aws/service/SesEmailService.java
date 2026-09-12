@@ -2,6 +2,7 @@ package bflow.common.aws.service;
 
 
 import bflow.common.exception.EmailDeliveryException;
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public final class SesEmailService {
      */
     @Value("${aws.ses.from}")
     private String from;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Send an email via AWS SES.
@@ -67,7 +71,7 @@ public final class SesEmailService {
             sesClient.sendEmail(request);
         } catch (SesException ex) {
             throw new EmailDeliveryException(
-                    "Email service unavailable",
+                    messageService.get("email.delivery.unavailable"),
                     ex
             );
         }

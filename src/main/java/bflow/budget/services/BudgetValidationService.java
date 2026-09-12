@@ -4,7 +4,9 @@ import bflow.budget.enums.BudgetScope;
 import bflow.common.exception.InvalidBudgetDateException;
 import bflow.common.exception.InvalidBudgetScopeException;
 import bflow.common.exception.InvalidBudgetThresholdException;
+import bflow.common.i18n.MessageService;
 import bflow.wallet.enums.Currency;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -12,7 +14,11 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public final class BudgetValidationService {
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Validate that the budget start date is valid and not in the future.
@@ -24,13 +30,13 @@ public final class BudgetValidationService {
 
         if (startDate == null) {
             throw new InvalidBudgetDateException(
-                    "Start date is required"
+                    messageService.get("budget.startDate.required")
             );
         }
 
         if (startDate.isAfter(LocalDate.now())) {
             throw new InvalidBudgetDateException(
-                    "Start date cannot be in the future"
+                    messageService.get("budget.startDate.future")
             );
         }
     }
@@ -74,7 +80,9 @@ public final class BudgetValidationService {
                 && warning >= critical) {
 
             throw new InvalidBudgetThresholdException(
-                    "Warning threshold must be less than critical"
+                    messageService.get(
+                            "budget.threshold.warningLessThanCritical"
+                    )
             );
         }
     }
@@ -89,13 +97,13 @@ public final class BudgetValidationService {
 
         if (amount == null) {
             throw new IllegalArgumentException(
-                    "Budget amount is required"
+                    messageService.get("budget.amount.required")
             );
         }
 
         if (amount.compareTo(BigDecimal.ONE) < 0) {
             throw new IllegalArgumentException(
-                    "Budget amount must be greater than or equal to 1"
+                    messageService.get("budget.amount.minimum")
             );
         }
     }
@@ -117,37 +125,50 @@ public final class BudgetValidationService {
             case WALLET -> {
                 if (walletId == null) {
                     throw new InvalidBudgetScopeException(
-                            "WALLET scope requires walletId"
+                            messageService.get(
+                                    "budget.scope.wallet.walletIdRequired"
+                            )
                     );
                 }
                 if (categoryId != null) {
                     throw new InvalidBudgetScopeException(
-                            "WALLET scope must not have a categoryId"
+                            messageService.get(
+                                    "budget.scope.wallet"
+                                            + ".categoryIdNotAllowed"
+                            )
                     );
                 }
             }
             case WALLET_CATEGORY -> {
                 if (walletId == null || categoryId == null) {
                     throw new InvalidBudgetScopeException(
-                            "WALLET_CATEGORY scope requires both "
-                                    + "walletId and categoryId"
+                            messageService.get(
+                                    "budget.scope.walletCategory"
+                                            + ".bothRequired"
+                            )
                     );
                 }
             }
             case CATEGORY_GLOBAL -> {
                 if (categoryId == null) {
                     throw new InvalidBudgetScopeException(
-                            "CATEGORY_GLOBAL scope requires categoryId"
+                            messageService.get(
+                                    "budget.scope.categoryGlobal"
+                                            + ".categoryIdRequired"
+                            )
                     );
                 }
                 if (walletId != null) {
                     throw new InvalidBudgetScopeException(
-                            "CATEGORY_GLOBAL scope must not have a walletId"
+                            messageService.get(
+                                    "budget.scope.categoryGlobal"
+                                            + ".walletIdNotAllowed"
+                            )
                     );
                 }
             }
             default -> throw new InvalidBudgetScopeException(
-                    "Unsupported budget scope"
+                    messageService.get("budget.scope.unsupported")
             );
         }
     }
@@ -181,7 +202,7 @@ public final class BudgetValidationService {
     ) {
         if (requestedCurrency == null) {
             throw new InvalidBudgetScopeException(
-                    "Budget currency is required"
+                    messageService.get("budget.currency.required")
             );
         }
 
@@ -192,9 +213,11 @@ public final class BudgetValidationService {
         if (walletCurrency != null
                 && requestedCurrency != walletCurrency) {
             throw new InvalidBudgetScopeException(
-                    "Budget currency (" + requestedCurrency
-                            + ") must match the wallet's currency ("
-                            + walletCurrency + ")"
+                    messageService.get(
+                            "budget.currency.mismatch",
+                            requestedCurrency,
+                            walletCurrency
+                    )
             );
         }
     }

@@ -11,7 +11,7 @@ public class CategoryRequest {
     /**
      * The name of the category.
      */
-    @NotBlank
+    @NotBlank(message = "{category.name.required}")
     private String name;
 
     /**

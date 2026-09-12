@@ -6,6 +6,7 @@ import bflow.auth.services.CurrentUserService;
 import bflow.auth.services.ProfilePictureService;
 import bflow.auth.services.UserService;
 import bflow.common.aws.service.StorageObject;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -53,6 +54,9 @@ public final class UserController {
     /** Service for profile picture upload and retrieval. */
     private final ProfilePictureService profilePictureService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Updates the current authenticated user's profile.
      * @param authentication the current user's authentication object.
@@ -83,7 +87,7 @@ public final class UserController {
                 userService.updateProfile(userId, requestBody);
 
         return ApiResponse.success(
-                "User profile updated",
+                messageService.get("user.profile.updated"),
                 updated,
                 request.getRequestURI()
         );
@@ -121,7 +125,7 @@ public final class UserController {
                 profilePictureService.updatePicture(userId, file);
 
         return ApiResponse.success(
-                "Profile picture updated",
+                messageService.get("user.picture.updated"),
                 pictureUrl,
                 request.getRequestURI()
         );
@@ -184,7 +188,7 @@ public final class UserController {
         userService.softDelete(userId);
 
         return ApiResponse.success(
-                "User account deleted",
+                messageService.get("user.account.deleted"),
                 null,
                 request.getRequestURI()
         );

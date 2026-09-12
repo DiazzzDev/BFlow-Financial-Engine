@@ -7,6 +7,7 @@ import bflow.common.aws.service.StorageObject;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,9 @@ public class ProfilePictureService {
     /** Storage abstraction used to persist and retrieve the avatar. */
     private final StorageService storageService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /** Public base URL this application is reachable at. */
     @Value("${app.base-url}")
     private String baseUrl;
@@ -90,7 +94,7 @@ public class ProfilePictureService {
             );
         } catch (IOException ex) {
             throw new InvalidFileException(
-                    "Unable to read uploaded file"
+                    messageService.get("file.readError")
             );
         }
 
@@ -119,7 +123,7 @@ public class ProfilePictureService {
 
         if (user.getPictureSource() != PictureSource.S3) {
             throw new ResourceNotFoundException(
-                    "This user has no uploaded profile picture"
+                    messageService.get("user.picture.notFound")
             );
         }
 
@@ -146,13 +150,12 @@ public class ProfilePictureService {
     private void validateFile(final MultipartFile file) {
 
         if (file == null || file.isEmpty()) {
-            throw new InvalidFileException("No file was uploaded");
+            throw new InvalidFileException(messageService.get("file.missing"));
         }
 
         if (file.getSize() > maxFileSizeBytes) {
             throw new InvalidFileException(
-                    "File exceeds the maximum allowed size of "
-                            + maxFileSizeBytes + " bytes"
+                    messageService.get("file.tooLarge", maxFileSizeBytes)
             );
         }
 
@@ -161,8 +164,9 @@ public class ProfilePictureService {
         if (!StringUtils.hasText(contentType)
                 || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new InvalidFileException(
-                    "Content type '" + contentType
-                            + "' is not allowed for a profile picture"
+                    messageService.get(
+                            "file.invalidContentType", contentType
+                    )
             );
         }
     }

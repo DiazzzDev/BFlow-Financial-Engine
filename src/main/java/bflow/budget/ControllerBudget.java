@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import bflow.budget.services.BudgetService;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,9 @@ public final class ControllerBudget {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Get budgets for the authenticated user, with optional dynamic
      * filtering (case-insensitive by wallet/category name, wallet,
@@ -77,7 +81,7 @@ public final class ControllerBudget {
                 budgetService.getBudgets(userId, filter, pageable);
 
         return ApiResponse.success(
-                "Budgets retrieved successfully",
+                messageService.get("budget.list.retrieved"),
                 budgets,
                 "/api/v1/budgets"
         );
@@ -107,7 +111,7 @@ public final class ControllerBudget {
                 budgetService.getBudgetDetail(id, userId);
 
         return ApiResponse.success(
-                "Budget detail retrieved successfully",
+                messageService.get("budget.detail.retrieved"),
                 response,
                 "/api/v1/budgets/" + id + "/detail"
         );
@@ -136,7 +140,7 @@ public final class ControllerBudget {
                 budgetService.getBudgetsByWallet(walletId, userId);
 
         return ApiResponse.success(
-                "Budgets retrieved successfully",
+                messageService.get("budget.list.retrieved"),
                 budgets,
                 "/api/v1/budgets/wallet/" + walletId
         );
@@ -164,7 +168,7 @@ public final class ControllerBudget {
         BudgetResponse response = budgetService.getBudgetStatus(id, userId);
 
         return ApiResponse.success(
-                "Budget status retrieved successfully",
+                messageService.get("budget.status.retrieved"),
                 response,
                 "/api/v1/budgets/" + id + "/status"
         );
@@ -194,7 +198,7 @@ public final class ControllerBudget {
                 budgetService.createBudget(
                         request, userId, request.getWalletId());
 
-        return ApiResponse.success("Budget created successfully", response,
+        return ApiResponse.success(messageService.get("budget.created"), response,
                 "/api/v1/budgets");
     }
 
@@ -221,7 +225,7 @@ public final class ControllerBudget {
                 budgetService.getBudgetSummary(walletId, userId);
 
         return ApiResponse.success(
-                "Budget summary retrieved successfully",
+                messageService.get("budget.summary.retrieved"),
                 summary,
                 "/api/v1/budgets/wallet/" + walletId + "/summary"
         );
@@ -252,7 +256,7 @@ public final class ControllerBudget {
                 budgetService.patchBudget(id, userId, request);
 
         return ApiResponse.success(
-                "Budget updated successfully",
+                messageService.get("budget.updated"),
                 response,
                 "/api/v1/budgets/" + id
         );
@@ -280,7 +284,7 @@ public final class ControllerBudget {
         budgetService.deleteBudget(id, userId);
 
         return ApiResponse.success(
-                "Budget deleted successfully",
+                messageService.get("budget.deleted"),
                 null,
                 "/api/v1/budgets/" + id
         );

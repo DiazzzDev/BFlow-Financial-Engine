@@ -6,6 +6,7 @@ import bflow.category.entity.Category;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
+import bflow.common.i18n.MessageService;
 import bflow.recurring.DTO.RecurringRequest;
 import bflow.recurring.DTO.RecurringResponse;
 import bflow.recurring.RepositoryRecurringTransaction;
@@ -73,6 +74,9 @@ public class RecurringExecutionService {
      */
     private final PlanLimitService planLimitService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Execute all due recurring transactions on the current date.
      * Each one runs in its own isolated transaction (delegated to
@@ -124,7 +128,8 @@ public class RecurringExecutionService {
                     notification.amount(),
                     notification.attempts(),
                     notification.deactivated(),
-                    notification.reason()
+                    notification.reason(),
+                    notification.language()
             );
         } catch (Exception mailError) {
             log.error("Failed to send recurring-failure email for {}: {}",
@@ -168,7 +173,7 @@ public class RecurringExecutionService {
                 .findByWalletIdAndUserId(request.getWalletId(), userId)
                 .orElseThrow(() ->
                         new WalletAccessDeniedException(
-                                "No access to wallet"
+                                messageService.get("wallet.accessDenied")
                         )
                 );
 
@@ -177,7 +182,9 @@ public class RecurringExecutionService {
         Category category = repositoryCategory
                 .findById(request.getCategoryId())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Category not found")
+                        new ResourceNotFoundException(
+                                messageService.get("category.notFound")
+                        )
                 );
 
         RecurringTransaction recurring = new RecurringTransaction();
@@ -240,11 +247,15 @@ public class RecurringExecutionService {
     ) {
         RecurringTransaction recurring = repository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Recurring not found")
+                        new ResourceNotFoundException(
+                                messageService.get("recurring.notFound")
+                        )
                 );
 
         if (!recurring.getUser().getId().equals(userId)) {
-            throw new WalletAccessDeniedException("Access denied");
+            throw new WalletAccessDeniedException(
+                    messageService.get("wallet.accessDenied")
+            );
         }
 
         recurring.setActive(active);
@@ -262,11 +273,15 @@ public class RecurringExecutionService {
     ) {
         RecurringTransaction recurring = repository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Recurring not found")
+                        new ResourceNotFoundException(
+                                messageService.get("recurring.notFound")
+                        )
                 );
 
         if (!recurring.getUser().getId().equals(userId)) {
-            throw new WalletAccessDeniedException("Access denied");
+            throw new WalletAccessDeniedException(
+                    messageService.get("wallet.accessDenied")
+            );
         }
 
         repository.delete(recurring);

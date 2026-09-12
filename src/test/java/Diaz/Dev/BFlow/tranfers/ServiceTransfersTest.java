@@ -5,6 +5,7 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.tranfers.DTO.TransferenceResponse;
 import bflow.tranfers.RepositoryTransfers;
 import bflow.tranfers.ServiceTransfers;
@@ -61,6 +62,9 @@ class ServiceTransfersTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private ServiceTransfers serviceTransfers;

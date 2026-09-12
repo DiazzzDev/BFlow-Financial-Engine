@@ -4,6 +4,7 @@ import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.tranfers.DTO.TransferenceRequest;
 import bflow.tranfers.DTO.TransferenceResponse;
 import bflow.tranfers.entities.Transfer;
@@ -50,6 +51,9 @@ public class ServiceTransfers {
     /** The service for user business logic. */
     private final UserService userService;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieves a transfer by its ID, validating user authorization.
      * @param transferId the unique identifier of the transfer.
@@ -67,7 +71,7 @@ public class ServiceTransfers {
         Transfer transfer = repositoryTransfers
                 .findByIdAndUserId(transferId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Transferencia no encontrada o no autorizada"
+                        messageService.get("transfer.notFound")
                 ));
         return mapToResponse(transfer);
     }
@@ -129,25 +133,27 @@ public class ServiceTransfers {
         // Retrieve authenticated user
         User user = repositoryUser.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "User not found"
+                        messageService.get("user.notFound")
                 ));
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException("Amount must be greater than zero");
+            throw new IllegalStateException(
+                    messageService.get("transfer.amount.mustBePositive")
+            );
         }
 
         // Validate access: check if user is linked to this wallet
         WalletUser originWallet = repositoryWalletUser
                 .findByWalletIdAndUserId(request.getFromWalletId(), userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to origin this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         // Validate access: check if user is linked to this wallet
         WalletUser destinationWallet = repositoryWalletUser
                 .findByWalletIdAndUserId(request.getToWalletId(), userId)
                 .orElseThrow(() -> new AccessDeniedException(
-                        "User does not have access to this wallet"
+                        messageService.get("wallet.accessDenied")
                 ));
 
         UUID firstId = originWallet.getWallet().getId();
@@ -160,23 +166,23 @@ public class ServiceTransfers {
             walletA = repositoryWallet.findByIdForUpdate(firstId)
                     .orElseThrow(
                         () -> new ResourceNotFoundException(
-                                "Origin wallet not found"
+                                messageService.get("wallet.origin.notFound")
                         )
                 );
             walletB = repositoryWallet.findByIdForUpdate(secondId)
                     .orElseThrow(
                         () -> new ResourceNotFoundException(
-                                "Destination wallet not found"
+                                messageService.get("wallet.target.notFound")
                         )
                 );
         } else {
             walletB = repositoryWallet.findByIdForUpdate(secondId)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                        "Destination wallet not found"
+                        messageService.get("wallet.target.notFound")
                 ));
             walletA = repositoryWallet.findByIdForUpdate(firstId)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                        "Origin wallet not found"
+                        messageService.get("wallet.origin.notFound")
                 ));
         }
 
@@ -185,16 +191,20 @@ public class ServiceTransfers {
 
         if (fromWallet.getId().equals(toWallet.getId())) {
             throw new IllegalStateException(
-                    "Cannot transfer to the same wallet"
+                    messageService.get("transfer.sameWallet")
             );
         }
 
         if (!fromWallet.getCurrency().equals(toWallet.getCurrency())) {
-            throw new IllegalStateException();
+            throw new IllegalStateException(
+                    messageService.get("transfer.currencyMismatch")
+            );
         }
 
         if (fromWallet.getBalance().compareTo(amount) < 0) {
-            throw new IllegalStateException("Insufficient balance");
+            throw new IllegalStateException(
+                    messageService.get("wallet.balance.insufficientForAdjustment")
+            );
         }
 
         serviceWallet.subtractBalance(fromWallet, amount);

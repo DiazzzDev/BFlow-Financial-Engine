@@ -8,6 +8,7 @@ import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.gateway.dto.WompiWebhookPayload;
 import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
+import bflow.common.i18n.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,9 @@ public class WompiWebhookService {
     @Value("${wompi.api-secret}")
     private String apiSecret;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Process a Wompi webhook payload after verifying its signature.
      *
@@ -59,7 +63,9 @@ public class WompiWebhookService {
     public void process(final String rawBody, final String signature) {
         if (!isValidSignature(rawBody, signature)) {
             log.warn("HMAC inválido en webhook de Wompi");
-            throw new SecurityException("Firma de webhook inválida");
+            throw new SecurityException(
+                    messageService.get("payment.webhook.invalidSignature")
+            );
         }
 
         WompiWebhookPayload payload = parse(rawBody);
@@ -98,9 +104,11 @@ public class WompiWebhookService {
                         .stream()
                         .findFirst())
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró suscripción para email "
-                                + payload.cliente().email()
-                                + " idSuscripcion=" + idSuscripcion));
+                        messageService.get(
+                                "subscription.notFoundForWebhookEmail",
+                                payload.cliente().email(),
+                                idSuscripcion
+                        )));
 
         if (subscription.getProviderSubscriberId() == null) {
             subscription.setProviderSubscriberId(idSuscripcion);
@@ -122,8 +130,10 @@ public class WompiWebhookService {
                         SubscriptionStatus.PENDING_ACTIVATION
                 )
                 .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró suscripción para checkoutReference "
-                                + reference));
+                        messageService.get(
+                                "subscription.notFoundForCheckoutReference",
+                                reference
+                        )));
     }
 
     /**
@@ -148,8 +158,7 @@ public class WompiWebhookService {
                     providerPaymentId
             );
             throw new IllegalStateException(
-                    "Monto del pago no coincide con el monto esperado de "
-                            + "la suscripción"
+                    messageService.get("payment.amount.mismatch")
             );
         }
 
@@ -232,7 +241,7 @@ public class WompiWebhookService {
             return objectMapper.readValue(rawBody, WompiWebhookPayload.class);
         } catch (Exception e) {
             throw new IllegalArgumentException(
-                    "Payload de webhook inválido",
+                    messageService.get("payment.webhook.invalidPayload"),
                     e
             );
         }

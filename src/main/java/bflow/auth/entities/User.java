@@ -2,6 +2,7 @@ package bflow.auth.entities;
 
 import bflow.auth.enums.NameSource;
 import bflow.auth.enums.PictureSource;
+import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.enums.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -66,6 +67,12 @@ public class User {
     @Column(name = "picture_source", nullable = false)
     @Builder.Default
     private PictureSource pictureSource = PictureSource.NONE;
+
+    /** The user's explicit language preference for messages and emails. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private SupportedLanguage language = SupportedLanguage.ES;
 
     /** The set of roles assigned to the user. */
     @ElementCollection(fetch = FetchType.EAGER)

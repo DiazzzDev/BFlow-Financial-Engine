@@ -7,6 +7,7 @@ import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.exception.ConflictException;
 import bflow.common.exception.NotFoundException;
 import bflow.common.exception.PlanLimitExceededException;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.FeatureCodes;
 import bflow.subscription.services.PlanLimitService;
 import bflow.wallet.DTO.CollaboratorSearchResult;
@@ -73,6 +74,9 @@ public class ServiceWalletSharing {
      * Service responsible for wallet operations.
      */
     private final ServiceWallet serviceWallet;
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Maximum number of matches returned by the collaborator search,
@@ -208,12 +212,12 @@ public class ServiceWalletSharing {
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() ->
                         new AccessDeniedException(
-                                "You don't have access to this wallet."
+                                messageService.get("wallet.accessDenied")
                         ));
 
         if (walletUser.getRole() != WalletRole.OWNER) {
             throw new AccessDeniedException(
-                    "Only the wallet owner can perform this action."
+                    messageService.get("wallet.owner.onlyAction")
             );
         }
 
@@ -258,7 +262,7 @@ public class ServiceWalletSharing {
 
         if (owner.getUser().getEmail().equalsIgnoreCase(normalizedEmail)) {
             throw new ConflictException(
-                    "You can't invite yourself."
+                    messageService.get("wallet.invitation.selfInvite")
             );
         }
 
@@ -268,7 +272,7 @@ public class ServiceWalletSharing {
         )) {
 
             throw new ConflictException(
-                    "This user is already a member of the wallet."
+                    messageService.get("wallet.invitation.alreadyMember")
             );
         }
 
@@ -280,7 +284,7 @@ public class ServiceWalletSharing {
                 )) {
 
             throw new ConflictException(
-                    "There is already a pending invitation for this email."
+                    messageService.get("wallet.invitation.alreadyPending")
             );
         }
     }
@@ -327,7 +331,8 @@ public class ServiceWalletSharing {
                 invitation.getInvitedByUser().getEmail(),
                 invitation.getWallet().getName(),
                 invitation.getToken(),
-                invitation.getExpiresAt()
+                invitation.getExpiresAt(),
+                bflow.auth.enums.SupportedLanguage.ES
         );
     }
 
@@ -347,7 +352,9 @@ public class ServiceWalletSharing {
         WalletInvitation invitation = repositoryWalletInvitation
                 .findByToken(token)
                 .orElseThrow(() ->
-                        new NotFoundException("Invitation not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.invitation.notFound")
+                        ));
 
         return doAcceptInvitation(invitation, acceptingUserId);
     }
@@ -369,7 +376,9 @@ public class ServiceWalletSharing {
         WalletInvitation invitation = repositoryWalletInvitation
                 .findById(invitationId)
                 .orElseThrow(() ->
-                        new NotFoundException("Invitation not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.invitation.notFound")
+                        ));
 
         return doAcceptInvitation(invitation, acceptingUserId);
     }
@@ -383,7 +392,7 @@ public class ServiceWalletSharing {
 
         User user = repositoryUser.findById(acceptingUserId)
                 .orElseThrow(() ->
-                        new NotFoundException("User not found."));
+                        new NotFoundException(messageService.get("user.notFound")));
 
         validateInvitationRecipient(invitation, user);
 
@@ -394,7 +403,7 @@ public class ServiceWalletSharing {
                 acceptingUserId
         )) {
             throw new ConflictException(
-                    "You are already a member of this wallet."
+                    messageService.get("wallet.invitation.alreadyMemberSelf")
             );
         }
 
@@ -435,7 +444,7 @@ public class ServiceWalletSharing {
 
         if (invitation.getStatus() != WalletInvitationStatus.PENDING) {
             throw new ConflictException(
-                    "This invitation is no longer available."
+                    messageService.get("wallet.invitation.notAvailable")
             );
         }
 
@@ -447,7 +456,7 @@ public class ServiceWalletSharing {
             repositoryWalletInvitation.save(invitation);
 
             throw new ConflictException(
-                    "This invitation has expired."
+                    messageService.get("wallet.invitation.expired")
             );
         }
     }
@@ -461,7 +470,7 @@ public class ServiceWalletSharing {
                 .equalsIgnoreCase(user.getEmail())) {
 
             throw new AccessDeniedException(
-                    "This invitation was sent to another email address."
+                    messageService.get("wallet.invitation.wrongEmail")
             );
         }
     }
@@ -500,7 +509,7 @@ public class ServiceWalletSharing {
             repositoryWalletInvitation.save(invitation);
 
             throw new ConflictException(
-                    "The wallet owner no longer has available member slots."
+                    messageService.get("wallet.invitation.noSlots")
             );
         }
     }
@@ -520,7 +529,9 @@ public class ServiceWalletSharing {
         WalletInvitation invitation = repositoryWalletInvitation
                 .findByToken(token)
                 .orElseThrow(() ->
-                        new NotFoundException("Invitation not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.invitation.notFound")
+                        ));
 
         doRejectInvitation(invitation, rejectingUserId);
     }
@@ -541,7 +552,9 @@ public class ServiceWalletSharing {
         WalletInvitation invitation = repositoryWalletInvitation
                 .findById(invitationId)
                 .orElseThrow(() ->
-                        new NotFoundException("Invitation not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.invitation.notFound")
+                        ));
 
         doRejectInvitation(invitation, rejectingUserId);
     }
@@ -555,7 +568,7 @@ public class ServiceWalletSharing {
 
         User user = repositoryUser.findById(rejectingUserId)
                 .orElseThrow(() ->
-                        new NotFoundException("User not found."));
+                        new NotFoundException(messageService.get("user.notFound")));
 
         validateInvitationRecipient(invitation, user);
 
@@ -579,7 +592,9 @@ public class ServiceWalletSharing {
         WalletInvitation invitation = repositoryWalletInvitation
                 .findById(invitationId)
                 .orElseThrow(() ->
-                        new NotFoundException("Invitation not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.invitation.notFound")
+                        ));
 
         validateOwner(
                 invitation.getWallet().getId(),
@@ -588,7 +603,7 @@ public class ServiceWalletSharing {
 
         if (invitation.getStatus() != WalletInvitationStatus.PENDING) {
             throw new ConflictException(
-                    "Only pending invitations can be canceled."
+                    messageService.get("wallet.invitation.onlyPendingCanCancel")
             );
         }
 
@@ -616,11 +631,13 @@ public class ServiceWalletSharing {
         WalletUser member = repositoryWalletUser
                 .findByWalletIdAndUserId(walletId, memberUserId)
                 .orElseThrow(() ->
-                        new NotFoundException("Member not found."));
+                        new NotFoundException(
+                                messageService.get("wallet.member.notFound")
+                        ));
 
         if (member.getRole() == WalletRole.OWNER) {
             throw new ConflictException(
-                    "The wallet owner cannot be removed."
+                    messageService.get("wallet.owner.cannotBeRemoved")
             );
         }
 
@@ -648,13 +665,12 @@ public class ServiceWalletSharing {
                 .findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() ->
                         new NotFoundException(
-                                "You are not a member of this wallet."
+                                messageService.get("wallet.member.notAMember")
                         ));
 
         if (member.getRole() == WalletRole.OWNER) {
             throw new ConflictException(
-                    "The wallet owner cannot leave. Transfer ownership "
-                            + "or delete the wallet instead."
+                    messageService.get("wallet.owner.cannotLeave")
             );
         }
 
@@ -676,7 +692,7 @@ public class ServiceWalletSharing {
 
         User user = repositoryUser.findById(userId)
                 .orElseThrow(() ->
-                        new NotFoundException("User not found."));
+                        new NotFoundException(messageService.get("user.notFound")));
 
         return repositoryWalletInvitation
                 .findByInvitedEmailAndStatus(

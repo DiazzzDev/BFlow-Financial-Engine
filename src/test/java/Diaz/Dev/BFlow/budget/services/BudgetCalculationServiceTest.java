@@ -9,6 +9,7 @@ import bflow.budget.enums.PeriodType;
 import bflow.budget.services.BudgetCalculationService;
 import bflow.budget.services.BudgetLifecycleService;
 import bflow.category.entity.Category;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.RepositoryExpense;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.enums.Currency;
@@ -49,6 +50,9 @@ class BudgetCalculationServiceTest {
     @Mock
     private RepositoryWalletUser repositoryWalletUser;
 
+    @Mock
+    private MessageService messageService;
+
     private BudgetCalculationService service;
 
     private UUID userId;
@@ -60,12 +64,14 @@ class BudgetCalculationServiceTest {
         // BudgetLifecycleService has no dependencies of its own, so a
         // real instance (not a mock) keeps calculateEndDate's actual
         // DAILY/WEEKLY/MONTHLY math under test instead of stubbing it.
-        BudgetLifecycleService lifecycleService = new BudgetLifecycleService();
+        BudgetLifecycleService lifecycleService =
+                new BudgetLifecycleService(messageService);
 
         service = new BudgetCalculationService(
                 repositoryExpense,
                 lifecycleService,
-                repositoryWalletUser
+                repositoryWalletUser,
+                messageService
         );
 
         userId = UUID.randomUUID();
@@ -148,6 +154,9 @@ class BudgetCalculationServiceTest {
         // repository layer) must never fall through to summing
         // everything unfiltered.
         Budget budget = categoryGlobalBudget(null);
+
+        when(messageService.get(eq("budget.internal.noCurrencySet"), any()))
+                .thenReturn("Budget has no currency set");
 
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,

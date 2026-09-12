@@ -2,6 +2,7 @@ package bflow.category;
 
 import bflow.category.DTO.CategoryRequest;
 import bflow.category.DTO.CategoryResponse;
+import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,9 @@ public class ControllerCategory {
      */
     private final ServiceCategory serviceCategory;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Creates a new category from the provided request.
      *
@@ -47,7 +51,8 @@ public class ControllerCategory {
     public ApiResponse<CategoryResponse>  create(
             @Valid @RequestBody final CategoryRequest request
     ) {
-        return ApiResponse.success("Categoría creada",
+        return ApiResponse.success(
+                messageService.get("category.created"),
                 serviceCategory.create(request), "/api/v1/categories");
     }
 
@@ -62,7 +67,8 @@ public class ControllerCategory {
     )
     @GetMapping
     public ApiResponse<List<CategoryResponse>> getAll() {
-        return ApiResponse.success("Categorías obtenidas",
+        return ApiResponse.success(
+                messageService.get("category.retrieved"),
                 serviceCategory.findAll(), "/api/v1/categories");
     }
 

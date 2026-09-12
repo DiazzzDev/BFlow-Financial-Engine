@@ -47,20 +47,20 @@ public class BudgetRequest {
     /**
      * The budget amount.
      */
-    @NotNull
-    @Positive
+    @NotNull(message = "{budget.amount.required}")
+    @Positive(message = "{budget.amount.positive}")
     private BigDecimal amount;
 
     /**
      * The budget period type.
      */
-    @NotNull
+    @NotNull(message = "{budget.period.required}")
     private PeriodType period;
 
     /**
      * The budget start date.
      */
-    @NotNull
+    @NotNull(message = "{budget.startDate.required}")
     private LocalDate startDate;
 
     /**
@@ -71,21 +71,21 @@ public class BudgetRequest {
     /**
      * The warning threshold percentage.
      */
-    @Min(1)
-    @Max(THRESHOLD_MAX)
+    @Min(value = 1, message = "{budget.threshold.range}")
+    @Max(value = THRESHOLD_MAX, message = "{budget.threshold.range}")
     private Integer thresholdWarning = WARNING_THRESHOLD_DEFAULT;
 
     /**
      * The critical threshold percentage.
      */
-    @Min(1)
-    @Max(THRESHOLD_MAX)
+    @Min(value = 1, message = "{budget.threshold.range}")
+    @Max(value = THRESHOLD_MAX, message = "{budget.threshold.range}")
     private Integer thresholdCritical = CRITICAL_THRESHOLD_DEFAULT;
 
     /**
      * The budget scope (WALLET or CATEGORY).
      */
-    @NotNull
+    @NotNull(message = "{budget.scope.required}")
     private BudgetScope scope;
 
     /**
@@ -96,6 +96,6 @@ public class BudgetRequest {
      * this currency are included when calculating spend, since
      * amounts in different currencies cannot be summed directly.
      */
-    @NotNull
+    @NotNull(message = "{budget.currency.required}")
     private Currency currency;
 }

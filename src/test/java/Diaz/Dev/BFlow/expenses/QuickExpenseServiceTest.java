@@ -6,6 +6,7 @@ import bflow.budget.services.BudgetService;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.DTO.QuickExpenseRequest;
 import bflow.expenses.RepositoryExpense;
@@ -71,6 +72,9 @@ class QuickExpenseServiceTest {
 
     @Mock
     private BudgetService budgetService;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private QuickExpenseService quickExpenseService;

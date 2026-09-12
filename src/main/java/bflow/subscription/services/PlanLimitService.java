@@ -1,6 +1,7 @@
 package bflow.subscription.services;
 
 import bflow.common.exception.PlanLimitExceededException;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.dto.CurrentSubscriptionResponse;
 import bflow.subscription.entities.PlanFeature;
 import bflow.subscription.entities.Subscription;
@@ -30,6 +31,9 @@ public class PlanLimitService {
      */
     private final RepositoryPlanFeature repositoryPlanFeature;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Verifies that the user can create a new resource according to the
      * current subscription plan.
@@ -50,15 +54,20 @@ public class PlanLimitService {
 
         if (!planFeature.isEnabled()) {
             throw new PlanLimitExceededException(
-                    "Tu plan no incluye " + planFeature.getFeature().getName());
+                    messageService.get(
+                            "subscription.plan.featureNotIncluded",
+                            planFeature.getFeature().getName()
+                    ));
         }
 
         Integer limit = planFeature.getLimit();
         if (limit != null && currentCount >= limit) {
             throw new PlanLimitExceededException(
-                "Alcanzaste el límite de " + limit + " "
-                + planFeature.getFeature().getName()
-                + " de tu plan " + planFeature.getPlan().getName()
+                messageService.get(
+                        "subscription.plan.limitReached",
+                        limit,
+                        planFeature.getFeature().getName()
+                )
             );
         }
     }
@@ -79,7 +88,10 @@ public class PlanLimitService {
         PlanFeature planFeature = resolvePlanFeature(userId, featureCode);
         if (!planFeature.isEnabled()) {
             throw new PlanLimitExceededException(
-                    "Tu plan no incluye " + planFeature.getFeature().getName());
+                    messageService.get(
+                            "subscription.plan.featureNotIncluded",
+                            planFeature.getFeature().getName()
+                    ));
         }
     }
 
@@ -93,7 +105,9 @@ public class PlanLimitService {
                         userId, SubscriptionStatus.PAST_DUE
                 ))
                 .orElseThrow(() -> new IllegalStateException(
-                        "Usuario sin suscripción activa"
+                        messageService.get(
+                                "subscription.noActiveSubscription"
+                        )
                 ));
 
         return repositoryPlanFeature
@@ -102,8 +116,11 @@ public class PlanLimitService {
                 featureCode
             )
             .orElseThrow(() -> new IllegalStateException(
-                "Plan " + subscription.getPlan().getCode()
-                + " sin configuración para " + featureCode
+                messageService.get(
+                        "subscription.plan.noFeatureConfig",
+                        subscription.getPlan().getCode(),
+                        featureCode
+                )
             ));
     }
 
@@ -123,7 +140,9 @@ public class PlanLimitService {
                         userId, SubscriptionStatus.PAST_DUE
                 ))
                 .orElseThrow(() -> new IllegalStateException(
-                        "Usuario sin suscripción activa"
+                        messageService.get(
+                                "subscription.noActiveSubscription"
+                        )
                 ));
 
         List<PlanFeature> planFeatures = repositoryPlanFeature

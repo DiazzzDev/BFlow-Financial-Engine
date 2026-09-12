@@ -1,5 +1,6 @@
 package bflow.auth.security;
 
+import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,6 +14,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CognitoIdTokenValidator {
+
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
 
     /**
      * Decoder used to validate Cognito ID tokens.
@@ -31,7 +35,7 @@ public class CognitoIdTokenValidator {
             return idTokenDecoder.decode(idToken);
         } catch (JwtException e) {
             throw new IllegalArgumentException(
-                    "Invalid or expired id_token", e
+                    messageService.get("auth.invalidIdToken"), e
             );
         }
     }

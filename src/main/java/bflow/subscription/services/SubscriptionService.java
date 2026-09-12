@@ -1,6 +1,7 @@
 package bflow.subscription.services;
 
 import bflow.auth.entities.User;
+import bflow.common.i18n.MessageService;
 import bflow.subscription.WompiApiClient;
 import bflow.subscription.dto.SubscriptionResponse;
 import bflow.subscription.entities.Plan;
@@ -39,6 +40,9 @@ public class SubscriptionService {
     /** Client used to deactivate recurring Wompi links. */
     private final WompiApiClient wompiApiClient;
 
+    /** Service for resolving localized messages. */
+    private final MessageService messageService;
+
     /**
      * Retrieve the subscriptions owned by the given user.
      *
@@ -65,12 +69,12 @@ public class SubscriptionService {
         Subscription subscription = repositorySubscription
                 .findById(subscriptionId)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Suscripción no encontrada"
+                        messageService.get("subscription.notFound")
                 ));
 
         if (!subscription.getUser().getId().equals(userId)) {
             throw new AccessDeniedException(
-                    "No autorizado para cancelar esta suscripción"
+                    messageService.get("subscription.cancel.notAuthorized")
             );
         }
 
@@ -80,16 +84,17 @@ public class SubscriptionService {
 
         if (subscription.getPlan().getCode().equals("FREE")) {
             throw new IllegalStateException(
-                    "El plan gratuito no se puede cancelar"
+                    messageService.get("subscription.freePlan.cannotCancel")
             );
         }
 
         if (subscription.getStatus() != SubscriptionStatus.ACTIVE
                 && subscription.getStatus() != SubscriptionStatus.PAST_DUE) {
             throw new IllegalStateException(
-                    "Solo se pueden cancelar suscripciones activas o con pago "
-                            + "vencido, estado actual: "
-                            + subscription.getStatus()
+                    messageService.get(
+                            "subscription.cancel.invalidStatus",
+                            subscription.getStatus()
+                    )
             );
         }
 

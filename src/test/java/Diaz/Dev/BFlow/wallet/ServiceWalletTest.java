@@ -6,6 +6,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.expenses.RepositoryExpense;
 import bflow.income.RepositoryIncome;
+import bflow.common.i18n.MessageService;
 import bflow.tranfers.RepositoryTransfers;
 import bflow.wallet.DTO.UpdateWalletRequest;
 import bflow.wallet.DTO.WalletResponse;
@@ -64,6 +65,9 @@ class ServiceWalletTest {
 
     @Mock
     private RepositoryTransfers repositoryTransfers;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private ServiceWallet serviceWallet;

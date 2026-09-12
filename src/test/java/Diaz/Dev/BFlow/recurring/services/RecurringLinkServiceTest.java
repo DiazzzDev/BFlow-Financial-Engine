@@ -3,6 +3,7 @@ package Diaz.Dev.BFlow.recurring.services;
 import bflow.auth.entities.User;
 import bflow.category.entity.Category;
 import bflow.common.exception.PlanLimitExceededException;
+import bflow.common.i18n.MessageService;
 import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.recurring.entity.RecurringTransaction;
 import bflow.recurring.enums.RecurringFrequency;
@@ -53,6 +54,9 @@ class RecurringLinkServiceTest {
 
     @Mock
     private PlanLimitService planLimitService;
+
+    @Mock
+    private MessageService messageService;
 
     @InjectMocks
     private RecurringLinkService recurringLinkService;
@@ -144,6 +148,11 @@ class RecurringLinkServiceTest {
     void linkRecurring_unsupportedPattern_throwsIllegalArgumentException() {
         // YEARLY passes BaseTransactionRequest's @Pattern regex but isn't
         // a RecurringFrequency value yet — must fail loudly, not silently.
+        lenient().when(messageService.get(
+                eq("recurring.recurrencePattern.unsupported"), any()
+        )).thenAnswer(inv -> "Unsupported recurrencePattern '"
+                + inv.getArgument(1) + "'");
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class, () ->
                         recurringLinkService.linkRecurring(
