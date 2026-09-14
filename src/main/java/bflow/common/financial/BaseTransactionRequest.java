@@ -20,7 +20,7 @@ public abstract class BaseTransactionRequest {
 
 
     /** Minimum length for expense title. */
-    private static final int TITLE_MIN_LENGTH = 5;
+    private static final int TITLE_MIN_LENGTH = 1;
 
     /** Maximum length for expense title. */
     private static final int TITLE_MAX_LENGTH = 50;
@@ -41,7 +41,7 @@ public abstract class BaseTransactionRequest {
             message = "{transaction.title.size}"
     )
     @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?]+$",
+            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]+$",
             message = "{transaction.title.invalidCharacters}"
     )
     private String title;
@@ -52,7 +52,7 @@ public abstract class BaseTransactionRequest {
             message = "{transaction.description.size}"
     )
     @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?]*$",
+            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]*$",
             message = "{transaction.description.invalidCharacters}"
     )
     private String description;

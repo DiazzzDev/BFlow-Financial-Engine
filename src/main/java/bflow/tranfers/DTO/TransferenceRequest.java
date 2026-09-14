@@ -52,7 +52,7 @@ public class TransferenceRequest {
         message = "Description must not exceed 255 characters"
     )
     @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()]*$",
+            regexp = "^[\\p{L}0-9 .,'\\-()&@#%/+:_]*$",
             message = "Description contains invalid characters"
     )
     private String description;

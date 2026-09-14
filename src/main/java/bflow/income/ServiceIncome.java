@@ -224,7 +224,6 @@ public class ServiceIncome {
         income.setAmount(newAmount);
         income.setDate(request.getDate());
         income.setCategory(category);
-        income.setTaxable(Boolean.TRUE.equals(request.getTaxable()));
         income.setRecurring(willBeRecurring);
         income.setRecurrencePattern(request.getRecurrencePattern());
         income.setRecurringTransactionId(recurringId);
@@ -311,7 +310,6 @@ public class ServiceIncome {
                 "recurring".equalsIgnoreCase(request.getSource())
         );
 
-        income.setTaxable(Boolean.TRUE.equals(request.getTaxable()));
         income.setRecurring(Boolean.TRUE.equals(request.getRecurring()));
         income.setRecurrencePattern(request.getRecurrencePattern());
 

@@ -23,12 +23,6 @@ import java.util.UUID;
 public class Income extends Transaction {
 
     /**
-     * Whether this income is taxable.
-     */
-    @Column
-    private Boolean taxable;
-
-    /**
      * Whether this income is a recurring income.
      */
     @Column

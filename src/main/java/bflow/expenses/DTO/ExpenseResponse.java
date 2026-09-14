@@ -46,19 +46,9 @@ public class ExpenseResponse {
     private CategoryResponse category;
 
     /**
-     * Flag indicating if the expense is tax deductible.
-     */
-    private Boolean taxDeductible;
-
-    /**
      * Flag indicating if the expense is recurring.
      */
     private Boolean recurring;
-
-    /**
-     * Flag indicating if the expense is reimbursable.
-     */
-    private Boolean reimbursable;
 
     /**
      * The ID of the wallet containing this expense.

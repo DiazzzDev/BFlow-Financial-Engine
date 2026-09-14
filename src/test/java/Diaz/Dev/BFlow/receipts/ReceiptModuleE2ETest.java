@@ -416,8 +416,6 @@ class ReceiptModuleE2ETest {
         confirmRequest.setAmount(new BigDecimal("45.30"));
         confirmRequest.setCategoryId(categoryId);
         confirmRequest.setDate(LocalDate.of(2026, 8, 20));
-        confirmRequest.setTaxDeductible(false);
-        confirmRequest.setReimbursable(false);
 
         ResponseEntity<?> confirmResponse = controller.confirm(
                 receiptId, confirmRequest, authentication, httpServletRequest);
@@ -454,7 +452,6 @@ class ReceiptModuleE2ETest {
         confirmRequest.setAmount(new BigDecimal("10.00"));
         confirmRequest.setCategoryId(categoryId);
         confirmRequest.setDate(LocalDate.of(2026, 8, 20));
-        confirmRequest.setTaxable(true);
 
         controller.confirm(
                 receiptId, confirmRequest, authentication, httpServletRequest);
