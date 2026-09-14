@@ -209,10 +209,6 @@ public class ReceiptUploadService {
             expenseRequest.setDescription(request.getDescription());
             expenseRequest.setAmount(request.getAmount());
             expenseRequest.setDate(request.getDate());
-            expenseRequest.setTaxDeductible(
-                    Boolean.TRUE.equals(request.getTaxDeductible()));
-            expenseRequest.setReimbursable(
-                    Boolean.TRUE.equals(request.getReimbursable()));
             expenseRequest.setReceiptFileId(receipt.getStoredFile().getId());
 
             resultingId = UUID.fromString(
@@ -225,7 +221,6 @@ public class ReceiptUploadService {
             incomeRequest.setDescription(request.getDescription());
             incomeRequest.setAmount(request.getAmount());
             incomeRequest.setDate(request.getDate());
-            incomeRequest.setTaxable(Boolean.TRUE.equals(request.getTaxable()));
             incomeRequest.setReceiptFileId(receipt.getStoredFile().getId());
 
             resultingId = UUID.fromString(

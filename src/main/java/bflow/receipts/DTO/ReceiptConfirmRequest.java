@@ -65,22 +65,4 @@ public class ReceiptConfirmRequest {
      */
     @NotNull
     private LocalDate date;
-
-    /**
-     * Whether the resulting Expense is tax deductible. Only
-     * applies when {@link #type} is EXPENSE; ignored for INCOME.
-     */
-    private Boolean taxDeductible;
-
-    /**
-     * Whether the resulting Expense is reimbursable. Only applies
-     * when {@link #type} is EXPENSE; ignored for INCOME.
-     */
-    private Boolean reimbursable;
-
-    /**
-     * Whether the resulting Income is taxable. Only applies when
-     * {@link #type} is INCOME; ignored for EXPENSE.
-     */
-    private Boolean taxable;
 }

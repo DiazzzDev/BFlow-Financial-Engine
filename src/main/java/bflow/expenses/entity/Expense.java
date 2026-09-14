@@ -26,12 +26,6 @@ import java.util.UUID;
 public class Expense extends Transaction {
 
     /**
-     * Whether this expense is tax deductible.
-     */
-    @Column(nullable = false)
-    private Boolean taxDeductible = false;
-
-    /**
      * Whether this expense is recurring.
      */
     @Column(nullable = false)
@@ -46,12 +40,6 @@ public class Expense extends Transaction {
     /** ID of the RecurringTransaction this entry is linked to, if any. */
     @Column(name = "recurring_transaction_id")
     private UUID recurringTransactionId;
-
-    /**
-     * Indicates if the expense is reimbursable.
-     */
-    @Column(nullable = false)
-    private Boolean reimbursable = false;
 
     /**
      * Indicates if this is a default expense.

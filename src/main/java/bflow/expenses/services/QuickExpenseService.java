@@ -135,8 +135,6 @@ public class QuickExpenseService {
                 : LOW_CONFIDENCE);
 
         expense.setRecurring(false);
-        expense.setTaxDeductible(false);
-        expense.setReimbursable(false);
 
         // Fix for both balance-duplication exploits: without this
         // line the wallet balance was never debited on creation, so a
@@ -189,9 +187,7 @@ public class QuickExpenseService {
 
         r.setDate(e.getDate());
 
-        r.setTaxDeductible(e.getTaxDeductible());
         r.setRecurring(e.getRecurring());
-        r.setReimbursable(e.getReimbursable());
 
         r.setSource(e.getSource());
 

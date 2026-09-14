@@ -689,9 +689,7 @@ public class ServiceWallet {
         dto.setCategory(
                 TransactionMapper.mapCategoryToResponse(expense.getCategory())
         );
-        dto.setTaxDeductible(expense.getTaxDeductible());
         dto.setRecurring(expense.getRecurring());
-        dto.setReimbursable(expense.getReimbursable());
         dto.setWalletId(expense.getWallet().getId().toString());
         dto.setWalletName(expense.getWallet().getName());
         dto.setContributorId(expense.getContributor().getId().toString());
