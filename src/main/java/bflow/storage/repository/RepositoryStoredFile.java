@@ -52,7 +52,9 @@ public interface RepositoryStoredFile
     /**
      * Deletes orphaned stored file records and returns their S3 object keys.
      * Pending files older than the pending cutoff and uploaded files older
-     * than the unreferenced cutoff without an associated expense are removed.
+     * than the unreferenced cutoff are removed, but only if they are not
+     * referenced by an expense, an income, or a receipt_uploads row (the
+     * OCR bridge table also holds a FK to stored_files).
      *
      * @param pendingCutoff cutoff timestamp for pending files
      * @param unreferencedCutoff timestamp for uploaded unreferenced files
@@ -68,6 +70,14 @@ public interface RepositoryStoredFile
                AND NOT EXISTS (
                    SELECT 1 FROM expenses e
                    WHERE e.receipt_file_id = sf.id
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM incomes i
+                   WHERE i.receipt_file_id = sf.id
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM receipt_uploads ru
+                   WHERE ru.stored_file_id = sf.id
                ))
     )
     DELETE FROM stored_files sf

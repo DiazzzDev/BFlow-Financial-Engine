@@ -1,6 +1,8 @@
 package bflow.auth.security;
 
 import bflow.auth.services.CurrentUserService;
+import bflow.common.audit.filter.AuditFilter;
+import bflow.common.audit.service.ServiceAudit;
 import bflow.common.idempotency.config.IdempotencyProperties;
 import bflow.common.idempotency.filter.IdempotencyFilter;
 import bflow.common.idempotency.service.IdempotencyService;
@@ -46,6 +48,9 @@ public class SecurityConfig {
     /** Entry point invoked for unauthenticated/rejected requests. */
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
+    /** Service that persists audit records (ADR-0010 §9). */
+    private final ServiceAudit serviceAudit;
+
     /**
      * Configures the security filter chain.
      * @param http the security object to configure.
@@ -58,6 +63,10 @@ public class SecurityConfig {
         IdempotencyFilter idempotencyFilter = new IdempotencyFilter(
                 idempotencyService, idempotencyProperties,
                 currentUserService, objectMapper
+        );
+
+        AuditFilter auditFilter = new AuditFilter(
+                serviceAudit, currentUserService
         );
 
         return http
@@ -111,6 +120,7 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(idempotencyFilter,
                         BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(auditFilter, IdempotencyFilter.class)
                 .build();
     }
 }
