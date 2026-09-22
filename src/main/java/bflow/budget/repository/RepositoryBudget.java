@@ -162,4 +162,7 @@ public interface RepositoryBudget extends JpaRepository<Budget, UUID>,
      * @return up to 3 budgets ordered by most recently updated
      */
     List<Budget> findTop3ByUserIdOrderByUpdatedAtDesc(UUID userId);
+
+    List<Budget> findByUserId(UUID userId);
+    void deleteByUserId(UUID userId);
 }

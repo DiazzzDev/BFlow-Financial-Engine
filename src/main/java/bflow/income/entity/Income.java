@@ -8,6 +8,10 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import bflow.storage.entity.StoredFile;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 import java.util.UUID;
 
@@ -37,4 +41,8 @@ public class Income extends Transaction {
     /** ID of the RecurringTransaction this entry is linked to, if any. */
     @Column(name = "recurring_transaction_id")
     private UUID recurringTransactionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receipt_file_id")
+    private StoredFile receiptFile;
 }

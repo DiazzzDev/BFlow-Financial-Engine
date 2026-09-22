@@ -1,10 +1,14 @@
 package bflow.receipts.repository;
 
+import bflow.auth.entities.User;
 import bflow.receipts.entity.ReceiptUpload;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,4 +60,16 @@ public interface RepositoryReceiptUpload
     @Query("select r from ReceiptUpload r "
             + "join fetch r.storedFile where r.id = :id")
     Optional<ReceiptUpload> findByIdWithStoredFile(UUID id);
+
+    List<ReceiptUpload> findByWalletIdIn(List<UUID> walletIds);
+    void deleteByWalletIdIn(List<UUID> walletIds);
+
+    @Modifying
+    @Query("UPDATE ReceiptUpload r SET r.user = :toUser "
+            + "WHERE r.user.id = :fromUserId AND r.wallet.id IN :walletIds")
+    int reassignUser(
+            @Param("fromUserId") UUID fromUserId,
+            @Param("toUser") User toUser,
+            @Param("walletIds") List<UUID> walletIds
+    );
 }

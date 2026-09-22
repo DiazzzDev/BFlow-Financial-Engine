@@ -96,6 +96,9 @@ public class Subscription {
     @Column(name = "provider_subscriber_id")
     private String providerSubscriberId;
 
+    @Column(name = "billing_email")
+    private String billingEmail;
+
     /** When the subscription was canceled, if applicable. */
     @Column
     private Instant canceledAt;

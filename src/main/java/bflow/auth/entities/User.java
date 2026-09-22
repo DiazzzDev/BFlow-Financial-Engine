@@ -93,6 +93,10 @@ public class User {
     @Column(unique = true)
     private String cognitoSub;
 
+    /** Timestamp when deletion was requested, if PENDING_DELETION. */
+    @Column(name = "deletion_requested_at")
+    private Instant deletionRequestedAt;
+
     /** Indicates whether the user account is active. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

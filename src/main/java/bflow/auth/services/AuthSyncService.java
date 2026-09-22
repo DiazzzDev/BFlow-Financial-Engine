@@ -60,6 +60,8 @@ public class AuthSyncService {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    private final UserService userService;
+
     /**
      * Synchronizes the authenticated Cognito user with the local database
      * and returns the initial session data required by the client.
@@ -160,6 +162,9 @@ public class AuthSyncService {
 
         UserMeResponse meResponse = userMapper.toMeResponse(user);
 
+        boolean pendingDeletion =
+                user.getStatus() == UserStatus.PENDING_DELETION;
+
         return new SyncUserResponse(
                 meResponse.id(),
                 user.getEmail(),
@@ -168,7 +173,11 @@ public class AuthSyncService {
                 meResponse.subscription(),
                 resolveCurrentPlan(user.getId()),
                 meResponse.wallets(),
-                meResponse.profile()
+                meResponse.profile(),
+                pendingDeletion,
+                pendingDeletion
+                        ? userService.daysRemainingBeforeHardDelete(user)
+                        : null
         );
     }
 

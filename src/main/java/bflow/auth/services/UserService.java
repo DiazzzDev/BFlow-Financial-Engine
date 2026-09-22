@@ -6,6 +6,9 @@ import bflow.auth.entities.User;
 import bflow.auth.enums.NameSource;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
+
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import bflow.common.i18n.MessageService;
@@ -21,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
+
+    /** Grace period before a pending-deletion account is hard-deleted. */
+    private static final int DELETION_GRACE_PERIOD_DAYS = 30;
 
     /** Repository for user core data. */
     private final RepositoryUser userRepository;
@@ -76,7 +82,9 @@ public class UserService {
     }
 
     /**
-     * Performs a soft delete of a user account by changing their status.
+     * Marks a user account as pending deletion. The account keeps its
+     * data for {@value #DELETION_GRACE_PERIOD_DAYS} days, during which
+     * the user can cancel via {@link #cancelDeletion(UUID)}.
      * @param userId the unique identifier of the user to delete.
      */
     public void softDelete(final UUID userId) {
@@ -86,9 +94,50 @@ public class UserService {
 
         User user = findById(userId);
 
-        user.setStatus(UserStatus.DELETED);
+        user.setStatus(UserStatus.PENDING_DELETION);
+        user.setDeletionRequestedAt(Instant.now());
 
         userRepository.save(user);
+    }
+
+    /**
+     * Cancels a pending deletion, restoring the account to ACTIVE.
+     * @param userId the unique identifier of the user.
+     */
+    public void cancelDeletion(final UUID userId) {
+
+        User user = findById(userId);
+
+        if (user.getStatus() != UserStatus.PENDING_DELETION) {
+            throw new IllegalStateException(
+                    messageService.get("user.deletion.notPending")
+            );
+        }
+
+        user.setStatus(UserStatus.ACTIVE);
+        user.setDeletionRequestedAt(null);
+
+        userRepository.save(user);
+    }
+
+    /**
+     * Resolves how many whole days remain before a pending-deletion
+     * account is hard-deleted.
+     * @param user the user.
+     * @return days remaining, floored at 0.
+     */
+    public long daysRemainingBeforeHardDelete(final User user) {
+        if (user.getStatus() != UserStatus.PENDING_DELETION
+                || user.getDeletionRequestedAt() == null) {
+            return 0;
+        }
+
+        Instant scheduledAt = user.getDeletionRequestedAt()
+                .plus(Duration.ofDays(DELETION_GRACE_PERIOD_DAYS));
+
+        long days = Duration.between(Instant.now(), scheduledAt).toDays();
+
+        return Math.max(days, 0);
     }
 
     /**
