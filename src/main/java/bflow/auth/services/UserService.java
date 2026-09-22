@@ -6,21 +6,24 @@ import bflow.auth.entities.User;
 import bflow.auth.enums.NameSource;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
+import bflow.common.aws.service.EmailTemplateService;
+import bflow.common.exception.EmailDeliveryException;
+import bflow.common.i18n.MessageService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
-
-import bflow.common.i18n.MessageService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Implementation of the {@link UserService}.
  * Handles all user-related business logic and operations.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
@@ -33,6 +36,9 @@ public class UserService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Service for sending templated account lifecycle emails. */
+    private final EmailTemplateService emailTemplateService;
 
     /**
      * Finds a user by their unique identifier.
@@ -98,6 +104,20 @@ public class UserService {
         user.setDeletionRequestedAt(Instant.now());
 
         userRepository.save(user);
+
+        try {
+            emailTemplateService.sendAccountDeletionRequestedEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    user.getDeletionRequestedAt().plus(
+                            Duration.ofDays(DELETION_GRACE_PERIOD_DAYS)
+                    ),
+                    user.getLanguage()
+            );
+        } catch (EmailDeliveryException ex) {
+            log.error("Could not send account-deletion request email "
+                    + "to {}", user.getId(), ex);
+        }
     }
 
     /**
@@ -118,6 +138,15 @@ public class UserService {
         user.setDeletionRequestedAt(null);
 
         userRepository.save(user);
+
+        try {
+            emailTemplateService.sendAccountDeletionCancelledEmail(
+                    user.getEmail(), user.getName(), user.getLanguage()
+            );
+        } catch (EmailDeliveryException ex) {
+            log.error("Could not send account-deletion cancellation email "
+                    + "to {}", user.getId(), ex);
+        }
     }
 
     /**

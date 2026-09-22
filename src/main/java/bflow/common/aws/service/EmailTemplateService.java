@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.Year;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Locale;
 
 /**
@@ -190,6 +191,87 @@ public final class EmailTemplateService {
                 subject("email.emailVerification.subject", language),
                 html
         );
+    }
+
+    /**
+     * Sends confirmation that an account deletion was requested.
+     *
+     * @param toEmail recipient email address
+     * @param userName recipient display name
+     * @param hardDeletionAt the scheduled permanent-deletion timestamp
+     * @param language the recipient's language preference
+     */
+    public void sendAccountDeletionRequestedEmail(
+            final String toEmail,
+            final String userName,
+            final Instant hardDeletionAt,
+            final SupportedLanguage language
+    ) {
+        Context context = new Context();
+        context.setVariable("userName", userName);
+        context.setVariable("hardDeletionDate", formatDate(
+                hardDeletionAt, language
+        ));
+        context.setVariable("accountUrl", frontendUrl);
+        context.setVariable("year", Year.now().getValue());
+        context.setVariable("supportEmail", supportEmail);
+        context.setVariable("logoUrl", logoUrl);
+
+        String html = renderTemplate(
+                "account-deletion-requested", language, context
+        );
+        sesEmailService.sendEmail(
+                toEmail,
+                subject("email.accountDeletionRequested.subject", language),
+                html
+        );
+    }
+
+    /**
+     * Sends confirmation that a pending account deletion was cancelled.
+     *
+     * @param toEmail recipient email address
+     * @param userName recipient display name
+     * @param language the recipient's language preference
+     */
+    public void sendAccountDeletionCancelledEmail(
+            final String toEmail,
+            final String userName,
+            final SupportedLanguage language
+    ) {
+        Context context = new Context();
+        context.setVariable("userName", userName);
+        context.setVariable("accountUrl", frontendUrl);
+        context.setVariable("year", Year.now().getValue());
+        context.setVariable("supportEmail", supportEmail);
+        context.setVariable("logoUrl", logoUrl);
+
+        String html = renderTemplate(
+                "account-deletion-cancelled", language, context
+        );
+        sesEmailService.sendEmail(
+                toEmail,
+                subject("email.accountDeletionCancelled.subject", language),
+                html
+        );
+    }
+
+    /**
+     * Formats a date using the recipient's language in UTC.
+     *
+     * @param instant date to format
+     * @param language the recipient's language preference
+     * @return localized date text
+     */
+    private String formatDate(
+            final Instant instant,
+            final SupportedLanguage language
+    ) {
+        Locale locale = language == SupportedLanguage.ES
+                ? new Locale("es") : Locale.ENGLISH;
+        return DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
+                .withLocale(locale)
+                .format(instant.atZone(ZoneOffset.UTC));
     }
 
     /**

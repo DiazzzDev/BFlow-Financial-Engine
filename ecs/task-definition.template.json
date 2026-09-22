@@ -43,6 +43,10 @@
           "value": "${COGNITO_ISSUER_URI}"
         },
         {
+          "name": "COGNITO_USER_POOL_ID",
+          "value": "${COGNITO_USER_POOL_ID}"
+        },
+        {
           "name": "AWS_SES_FROM_EMAIL",
           "value": "noreply@bflow-studio.com"
         },
