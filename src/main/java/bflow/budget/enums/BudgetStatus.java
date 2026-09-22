@@ -1,8 +1,13 @@
 package bflow.budget.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Budget status enumeration.
  */
+@Schema(description = "Budget health: OK is below warning; WARNING and "
+        + "CRITICAL crossed their thresholds; EXCEEDED reached 100%.",
+        allowableValues = {"OK", "WARNING", "CRITICAL", "EXCEEDED"})
 public enum BudgetStatus {
     /**
      * Budget is below the warning threshold.

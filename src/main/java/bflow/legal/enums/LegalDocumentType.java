@@ -1,8 +1,13 @@
 package bflow.legal.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Enumeration of legal document types.
  */
+@Schema(description = "Legal document type. The endpoint accepts the "
+        + "lowercase wire values privacy, terms, and cookies.",
+        allowableValues = {"PRIVACY", "TERMS", "COOKIES"})
 public enum LegalDocumentType {
 
     /** Privacy policy document. */

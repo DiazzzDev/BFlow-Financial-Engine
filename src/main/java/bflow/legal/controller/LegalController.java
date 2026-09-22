@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Legal", description = "Terms, conditions, and legal documents for the platform")
@@ -32,7 +34,12 @@ public final class LegalController {
     )
     @GetMapping("/{documentType}")
     public LegalDocumentResponse getDocument(
+            @Parameter(description = "Legal document type.",
+                    schema = @Schema(allowableValues = {
+                            "privacy", "terms", "cookies"}))
             @PathVariable final String documentType,
+            @Parameter(description = "Document language.",
+                    schema = @Schema(allowableValues = {"en", "es"}))
             @RequestParam(defaultValue = "en") final String lang
     ) {
 

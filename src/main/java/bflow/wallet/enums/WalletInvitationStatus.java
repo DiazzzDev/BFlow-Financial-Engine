@@ -1,8 +1,14 @@
 package bflow.wallet.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Represents the lifecycle of a wallet invitation.
  */
+@Schema(description = "Wallet invitation lifecycle: PENDING awaits a reply; "
+        + "ACCEPTED or REJECTED were answered; EXPIRED timed out; CANCELED "
+        + "was withdrawn by the owner.", allowableValues = {"PENDING",
+        "ACCEPTED", "REJECTED", "EXPIRED", "CANCELED"})
 public enum WalletInvitationStatus {
 
     /**

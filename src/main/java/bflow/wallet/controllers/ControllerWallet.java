@@ -34,6 +34,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -74,7 +76,11 @@ public final class ControllerWallet {
     public ApiResponse<Page<WalletResponse>> getUserWallets(
             final Authentication authentication,
             @RequestParam(required = false) final String query,
+            @Parameter(description = "Filter by the caller's wallet role.",
+                    schema = @Schema(implementation = WalletRole.class))
             @RequestParam(required = false) final WalletRole role,
+            @Parameter(description = "Filter wallets by collaboration scope.",
+                    schema = @Schema(implementation = WalletScope.class))
             @RequestParam(required = false) final WalletScope scope,
             final Pageable pageable,
             final HttpServletRequest request

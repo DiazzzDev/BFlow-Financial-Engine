@@ -1,5 +1,6 @@
 package bflow.transactionimport.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,8 @@ public class ImportRowResult {
     private boolean success;
 
     /** Transaction type detected/declared for this row, if known. */
+    @Schema(description = "Resolved transaction type for the imported row.",
+            allowableValues = {"EXPENSE", "INCOME"})
     private String type;
 
     /** Id of the created expense/income, if successful. */

@@ -1,5 +1,6 @@
 package bflow.tranfers.DTO;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,5 +33,7 @@ public class TransferenceResponse {
     private String description;
 
     /** The transfer status. */
+    @Schema(description = "Transfer processing state.",
+            allowableValues = {"COMPLETED"})
     private String status;
 }

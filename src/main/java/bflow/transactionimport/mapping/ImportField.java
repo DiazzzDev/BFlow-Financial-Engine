@@ -1,9 +1,14 @@
 package bflow.transactionimport.mapping;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Logical fields any transaction import (CSV, XLSX, etc.) needs,
  * independent of how the source file actually names its columns.
  */
+@Schema(description = "Logical transaction field recognized by the import "
+        + "column-mapping API.", allowableValues = {"TITLE", "DESCRIPTION",
+        "AMOUNT", "DATE", "CATEGORY", "TYPE"})
 public enum ImportField {
     /** Transaction title/concept. Required. */
     TITLE,

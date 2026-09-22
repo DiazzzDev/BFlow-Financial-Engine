@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -59,6 +61,8 @@ public class ControllerTransactionHistory {
     public ApiResponse<Page<TransactionResponse>> getGlobalHistory(
             final Authentication authentication,
             @RequestParam(required = false) final String query,
+            @Parameter(description = "Filter by transaction direction.",
+                    schema = @Schema(implementation = TransactionType.class))
             @RequestParam(required = false) final TransactionType type,
             @RequestParam(required = false) final List<UUID> contributorIds,
             final Pageable pageable,
@@ -99,6 +103,8 @@ public class ControllerTransactionHistory {
             @PathVariable final UUID walletId,
             final Authentication authentication,
             @RequestParam(required = false) final String query,
+            @Parameter(description = "Filter by transaction direction.",
+                    schema = @Schema(implementation = TransactionType.class))
             @RequestParam(required = false) final TransactionType type,
             @RequestParam(required = false) final List<UUID> contributorIds,
             final Pageable pageable,

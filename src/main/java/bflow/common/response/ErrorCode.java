@@ -1,5 +1,7 @@
 package bflow.common.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Stable, machine-readable error codes for the API error contract.
  *
@@ -13,6 +15,15 @@ package bflow.common.response;
  * this list mirrors what the application currently throws, not a
  * speculative catalog of every conceivable error.
  */
+@Schema(description = "Machine-readable API error code.", allowableValues = {
+        "VALIDATION_ERROR", "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN",
+        "RESOURCE_NOT_FOUND", "CONFLICT", "INTERNAL_SERVER_ERROR",
+        "INVALID_CREDENTIALS", "BUDGET_NOT_FOUND", "BUDGET_OVERLAP",
+        "INVALID_BUDGET_DATE", "INVALID_BUDGET_SCOPE",
+        "INVALID_BUDGET_THRESHOLD", "WALLET_NOT_FOUND", "WALLET_ACCESS_DENIED",
+        "INVALID_FILE", "INVALID_STORAGE_KEY", "STORAGE_ERROR",
+        "FILE_ACCESS_DENIED", "PLAN_LIMIT_EXCEEDED", "IDEMPOTENCY_CONFLICT",
+        "EMAIL_DELIVERY_FAILED", "LEGAL_DOCUMENT_NOT_FOUND"})
 public enum ErrorCode {
 
     // Generic / framework-level
