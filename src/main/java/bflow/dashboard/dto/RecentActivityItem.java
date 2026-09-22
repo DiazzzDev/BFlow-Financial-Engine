@@ -12,11 +12,13 @@ import java.time.Instant;
  * @param amount the activity amount,
  * negative for expenses and positive for incomes
  * @param walletName the name of the wallet associated with the activity
+ * @param categoryIcon the icon identifier of the associated category
  */
 public record RecentActivityItem(
         String type,
         String name,
         Instant createdAt,
         BigDecimal amount,
-        String walletName
+        String walletName,
+        String categoryIcon
 ) { }

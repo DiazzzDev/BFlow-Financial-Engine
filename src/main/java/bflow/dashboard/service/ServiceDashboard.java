@@ -285,7 +285,10 @@ public class ServiceDashboard {
                 expense.getTitle(),
                 expense.getCreatedAt(),
                 expense.getAmount().negate(),
-                expense.getWallet().getName()
+                expense.getWallet().getName(),
+                expense.getCategory() != null
+                        ? expense.getCategory().getIcon()
+                        : null
         );
     }
 
@@ -295,7 +298,10 @@ public class ServiceDashboard {
                 income.getTitle(),
                 income.getCreatedAt(),
                 income.getAmount(),
-                income.getWallet().getName()
+                income.getWallet().getName(),
+                income.getCategory() != null
+                        ? income.getCategory().getIcon()
+                        : null
         );
     }
 

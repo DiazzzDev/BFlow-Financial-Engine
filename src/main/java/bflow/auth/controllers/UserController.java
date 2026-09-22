@@ -189,7 +189,7 @@ public final class UserController {
         userService.softDelete(userId);
 
         return ApiResponse.success(
-                messageService.get("user.account.deleted"),
+                messageService.get("user.deletion.requested"),
                 null,
                 request.getRequestURI()
         );
