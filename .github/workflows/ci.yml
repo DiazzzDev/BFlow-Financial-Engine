@@ -51,4 +51,8 @@ jobs:
           COGNITO_ISSUER_URI: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ciplaceholder
           COGNITO_USER_POOL_ID: us-east-1_ciplaceholder
           LOGO_URL: https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png
+          WOMPI_CLIENT_ID: ci-placeholder
+          WOMPI_CLIENT_SECRET: ci-placeholder
+          WOMPI_APP_ID: ci-placeholder
+          WOMPI_API_SECRET: ci-placeholder
         run: mvn -B clean verify
