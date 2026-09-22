@@ -237,6 +237,7 @@ class ServiceAccountHardDeleteTest {
         payment.setAmount(BigDecimal.ZERO);
         payment.setCurrency("USD");
         payment.setProvider("WOMPI");
+        payment.setProviderPaymentId("test-provider-id-" + UUID.randomUUID());
         payment.setReference("test-ref-" + UUID.randomUUID());
         payment.setIdempotencyKey(UUID.randomUUID());
         payment.setStatus(PaymentStatus.SUCCEEDED);

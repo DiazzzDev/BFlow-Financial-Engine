@@ -111,7 +111,7 @@ public interface RepositoryIncome extends JpaRepository<Income, UUID> {
             @Param("end") LocalDate end
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Income i SET i.contributor = :toUser "
             + "WHERE i.contributor.id = :fromUserId "
             + "AND i.wallet.id IN :walletIds")

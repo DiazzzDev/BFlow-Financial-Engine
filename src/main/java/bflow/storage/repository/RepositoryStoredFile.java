@@ -95,7 +95,7 @@ public interface RepositoryStoredFile
      * still referenced as a receipt by a surviving (reassigned) expense
      * in the given wallets.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE StoredFile sf SET sf.user = :toUser "
             + "WHERE sf.user.id = :fromUserId "
             + "AND sf.id IN ("

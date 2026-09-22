@@ -75,5 +75,7 @@ public interface RepositoryPayment extends JpaRepository<Payment, UUID> {
      * @return true when a matching payment exists
      */
     boolean existsByProviderPaymentId(String providerPaymentId);
+
+    List<Payment> findAllByUserId(UUID userId);
 }
 

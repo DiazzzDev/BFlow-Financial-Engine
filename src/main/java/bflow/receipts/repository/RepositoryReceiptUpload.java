@@ -64,7 +64,7 @@ public interface RepositoryReceiptUpload
     List<ReceiptUpload> findByWalletIdIn(List<UUID> walletIds);
     void deleteByWalletIdIn(List<UUID> walletIds);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE ReceiptUpload r SET r.user = :toUser "
             + "WHERE r.user.id = :fromUserId AND r.wallet.id IN :walletIds")
     int reassignUser(

@@ -113,7 +113,7 @@ public interface RepositoryTransfers extends JpaRepository<Transfer, UUID> {
             @Param("walletIds") List<UUID> walletIds
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Transfer t "
             + "WHERE t.fromWallet.id IN :walletIds OR t.toWallet.id IN :walletIds")
     void deleteByWalletIds(@Param("walletIds") List<UUID> walletIds);

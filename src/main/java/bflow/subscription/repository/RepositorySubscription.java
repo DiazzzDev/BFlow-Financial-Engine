@@ -150,4 +150,6 @@ public interface RepositorySubscription
         UUID userId,
         SubscriptionStatus status
     );
+
+    List<Subscription> findAllByUserId(UUID userId);
 }

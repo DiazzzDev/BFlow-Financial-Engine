@@ -11,6 +11,7 @@ import bflow.receipts.repository.RepositoryReceiptUpload;
 import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.storage.repository.RepositoryStoredFile;
 import bflow.subscription.entities.Payment;
+import bflow.subscription.entities.Subscription;
 import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.tranfers.RepositoryTransfers;
@@ -58,13 +59,16 @@ public class ServiceAccountHardDelete {
     private final RepositorySubscription repositorySubscription;
     private final RepositoryPayment repositoryPayment;
     private final StorageService storageService;
+    private final CognitoAdminService cognitoAdminService;
 
     /**
      * Hard-deletes the given user.
      * @param user the user to hard-delete (must be PENDING_DELETION)
      */
-    @Transactional
+    @Transactional   
     public void hardDelete(final User user) {
+
+        UUID userId = user.getId(); // guarda el id antes de que el objeto se desacople
 
         User ghost = repositoryUser.findById(SystemUsers.GHOST_USER_ID)
                 .orElseThrow(() -> new IllegalStateException(
@@ -73,7 +77,7 @@ public class ServiceAccountHardDelete {
                 ));
 
         List<WalletUser> memberships =
-                repositoryWalletUser.findByUserId(user.getId());
+                repositoryWalletUser.findByUserId(userId);
 
         List<UUID> sharedWalletIds = memberships.stream()
                 .filter(m -> repositoryWalletUser
@@ -87,52 +91,46 @@ public class ServiceAccountHardDelete {
                 .map(m -> m.getWallet().getId())
                 .toList();
 
-        // 1. Budgets and recurring transactions: always deleted,
-        //    regardless of wallet sharing — personal configuration.
-        repositoryBudget.deleteByUserId(user.getId());
-        repositoryRecurring.deleteByUserId(user.getId());
+        repositoryBudget.deleteByUserId(userId);
+        repositoryRecurring.deleteByUserId(userId);
 
-        // 2. Shared wallets: reassign contributions to the ghost user.
         if (!sharedWalletIds.isEmpty()) {
-            repositoryExpense.reassignContributor(
-                    user.getId(), ghost, sharedWalletIds);
-            repositoryIncome.reassignContributor(
-                    user.getId(), ghost, sharedWalletIds);
-            repositoryTransfers.reassignContributor(
-                    user.getId(), ghost, sharedWalletIds);
-            repositoryReceiptUpload.reassignUser(
-                    user.getId(), ghost, sharedWalletIds);
+            repositoryExpense.reassignContributor(userId, ghost, sharedWalletIds);
+            repositoryIncome.reassignContributor(userId, ghost, sharedWalletIds);
+            repositoryTransfers.reassignContributor(userId, ghost, sharedWalletIds);
+            repositoryReceiptUpload.reassignUser(userId, ghost, sharedWalletIds);
             repositoryStoredFile.reassignReceiptOwnersForWallets(
-                    user.getId(), ghost, sharedWalletIds);
+                    userId, ghost, sharedWalletIds);
         }
 
-        // 3. Personal wallets: delete everything, in FK-safe order.
         if (!personalWalletIds.isEmpty()) {
-            deletePersonalWalletData(user.getId(), personalWalletIds);
+            deletePersonalWalletData(userId, personalWalletIds);
         }
 
-        // 4. Remove wallet memberships (both shared and personal —
-        //    for shared wallets this just drops the user's own row).
-        for (WalletUser membership : memberships) {
-            repositoryWalletUser.delete(membership);
-        }
+        // memberships puede estar desacoplado tras los clears de arriba —
+        // vuelve a resolverlo por id antes de borrar.
+        repositoryWalletUser.deleteByUserId(userId);
 
-        // 5. Now safe: delete the personal wallets themselves.
         if (!personalWalletIds.isEmpty()) {
             repositoryWallet.deleteAllById(personalWalletIds);
         }
 
-        // 6. Billing records: snapshot the real email, then reassign
-        //    the FK to the ghost user.
-        reassignBillingRecords(user, ghost);
+        // re-fetch: ghost y user pudieron quedar detached por los clears.
+        User freshGhost = repositoryUser.findById(SystemUsers.GHOST_USER_ID)
+                .orElseThrow();
+        reassignBillingRecords(userId, freshGhost);
 
-        // 7. Finally, the user row itself.
-        repositoryUser.delete(user);
+        User freshUser = repositoryUser.findById(userId).orElseThrow();
+
+        //Deletes user from cognito pool
+        cognitoAdminService.deleteUser(freshUser.getCognitoSub());
+
+        repositoryUser.delete(freshUser);
 
         log.info(
                 "Hard-deleted user {} — {} shared wallet(s) reassigned, "
                         + "{} personal wallet(s) removed",
-                user.getId(), sharedWalletIds.size(), personalWalletIds.size()
+                userId, sharedWalletIds.size(), personalWalletIds.size()
         );
     }
 
@@ -157,23 +155,27 @@ public class ServiceAccountHardDelete {
         }
     }
 
-    private void reassignBillingRecords(final User user, final User ghost) {
+    private void reassignBillingRecords(final UUID userId, final User ghost) {
 
-        repositorySubscription.findByUserId(user.getId())
-                .ifPresent(sub -> {
-                    sub.setBillingEmail(user.getEmail());
-                    sub.setUser(ghost);
-                    repositorySubscription.save(sub);
-                });
+        String email = repositoryUser.findById(userId)
+                .map(User::getEmail)
+                .orElseThrow();
 
-        List<Payment> payments =
-                repositoryPayment.findByUserId(user.getId());
+        List<Subscription> subscriptions =
+                repositorySubscription.findAllByUserId(userId);
+
+        for (Subscription sub : subscriptions) {
+            sub.setBillingEmail(email);
+            sub.setUser(ghost);
+        }
+        repositorySubscription.saveAll(subscriptions);
+
+        List<Payment> payments = repositoryPayment.findAllByUserId(userId);
 
         for (Payment payment : payments) {
-            payment.setBillingEmail(user.getEmail());
+            payment.setBillingEmail(email);
             payment.setUser(ghost);
         }
-
         repositoryPayment.saveAll(payments);
     }
 }

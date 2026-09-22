@@ -328,7 +328,7 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
      * @param walletIds the shared wallets that survive the deletion
      * @return the number of rows updated
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Expense e SET e.contributor = :toUser "
             + "WHERE e.contributor.id = :fromUserId "
             + "AND e.wallet.id IN :walletIds")

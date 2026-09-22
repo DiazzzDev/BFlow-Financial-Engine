@@ -143,6 +143,11 @@
 			<version>8.10.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>cognitoidentityprovider</artifactId>
+		</dependency>
+
 		<!-- AWS dependency for SES -->
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
