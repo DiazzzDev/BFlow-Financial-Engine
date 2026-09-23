@@ -147,4 +147,6 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID>,
                     + "WHERE wu.wallet.id = :walletId"
     )
     List<String> findMemberEmailsByWalletId(UUID walletId);
+
+    void deleteByUserId(UUID userId);
 }

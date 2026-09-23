@@ -69,4 +69,6 @@ public interface RepositoryRecurringTransaction
      * @return true if at least one recurring transaction exists
      */
     boolean existsByWalletId(UUID walletId);
+
+    void deleteByUserId(UUID userId);
 }

@@ -1,8 +1,13 @@
 package bflow.wallet.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Enumeration of the different types of financial containers supported.
  */
+@Schema(description = "Financial account classification.", allowableValues = {
+        "SAVINGS", "CHECKING_ACCOUNT", "CASH", "INVESTMENTS", "LOAN",
+        "CREDIT_CARD", "DEBIT_CARD", "OTHER"})
 public enum WalletType {
     /** Account for long-term savings. */
     SAVINGS,

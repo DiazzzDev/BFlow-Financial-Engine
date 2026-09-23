@@ -1,5 +1,6 @@
 package bflow.common.financial;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -82,6 +83,8 @@ public class TransactionResponse {
     private String contributorPictureUrl;
 
     /** Transfer status (transfers only, null otherwise). */
+    @Schema(description = "Transfer processing state when type is TRANSFER.",
+            allowableValues = {"COMPLETED"})
     private String status;
 
     /** Entry source (manual, receipt, voice, import) — null for transfers. */

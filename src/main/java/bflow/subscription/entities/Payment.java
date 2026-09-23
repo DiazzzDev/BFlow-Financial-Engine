@@ -108,6 +108,9 @@ public class Payment {
     @Column(length = FAILURE_REASON_LENGTH)
     private String failureReason;
 
+    @Column(name = "billing_email")
+    private String billingEmail;
+
     /** Instant when the payment was confirmed. */
     private Instant processedAt;
 

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Account deletion cancelled</title>
+</head>
+<body style="margin:0;padding:40px 16px;background:#0F1217;color:#A4A9B3;font-family:Arial,sans-serif;">
+<table role="presentation" width="100%"><tr><td align="center">
+    <table role="presentation" width="600" style="max-width:600px;background:#1A1F26;border:3px solid #262A31;border-radius:24px;">
+        <tr><td style="padding:40px;">
+            <table role="presentation" width="100%"><tr>
+                <td><h1 style="margin:0;color:#FFFFFF;font-size:30px;">Your account is active again</h1></td>
+                <td align="right"><img th:src="${logoUrl}" alt="BFlow" width="78" style="display:block;border:0;"></td>
+            </tr></table>
+            <p style="line-height:24px;">Hello <strong style="color:#FFFFFF;">[[${userName}]]</strong>,</p>
+            <p style="line-height:24px;">Your account-deletion request has been cancelled. Your BFlow account is active again, and no data will be deleted.</p>
+            <p style="text-align:center;margin:28px 0;"><a th:href="${accountUrl}" style="display:block;padding:16px 24px;border-radius:12px;background:#F46A12;color:#FFFFFF;text-decoration:none;font-weight:bold;">Go to BFlow</a></p>
+            <hr style="border:0;border-top:1px solid #262A31;margin:32px 0 24px;">
+            <p style="margin:0;color:#636873;font-size:12px;line-height:20px;">© [[${year}]] BFlow Studio. Need help? <a th:href="'mailto:' + ${supportEmail}" style="color:#F38533;">[[${supportEmail}]]</a></p>
+        </td></tr>
+    </table>
+</td></tr></table>
+</body>
+</html>

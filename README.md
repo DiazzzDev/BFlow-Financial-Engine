@@ -70,7 +70,6 @@ Implemented:
 Roadmap:
 - OpenTelemetry integration
 - Shared wallet roles
-- Redis-based caching
 
 ## Architecture & Engineering Philosophy
 

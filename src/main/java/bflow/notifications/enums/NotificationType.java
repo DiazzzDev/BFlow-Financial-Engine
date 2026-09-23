@@ -1,8 +1,14 @@
 package bflow.notifications.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Notification type enumeration.
  */
+@Schema(description = "Kind of notification delivered to a user.",
+        allowableValues = {"BUDGET_SUCCESS", "BUDGET_GROUP_SUCCESS",
+        "BUDGET_WARNING", "BUDGET_CRITICAL", "BUDGET_EXCEEDED",
+        "GOAL_REACHED", "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED"})
 public enum NotificationType {
     /**
      * Budget success notification.

@@ -1,9 +1,16 @@
 package bflow.expenses.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Enumeration of expense categories.
  * Used to classify expense transactions in the financial system.
  */
+@Schema(description = "Legacy expense classification.", allowableValues = {
+        "TRANSPORTATION", "HEALTHCARE", "INSURANCE", "ENTERTAINMENT",
+        "FOOD", "TRAVEL", "SHOPPING", "SUBSCRIPTIONS", "DEBT_PAYMENT",
+        "LOAN_REPAYMENT", "TAX_PAYMENT", "INVESTMENT_CONTRIBUTION",
+        "EDUCATION", "PET_CARE", "GIFTS_DONATIONS", "OTHER"})
 public enum ExpenseType {
     /** Transportation-related expenses (gas, public transit, etc.). */
     TRANSPORTATION,

@@ -1,5 +1,9 @@
 package bflow.subscription.enums;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Payment processing lifecycle state.", allowableValues = {
+        "PENDING", "PROCESSING", "SUCCEEDED", "FAILED", "CANCELED", "REFUNDED"})
 public enum PaymentStatus {
 
     /** Payment is pending confirmation. */

@@ -1,10 +1,12 @@
 package bflow.income;
 
+import bflow.auth.entities.User;
 import bflow.dashboard.projection.MonthlyTotalProjection;
 import bflow.income.entity.Income;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -108,4 +110,17 @@ public interface RepositoryIncome extends JpaRepository<Income, UUID> {
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Income i SET i.contributor = :toUser "
+            + "WHERE i.contributor.id = :fromUserId "
+            + "AND i.wallet.id IN :walletIds")
+    int reassignContributor(
+            @Param("fromUserId") UUID fromUserId,
+            @Param("toUser") User toUser,
+            @Param("walletIds") List<UUID> walletIds
+    );
+
+    List<Income> findByWalletIdIn(List<UUID> walletIds);
+    void deleteByWalletIdIn(List<UUID> walletIds);
 }

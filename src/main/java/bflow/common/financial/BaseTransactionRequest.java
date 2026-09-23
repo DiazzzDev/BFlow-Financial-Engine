@@ -80,6 +80,7 @@ public abstract class BaseTransactionRequest {
     private UUID walletId;
 
     /** Indicates the money source. */
+    @NotBlank
     private String source;
 
     /** Indicates if transaction recurs. */

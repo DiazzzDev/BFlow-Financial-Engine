@@ -19,14 +19,15 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
@@ -188,7 +189,38 @@ public final class UserController {
         userService.softDelete(userId);
 
         return ApiResponse.success(
-                messageService.get("user.account.deleted"),
+                messageService.get("user.deletion.requested"),
+                null,
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Cancels a pending account deletion, restoring the account to
+     * ACTIVE — equivalent to tapping "Continuar" on the deletion
+     * warning screen.
+     * @param authentication the current user's authentication object.
+     * @param request the HTTP request for path information.
+     * @return a ResponseEntity containing a success response.
+     */
+    @Operation(
+            summary = "Cancels a pending account deletion",
+            description = "Restores the authenticated user's account to ACTIVE "
+                    + "if it is currently PENDING_DELETION."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Deletion cancelled")
+    @PostMapping("/me/deletion/cancel")
+    public ApiResponse<Void> cancelDeletion(
+            final Authentication authentication,
+            final HttpServletRequest request
+    ) {
+
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+
+        userService.cancelDeletion(userId);
+
+        return ApiResponse.success(
+                messageService.get("user.deletion.cancelled"),
                 null,
                 request.getRequestURI()
         );

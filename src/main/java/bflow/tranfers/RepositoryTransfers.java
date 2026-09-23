@@ -1,9 +1,11 @@
 package bflow.tranfers;
 
+import bflow.auth.entities.User;
 import bflow.tranfers.entities.Transfer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -99,4 +101,20 @@ public interface RepositoryTransfers extends JpaRepository<Transfer, UUID> {
             @Param("start") Instant start,
             @Param("end") Instant end
     );
+
+    @Modifying
+    @Query("UPDATE Transfer t SET t.user = :toUser "
+            + "WHERE t.user.id = :fromUserId "
+            + "AND (t.fromWallet.id IN :walletIds "
+            + "OR t.toWallet.id IN :walletIds)")
+    int reassignContributor(
+            @Param("fromUserId") UUID fromUserId,
+            @Param("toUser") User toUser,
+            @Param("walletIds") List<UUID> walletIds
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Transfer t "
+            + "WHERE t.fromWallet.id IN :walletIds OR t.toWallet.id IN :walletIds")
+    void deleteByWalletIds(@Param("walletIds") List<UUID> walletIds);
 }

@@ -1,11 +1,13 @@
 package bflow.expenses;
 
+import bflow.auth.entities.User;
 import bflow.dashboard.projection.CategorySpendingProjection;
 import bflow.dashboard.projection.MonthlyTotalProjection;
 import bflow.expenses.entity.Expense;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -314,4 +316,28 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
     );
+
+    /**
+     * Reassigns every expense contributed by {@code fromUserId} within
+     * the given wallets to {@code toUser} — used when hard-deleting an
+     * account to preserve shared-wallet history under the system
+     * "Usuario de Bflow" placeholder.
+     *
+     * @param fromUserId the user being hard-deleted
+     * @param toUser the placeholder user to reassign to
+     * @param walletIds the shared wallets that survive the deletion
+     * @return the number of rows updated
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Expense e SET e.contributor = :toUser "
+            + "WHERE e.contributor.id = :fromUserId "
+            + "AND e.wallet.id IN :walletIds")
+    int reassignContributor(
+            @Param("fromUserId") UUID fromUserId,
+            @Param("toUser") User toUser,
+            @Param("walletIds") List<UUID> walletIds
+    );
+
+    List<Expense> findByWalletIdIn(List<UUID> walletIds);
+    void deleteByWalletIdIn(List<UUID> walletIds);
 }

@@ -33,5 +33,7 @@ public record SyncUserResponse(
         SubscriptionResponse subscription,
         CurrentSubscriptionResponse plan,
         List<WalletResponse> wallets,
-        UserProfileResponse profile
+        UserProfileResponse profile,
+        boolean accountPendingDeletion,
+        Long deletionDaysRemaining
 ) { }

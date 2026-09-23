@@ -41,4 +41,18 @@ jobs:
       - name: Run tests with coverage JaCoCo - 25% required
         env:
           TEST_DB_HOST: localhost
+          AWS_REGION: us-east-1
+          AWS_SES_FROM_EMAIL: noreply@bflow-studio.com
+          S3_BUCKET: bflow-ci-placeholder
+          RECEIPT_OCR_REQUESTS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/ci-placeholder
+          RECEIPT_OCR_RESULTS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/ci-placeholder
+          RECEIPT_OCR_RESULTS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:ci-placeholder
+          TEXTRACT_SNS_ROLE_ARN: arn:aws:iam::000000000000:role/ci-placeholder
+          COGNITO_ISSUER_URI: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ciplaceholder
+          COGNITO_USER_POOL_ID: us-east-1_ciplaceholder
+          LOGO_URL: https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png
+          WOMPI_CLIENT_ID: ci-placeholder
+          WOMPI_CLIENT_SECRET: ci-placeholder
+          WOMPI_APP_ID: ci-placeholder
+          WOMPI_API_SECRET: ci-placeholder
         run: mvn -B clean verify
