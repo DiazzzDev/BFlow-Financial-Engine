@@ -1028,4 +1028,18 @@ public final class GlobalExceptionHandler {
 
         return error.getCode();
     }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<?>> handleSecurityException(
+        final SecurityException ex,
+        final HttpServletRequest request
+    ) {
+        log.warn("Security exception at {} {} - {}",
+                request.getMethod(), request.getRequestURI(), ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage(), request.getRequestURI(),
+                        ErrorCode.UNAUTHORIZED));
+    }
 }

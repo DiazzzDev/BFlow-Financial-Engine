@@ -3,8 +3,14 @@
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	"forwardPorts": [5432, 8080],
+	"forwardPorts": [5432, 8080, 4040],
+	"portsAttributes": {
+		"4040": {
+			"label": "ngrok inspector"
+		}
+	},
 	"postCreateCommand": "mvn clean install",
+	"postStartCommand": "if [ -n \"${NGROK_AUTHTOKEN:-}\" ]; then ngrok config add-authtoken \"$NGROK_AUTHTOKEN\"; fi",
 	"customizations": {
 		"vscode": {
 			"extensions": ["golang.Go"]
