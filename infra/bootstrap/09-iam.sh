@@ -125,9 +125,15 @@ SECRET_ARN=$(require_output RDS_SECRET_ARN)
 # this script stays idempotent whether or not Wompi is configured yet.
 WOMPI_SECRET_ARN=$(grep "^WOMPI_SECRET_ARN=" "$SCRIPT_DIR/../outputs.env" | cut -d= -f2- || true)
 
+FIREBASE_SECRET_ARN=$(grep "^FIREBASE_SECRET_ARN=" \
+    "$SCRIPT_DIR/../outputs.env" | cut -d= -f2- || true)
+
 RESOURCE_LIST="\"$SECRET_ARN\""
 if [[ -n "$WOMPI_SECRET_ARN" ]]; then
     RESOURCE_LIST="$RESOURCE_LIST, \"$WOMPI_SECRET_ARN\""
+fi
+if [[ -n "$FIREBASE_SECRET_ARN" ]]; then
+    RESOURCE_LIST="$RESOURCE_LIST, \"$FIREBASE_SECRET_ARN\""
 fi
 
 # ECS resolves the "secrets" block in the container definition using the

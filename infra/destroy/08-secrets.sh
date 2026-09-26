@@ -7,35 +7,32 @@ source "$SCRIPT_DIR/../config.env"
 source "$SCRIPT_DIR/../outputs.env"
 source "$SCRIPT_DIR/../lib/helpers.sh"
 
-SECRET_NAME="${PROJECT_NAME}/database"
+delete_secret() {
+    local SECRET_NAME="$1"
 
-echo "Checking Secrets Manager secret..."
+    echo "Checking Secrets Manager secret: $SECRET_NAME..."
 
-SECRET_EXISTS=$(aws secretsmanager describe-secret \
-    --region "$AWS_REGION" \
-    --secret-id "$SECRET_NAME" \
-    --query "Name" \
-    --output text 2>/dev/null || true)
+    SECRET_EXISTS=$(aws secretsmanager describe-secret \
+        --region "$AWS_REGION" \
+        --secret-id "$SECRET_NAME" \
+        --query "Name" \
+        --output text 2>/dev/null || true)
 
+    if [[ -z "$SECRET_EXISTS" || "$SECRET_EXISTS" == "None" ]]; then
+        echo "Secret already deleted: $SECRET_NAME"
+        return
+    fi
 
-if [[ -z "$SECRET_EXISTS" || "$SECRET_EXISTS" == "None" ]]; then
+    echo "Deleting secret: $SECRET_NAME..."
+    aws secretsmanager delete-secret \
+        --region "$AWS_REGION" \
+        --secret-id "$SECRET_NAME" \
+        --force-delete-without-recovery
+}
 
-    echo "Secret already deleted."
-
-    exit 0
-
-fi
-
-
-echo "Deleting secret..."
-
-aws secretsmanager delete-secret \
-    --region "$AWS_REGION" \
-    --secret-id "$SECRET_NAME" \
-    --force-delete-without-recovery
-
-
-echo "Secret deleted successfully."
+delete_secret "${PROJECT_NAME}/database"
+delete_secret "${PROJECT_NAME}/firebase"
+delete_secret "${PROJECT_NAME}/wompi"
 
 
 if [[ -f "$SCRIPT_DIR/../secrets.env" ]]; then
@@ -45,6 +42,5 @@ if [[ -f "$SCRIPT_DIR/../secrets.env" ]]; then
     rm -f "$SCRIPT_DIR/../secrets.env"
 
 fi
-
 
 echo "Local secrets cleaned."

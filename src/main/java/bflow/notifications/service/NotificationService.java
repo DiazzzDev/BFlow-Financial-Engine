@@ -11,6 +11,7 @@ import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +43,9 @@ public final class NotificationService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Publishes notification events after persistence. */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Send a warning notification about budget usage.
@@ -132,7 +136,10 @@ public final class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
 
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                saved.getId(), userId, type, title, message
+        ));
     }
 
     /**

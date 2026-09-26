@@ -3,14 +3,21 @@ package bflow.notifications;
 import bflow.auth.services.CurrentUserService;
 import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
+import bflow.notifications.DTO.RegisterDeviceRequest;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.service.NotificationService;
+import bflow.notifications.service.NotificationDeviceTokenService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -31,6 +38,9 @@ public final class ControllerNotification {
      * The notification service.
      */
     private final NotificationService service;
+
+    /** Service responsible for registering push tokens. */
+    private final NotificationDeviceTokenService deviceTokenService;
 
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
@@ -113,6 +123,56 @@ public final class ControllerNotification {
                         messageService.get("notification.markedRead"),
                         null,
                         "/api/v1/notifications/" + id + "/read"
+        );
+    }
+
+    /**
+     * Registers or refreshes a push token for the authenticated user.
+     *
+     * @param request token and client platform
+     * @param authentication current authenticated user
+     * @return successful registration response
+     */
+    @Operation(
+            summary = "Registers a push-notification device",
+            description = "Registers an FCM token for the authenticated user."
+    )
+    @PostMapping("/devices")
+    public ApiResponse<Void> registerDevice(
+            @Valid @RequestBody final RegisterDeviceRequest request,
+            final Authentication authentication
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        deviceTokenService.register(userId, request);
+        return ApiResponse.success(
+                messageService.get("notification.device.registered"),
+                null,
+                "/api/v1/notifications/devices"
+        );
+    }
+
+    /**
+     * Revokes a push token for the authenticated user.
+     *
+     * @param token FCM registration token
+     * @param authentication current authenticated user
+     * @return successful revocation response
+     */
+    @Operation(
+            summary = "Revokes a push-notification device",
+            description = "Stops push delivery to a registered FCM token."
+    )
+    @DeleteMapping("/devices")
+    public ApiResponse<Void> unregisterDevice(
+            @RequestParam final String token,
+            final Authentication authentication
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        deviceTokenService.unregister(userId, token);
+        return ApiResponse.success(
+                messageService.get("notification.device.unregistered"),
+                null,
+                "/api/v1/notifications/devices"
         );
     }
 }

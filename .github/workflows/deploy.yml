@@ -42,6 +42,7 @@ jobs:
           AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
           RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
           WOMPI_SECRET_ARN: ${{ secrets.WOMPI_SECRET_ARN }}
+          FIREBASE_SECRET_ARN: ${{ secrets.FIREBASE_SECRET_ARN }}
 
           AWS_REGION: ${{ vars.AWS_REGION }}
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
@@ -64,6 +65,7 @@ jobs:
           RECEIPT_OCR_RESULTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_RESULTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_TOPIC_ARN: ${{ vars.RECEIPT_OCR_RESULTS_TOPIC_ARN }}
           TEXTRACT_SNS_ROLE_ARN: ${{ vars.TEXTRACT_SNS_ROLE_ARN }}
+          FIREBASE_ENABLED: ${{ vars.FIREBASE_ENABLED || 'false' }}
 
         run: |
           set -euo pipefail
@@ -72,6 +74,7 @@ jobs:
             AWS_ROLE_ARN
             RDS_SECRET_ARN
             WOMPI_SECRET_ARN
+            FIREBASE_SECRET_ARN
             AWS_REGION
             ECR_REPOSITORY
             ECS_CLUSTER_NAME
@@ -155,6 +158,10 @@ jobs:
 
           aws secretsmanager describe-secret \
             --secret-id "${{ secrets.WOMPI_SECRET_ARN }}" \
+            >/dev/null
+
+          aws secretsmanager describe-secret \
+            --secret-id "${{ secrets.FIREBASE_SECRET_ARN }}" \
             >/dev/null
 
       - name: Validate ECR repository
@@ -284,6 +291,7 @@ jobs:
           CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
           RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
           WOMPI_SECRET_ARN: ${{ secrets.WOMPI_SECRET_ARN }}
+          FIREBASE_SECRET_ARN: ${{ secrets.FIREBASE_SECRET_ARN }}
           COGNITO_ISSUER_URI: ${{ vars.COGNITO_ISSUER_URI }}
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
           S3_BUCKET: ${{ vars.S3_BUCKET }}
@@ -291,6 +299,7 @@ jobs:
           RECEIPT_OCR_RESULTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_RESULTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_TOPIC_ARN: ${{ vars.RECEIPT_OCR_RESULTS_TOPIC_ARN }}
           TEXTRACT_SNS_ROLE_ARN: ${{ vars.TEXTRACT_SNS_ROLE_ARN }}
+          FIREBASE_ENABLED: ${{ vars.FIREBASE_ENABLED || 'false' }}
         run: |
           envsubst < ecs/task-definition.template.json > ecs/task-definition.json
 

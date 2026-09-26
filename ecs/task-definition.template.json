@@ -63,6 +63,10 @@
           "value": "https://api.bflow-studio.com"
         },
         {
+          "name": "FIREBASE_ENABLED",
+          "value": "${FIREBASE_ENABLED}"
+        },
+        {
           "name": "S3_BUCKET",
           "value": "${S3_BUCKET}"
         },
@@ -120,6 +124,14 @@
         {
           "name": "WOMPI_API_SECRET",
           "valueFrom": "${WOMPI_SECRET_ARN}:WOMPI_API_SECRET::"
+        },
+        {
+          "name": "FIREBASE_PROJECT_ID",
+          "valueFrom": "${FIREBASE_SECRET_ARN}:FIREBASE_PROJECT_ID::"
+        },
+        {
+          "name": "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64",
+          "valueFrom": "${FIREBASE_SECRET_ARN}:FIREBASE_SERVICE_ACCOUNT_JSON_BASE64::"
         }
       ],
 

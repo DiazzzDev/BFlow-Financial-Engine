@@ -61,7 +61,7 @@ Every bootstrap script can be executed multiple times without creating duplicate
 | Amazon ECR | Docker image registry |
 | Amazon ECS Fargate | Container orchestration |
 | Amazon RDS PostgreSQL | Relational database |
-| Secrets Manager | Database credentials |
+| Secrets Manager | Database, Wompi, and Firebase credentials |
 | IAM | Permissions |
 | CloudWatch | Logs |
 | GitHub OIDC | Secure CI/CD authentication |
@@ -170,6 +170,17 @@ in to enable `bootstrap/15-dns-sync.sh`. These credentials are stored in
 Secrets Manager and read by the dns-sync Lambda — not GitHub Actions.
 Without this file, `15-dns-sync.sh` is a no-op.
 
+## Firebase Cloud Messaging
+
+FCM credentials are managed through the AWS CLI bootstrap scripts. Copy
+`infra/firebase.env.example` to the ignored `infra/firebase.env`, set the
+Firebase project ID, and provide the base64-encoded service-account JSON.
+`bootstrap/08-secrets.sh` stores it in Secrets Manager and writes
+`FIREBASE_SECRET_ARN` to `outputs.env`; use that ARN as the GitHub Actions
+secret of the same name. Set the `FIREBASE_ENABLED` GitHub variable to
+`true` only after the secret is available. No Firebase private key is
+committed or included in the Docker image.
+
 ---
 
 # PostgreSQL Provider (Supabase / RDS)
@@ -231,6 +242,7 @@ Repository/Environment Variables (`vars.*`, not secret):
 | RECEIPT_OCR_RESULTS_QUEUE_URL | https://sqs.us-east-1.amazonaws.com/.../bflow-receipt-ocr-results | bootstrap/14-ocr-pipeline.sh |
 | RECEIPT_OCR_RESULTS_TOPIC_ARN | arn:aws:sns:us-east-1:...:bflow-receipt-ocr-results | bootstrap/14-ocr-pipeline.sh |
 | TEXTRACT_SNS_ROLE_ARN | arn:aws:iam::...:role/bflow-textract-sns-role | bootstrap/14-ocr-pipeline.sh |
+| FIREBASE_ENABLED | false (set to true after configuring FCM) | GitHub Environment variable |
 
 Repository/Environment Secrets (`secrets.*`):
 
@@ -239,6 +251,7 @@ Repository/Environment Secrets (`secrets.*`):
 | AWS_ROLE_ARN | bootstrap/12-github-oidc.sh |
 | RDS_SECRET_ARN | bootstrap/08-secrets.sh |
 | WOMPI_SECRET_ARN | bootstrap/08-secrets.sh (requires `infra/wompi.env`, see `infra/wompi.env.example`) |
+| FIREBASE_SECRET_ARN | bootstrap/08-secrets.sh (uses `infra/firebase.env`, see `infra/firebase.env.example`) |
 
 > Cloudflare credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`,
 > `CLOUDFLARE_DNS_RECORD_ID`, `CLOUDFLARE_DNS_RECORD_NAME`) are **not**
