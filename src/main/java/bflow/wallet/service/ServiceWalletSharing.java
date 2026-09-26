@@ -16,12 +16,14 @@ import bflow.wallet.DTO.WalletInvitationSentResponse;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.wallet.entities.WalletInvitation;
 import bflow.wallet.entities.WalletUser;
+import bflow.wallet.mapper.WalletSharingMapper;
 import bflow.wallet.enums.CollaboratorStatus;
 import bflow.wallet.enums.WalletInvitationStatus;
 import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletInvitation;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Transactional
 public class ServiceWalletSharing {
+
+    /** Generated wallet-sharing response mapper. */
+    private static final WalletSharingMapper SHARING_MAPPER =
+            Mappers.getMapper(WalletSharingMapper.class);
 
     /**
      * Invitation expiration period.
@@ -425,17 +431,7 @@ public class ServiceWalletSharing {
     private WalletInvitationResponse toResponse(
             final WalletInvitation invitation
     ) {
-        return new WalletInvitationResponse(
-                invitation.getId(),
-                invitation.getWallet().getId(),
-                invitation.getWallet().getName(),
-                invitation.getInvitedEmail(),
-                invitation.getInvitedByUser().getName(),
-                invitation.getInvitedByUser().getEmail(),
-                invitation.getInvitedByUser().getPictureUrl(),
-                invitation.getStatus(),
-                invitation.getExpiresAt()
-        );
+        return SHARING_MAPPER.toInvitationResponse(invitation);
     }
 
     private void validatePendingInvitation(
@@ -736,20 +732,6 @@ public class ServiceWalletSharing {
     private WalletInvitationSentResponse toSentResponse(
             final WalletInvitation invitation
     ) {
-
-        User invitedUser = invitation.getInvitedUser();
-
-        return new WalletInvitationSentResponse(
-                invitation.getId(),
-                invitation.getWallet().getId(),
-                invitation.getWallet().getName(),
-                invitation.getInvitedEmail(),
-                invitedUser != null ? invitedUser.getId() : null,
-                invitedUser != null ? invitedUser.getName() : null,
-                invitation.getStatus(),
-                invitation.getCreatedAt(),
-                invitation.getExpiresAt(),
-                invitation.getRespondedAt()
-        );
+        return SHARING_MAPPER.toSentInvitationResponse(invitation);
     }
 }

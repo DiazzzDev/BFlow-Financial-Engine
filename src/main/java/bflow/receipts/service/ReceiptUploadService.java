@@ -16,6 +16,7 @@ import bflow.receipts.entity.ReceiptUpload;
 import bflow.receipts.enums.ReceiptStatus;
 import bflow.receipts.enums.ReceiptTransactionType;
 import bflow.receipts.event.ReceiptRegisteredEvent;
+import bflow.receipts.mapper.ReceiptUploadMapper;
 import bflow.receipts.repository.RepositoryReceiptUpload;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
@@ -23,6 +24,7 @@ import bflow.storage.repository.RepositoryStoredFile;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ReceiptUploadService {
+
+    /** Generated mapper for receipt upload responses. */
+    private static final ReceiptUploadMapper RECEIPT_MAPPER =
+            Mappers.getMapper(ReceiptUploadMapper.class);
 
     /**
      * Repository for persisting and querying receipt upload
@@ -266,20 +272,6 @@ public class ReceiptUploadService {
     }
 
     private ReceiptUploadResponse toResponse(final ReceiptUpload receipt) {
-        return new ReceiptUploadResponse(
-                receipt.getId(),
-                receipt.getStoredFile().getId(),
-                receipt.getWallet().getId(),
-                receipt.getStatus(),
-                receipt.getSuggestedType(),
-                receipt.getSuggestedTitle(),
-                receipt.getSuggestedAmount(),
-                receipt.getSuggestedCategoryId(),
-                receipt.getSuggestedDate(),
-                receipt.getConfidenceScore(),
-                receipt.getFailureReason(),
-                receipt.getResultingTransactionId(),
-                receipt.getCreatedAt()
-        );
+        return RECEIPT_MAPPER.toResponse(receipt);
     }
 }

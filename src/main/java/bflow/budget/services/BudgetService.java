@@ -16,6 +16,9 @@ import org.springframework.data.jpa.domain.Specification;
 import bflow.budget.DTO.RecentActivityItem;
 import bflow.budget.DTO.SpendingTrendPoint;
 import bflow.budget.entity.Budget;
+import bflow.budget.mapper.BudgetDetailMapper;
+import bflow.budget.mapper.BudgetDetailView;
+import bflow.budget.mapper.BudgetMapper;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
 import bflow.budget.enums.PeriodType;
@@ -32,6 +35,7 @@ import bflow.wallet.entities.WalletUser;
 import bflow.wallet.enums.Currency;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,14 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 public class BudgetService {
+
+    /** Generated budget response mapper. */
+    private static final BudgetMapper BUDGET_MAPPER =
+            Mappers.getMapper(BudgetMapper.class);
+
+    /** Generated mapper for calculated budget detail responses. */
+    private static final BudgetDetailMapper BUDGET_DETAIL_MAPPER =
+            Mappers.getMapper(BudgetDetailMapper.class);
 
     /** Number of recent activity items to return. */
     private static final int RECENT_ACTIVITY_LIMIT = 5;
@@ -558,39 +570,6 @@ public class BudgetService {
         List<Expense> periodExpenses =
                 findExpensesInRange(budget, start, rangeEnd);
 
-        BudgetDetailResponse detail = new BudgetDetailResponse();
-        detail.setId(budget.getId());
-
-        if (budget.getWallet() != null) {
-            detail.setWalletId(budget.getWallet().getId());
-            detail.setWalletName(budget.getWallet().getName());
-            detail.setCurrency(budget.getWallet().getCurrency());
-        }
-
-        if (budget.getCategory() != null) {
-            detail.setCategoryId(budget.getCategory().getId());
-            detail.setCategoryName(budget.getCategory().getName());
-        }
-
-        detail.setScope(budget.getScope());
-        detail.setPeriod(budget.getPeriod());
-        detail.setStatus(base.getStatus());
-
-        detail.setStartDate(start);
-        detail.setEndDate(end);
-        detail.setDaysLeft(daysLeft);
-        detail.setDaysElapsed(daysElapsed);
-
-        detail.setBudgetLimit(base.getBudgetLimit());
-        detail.setSpent(base.getSpent());
-        detail.setRemaining(base.getBudgetLimit().subtract(base.getSpent()));
-        detail.setPercentage(base.getPercentage());
-
-        detail.setThresholdWarning(budget.getThresholdWarning());
-        detail.setThresholdCritical(budget.getThresholdCritical());
-
-        detail.setTransactionCount(periodExpenses.size());
-
         BigDecimal avgDaily = daysElapsed > 0
                 ? base.getSpent().divide(
                 BigDecimal.valueOf(daysElapsed),
@@ -598,23 +577,39 @@ public class BudgetService {
                 java.math.RoundingMode.HALF_UP
         )
                 : null;
-        detail.setAverageDailySpend(avgDaily);
-
+        BigDecimal projectedTotal = null;
         if (avgDaily != null) {
             long totalPeriodDays = ChronoUnit.DAYS.between(start, end) + 1;
-            detail.setProjectedTotal(
-                    avgDaily.multiply(BigDecimal.valueOf(totalPeriodDays))
+            projectedTotal = avgDaily.multiply(
+                    BigDecimal.valueOf(totalPeriodDays)
             );
         }
 
-        detail.setSpendingTrend(
-                buildSpendingTrend(periodExpenses, start, rangeEnd)
-        );
-        detail.setRecentActivity(
+        Currency currency = budget.getWallet() == null
+                ? null : budget.getWallet().getCurrency();
+
+        BudgetDetailView detailView = new BudgetDetailView(
+                budget,
+                currency,
+                base.getStatus(),
+                start,
+                end,
+                daysLeft,
+                daysElapsed,
+                base.getBudgetLimit(),
+                base.getSpent(),
+                base.getBudgetLimit().subtract(base.getSpent()),
+                base.getPercentage(),
+                budget.getThresholdWarning(),
+                budget.getThresholdCritical(),
+                periodExpenses.size(),
+                avgDaily,
+                projectedTotal,
+                buildSpendingTrend(periodExpenses, start, rangeEnd),
                 buildRecentActivity(budget, start, rangeEnd)
         );
 
-        return detail;
+        return BUDGET_DETAIL_MAPPER.toResponse(detailView);
     }
 
     /**
@@ -822,30 +817,7 @@ public class BudgetService {
      * @return the dto response
      */
     public BudgetResponse toResponse(final Budget budget) {
-        BudgetResponse response = new BudgetResponse();
-
-        response.setId(budget.getId());
-
-        if (budget.getWallet() != null) {
-            response.setWalletId(budget.getWallet().getId());
-            response.setWalletName(budget.getWallet().getName());
-        }
-
-        if (budget.getCategory() != null) {
-            response.setCategoryId(budget.getCategory().getId());
-            response.setCategoryName(budget.getCategory().getName());
-        }
-
-        response.setScope(budget.getScope());
-        response.setPeriod(budget.getPeriod());
-        response.setBudgetLimit(budget.getAmount());
-        response.setThresholdWarning(budget.getThresholdWarning());
-        response.setThresholdCritical(budget.getThresholdCritical());
-        response.setStartDate(budget.getStartDate());
-        response.setStatus(budget.getLastAlertStatus());
-        response.setUpdatedAt(budget.getUpdatedAt());
-
-        return response;
+        return BUDGET_MAPPER.toResponse(budget);
     }
 
     /**

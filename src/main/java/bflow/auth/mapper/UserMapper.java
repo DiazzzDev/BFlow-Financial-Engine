@@ -39,6 +39,9 @@ public class UserMapper {
      */
     private final ServiceWallet serviceWallet;
 
+    /** Generated mapper for the public user profile. */
+    private final UserProfileMapper userProfileMapper;
+
     /**
      * Builds the "/auth/me" response for the given user.
      *
@@ -94,14 +97,6 @@ public class UserMapper {
      * @return the mapped profile response
      */
     public UserProfileResponse toProfileResponse(final User user) {
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .pictureUrl(user.getPictureUrl())
-                .roles(user.getRoles())
-                .status(user.getStatus())
-                .language(user.getLanguage())
-                .build();
+        return userProfileMapper.toResponse(user);
     }
 }

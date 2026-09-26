@@ -4,6 +4,7 @@ import bflow.auth.services.UserService;
 import bflow.budget.services.BudgetService;
 import bflow.category.entity.Category;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.financial.TransactionMapper;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.QuickExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -175,42 +176,7 @@ public class QuickExpenseService {
     }
 
     private ExpenseResponse toResponse(final Expense e) {
-
-        ExpenseResponse r = new ExpenseResponse();
-
-        r.setId(e.getId().toString());
-
-        r.setTitle(e.getTitle());
-        r.setDescription(e.getDescription());
-
-        r.setAmount(e.getAmount());
-
-        r.setDate(e.getDate());
-
-        r.setRecurring(e.getRecurring());
-
-        r.setSource(e.getSource());
-
-        r.setConfidenceScore(e.getConfidenceScore());
-
-        r.setCreatedAt(e.getCreatedAt());
-
-        if (e.getWallet() != null) {
-            r.setWalletId(e.getWallet().getId().toString());
-            r.setWalletName(e.getWallet().getName());
-        }
-
-        if (e.getContributor() != null) {
-            r.setContributorId(
-                    e.getContributor().getId().toString()
-            );
-
-            r.setContributorName(
-                    e.getContributor().getEmail()
-            );
-        }
-
-        return r;
+        return TransactionMapper.mapQuickExpenseToResponse(e);
     }
 
 }

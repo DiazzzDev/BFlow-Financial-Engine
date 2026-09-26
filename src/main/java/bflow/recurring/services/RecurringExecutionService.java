@@ -11,6 +11,7 @@ import bflow.recurring.DTO.RecurringRequest;
 import bflow.recurring.DTO.RecurringResponse;
 import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.recurring.entity.RecurringTransaction;
+import bflow.recurring.mapper.RecurringMapper;
 import bflow.subscription.FeatureCodes;
 import bflow.subscription.services.PlanLimitService;
 import bflow.wallet.entities.Wallet;
@@ -18,6 +19,7 @@ import bflow.wallet.entities.WalletUser;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class RecurringExecutionService {
+
+    /** Generated response mapper. */
+    private static final RecurringMapper RECURRING_MAPPER =
+            Mappers.getMapper(RecurringMapper.class);
 
     /**
      * Repository for recurring transaction persistence.
@@ -219,18 +225,7 @@ public class RecurringExecutionService {
      * @return the recurring transaction response
      */
     private RecurringResponse mapToResponse(final RecurringTransaction req) {
-        RecurringResponse res = new RecurringResponse();
-        res.setId(req.getId());
-        res.setTitle(req.getTitle());
-        res.setAmount(req.getAmount());
-        res.setType(req.getType());
-        res.setFrequency(req.getFrequency());
-        res.setIntervalValue(req.getIntervalValue());
-        res.setNextExecutionDate(req.getNextExecutionDate());
-        res.setActive(req.getActive());
-        res.setWalletId(req.getWallet().getId());
-        res.setCategoryId(req.getCategory().getId());
-        return res;
+        return RECURRING_MAPPER.toResponse(req);
     }
 
     /**

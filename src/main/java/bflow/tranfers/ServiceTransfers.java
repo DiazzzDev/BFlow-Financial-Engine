@@ -1,5 +1,6 @@
 package bflow.tranfers;
 
+import bflow.common.financial.TransactionMapper;
 import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
@@ -249,20 +250,6 @@ public class ServiceTransfers {
      * @return the transfer response.
      */
     private TransferenceResponse mapToResponse(final Transfer transfer) {
-        TransferenceResponse response = new TransferenceResponse();
-
-        response.setId(transfer.getId());
-
-        response.setFromWalletId(transfer.getFromWallet().getId());
-        response.setFromWalletName(transfer.getFromWallet().getName());
-
-        response.setToWalletId(transfer.getToWallet().getId());
-        response.setToWalletName(transfer.getToWallet().getName());
-
-        response.setAmount(transfer.getAmount());
-        response.setDescription(transfer.getDescription());
-        response.setStatus(transfer.getStatus().name());
-
-        return response;
+        return TransactionMapper.mapTransferToResponse(transfer);
     }
 }
