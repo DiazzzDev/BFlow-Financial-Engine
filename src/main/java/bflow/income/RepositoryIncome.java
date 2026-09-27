@@ -2,6 +2,7 @@ package bflow.income;
 
 import bflow.auth.entities.User;
 import bflow.dashboard.projection.MonthlyTotalProjection;
+import bflow.dashboard.projection.DailyTotalProjection;
 import bflow.income.entity.Income;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -82,6 +83,25 @@ public interface RepositoryIncome extends JpaRepository<Income, UUID> {
     GROUP BY EXTRACT(MONTH FROM i.date)
 """)
     List<MonthlyTotalProjection> sumGroupedByMonth(
+            List<UUID> walletIds, LocalDate start, LocalDate end);
+
+    /**
+     * Groups incomes by transaction date within a range.
+     *
+     * @param walletIds wallet IDs to search
+     * @param start range start (inclusive)
+     * @param end range end (inclusive)
+     * @return daily income totals
+     */
+    @Query("""
+    SELECT i.date as date,
+           COALESCE(SUM(i.amount), 0) as total
+    FROM Income i
+    WHERE i.wallet.id IN :walletIds
+    AND i.date BETWEEN :start AND :end
+    GROUP BY i.date
+""")
+    List<DailyTotalProjection> sumGroupedByDate(
             List<UUID> walletIds, LocalDate start, LocalDate end);
 
     /**

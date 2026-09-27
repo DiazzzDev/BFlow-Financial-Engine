@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Period type enumeration for budgets.
  */
 @Schema(description = "Recurrence period used by a budget.",
-        allowableValues = {"DAILY", "WEEKLY", "MONTHLY"})
+        allowableValues = {"DAILY", "WEEKLY", "MONTHLY", "YEARLY"})
 public enum PeriodType {
     /**
      * Daily period.
@@ -19,5 +19,9 @@ public enum PeriodType {
     /**
      * Monthly period.
      */
-    MONTHLY
+    MONTHLY,
+    /**
+     * Yearly period.
+     */
+    YEARLY
 }

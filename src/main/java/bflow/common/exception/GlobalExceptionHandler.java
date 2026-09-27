@@ -4,6 +4,7 @@ import bflow.common.idempotency.exception.IdempotencyConflictException;
 import bflow.common.response.ApiResponse;
 import bflow.common.response.ErrorCode;
 import bflow.common.response.FieldErrorResponse;
+import bflow.dashboard.exception.InvalidStatisticsFilterException;
 import bflow.legal.exception.LegalDocumentNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -136,6 +137,27 @@ public final class GlobalExceptionHandler {
                         ex.getMessage(),
                         request.getRequestURI(),
                         ErrorCode.RESOURCE_NOT_FOUND
+                ));
+    }
+
+    /**
+     * Handles invalid dashboard statistics period and date filters.
+     *
+     * @param ex invalid statistics filter exception
+     * @param request current request
+     * @return bad request response
+     */
+    @ExceptionHandler(InvalidStatisticsFilterException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidStatisticsFilter(
+            final InvalidStatisticsFilterException ex,
+            final HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        ErrorCode.BAD_REQUEST
                 ));
     }
 

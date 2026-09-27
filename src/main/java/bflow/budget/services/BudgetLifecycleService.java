@@ -27,6 +27,7 @@ public class BudgetLifecycleService {
             case DAILY -> budget.getStartDate().plusDays(1);
             case WEEKLY -> budget.getStartDate().plusWeeks(1);
             case MONTHLY -> budget.getStartDate().plusMonths(1);
+            case YEARLY -> budget.getStartDate().plusYears(1);
             default -> throw new IllegalStateException(
                     messageService.get("budget.period.unsupported")
             );

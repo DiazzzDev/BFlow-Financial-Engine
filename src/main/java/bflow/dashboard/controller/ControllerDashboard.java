@@ -10,9 +10,14 @@ import bflow.dashboard.dto.BudgetHealthItem;
 import bflow.dashboard.dto.RecentActivityItem;
 import bflow.dashboard.dto.SpendingSummaryResponse;
 import bflow.dashboard.dto.StatisticsResponse;
+import bflow.dashboard.enums.StatisticsPeriod;
 import bflow.dashboard.service.ServiceDashboard;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,8 +25,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -70,26 +77,58 @@ public final class ControllerDashboard {
     }
 
     /**
-     * Retrieves the "Statistics" widget data (income vs expenses, Jan-Dec).
+     * Retrieves the "Statistics" widget data for a selected date range.
      *
-     * @param year optional target year; defaults to the current year.
+     * @param period chart granularity; YEAR is the default.
+     * @param year optional calendar or ISO week-based year.
+     * @param month optional calendar month for MONTH.
+     * @param week optional ISO week number for WEEK.
+     * @param startDate custom-range start; required with endDate for CUSTOM.
+     * @param endDate custom-range end; required with startDate for CUSTOM.
      * @param authentication authenticated user.
      * @param request current HTTP request.
      * @return the monthly statistics series.
      */
     @Operation(
-            summary = "Retrieves the 'Statistics' widget data (income vs expenses, Jan-Dec).",
-            description = "Retrieves the 'Statistics' widget data (income vs expenses, Jan-Dec)."
+            summary = "Retrieves chartable income and expense statistics.",
+            description = "Use period=WEEK, MONTH, or YEAR. YEAR returns "
+                    + "monthly points; WEEK and MONTH return daily points. "
+                    + "CUSTOM requires startDate and endDate and is limited to 366 days."
     )
     @GetMapping("/statistics")
     public ApiResponse<StatisticsResponse> getStatistics(
-            @RequestParam(required = false) final Integer year,
+            @Parameter(description = "Chart granularity.",
+                    schema = @Schema(implementation = StatisticsPeriod.class))
+            @RequestParam(defaultValue = "YEAR") final StatisticsPeriod period,
+            @Parameter(description = "Target calendar year, or ISO week-based "
+                    + "year when period=WEEK. Defaults to the current year.",
+                    example = "2026")
+            @RequestParam(required = false)
+            @Min(1) final Integer year,
+            @Parameter(description = "Month number used with period=MONTH (1-12). "
+                    + "Defaults to the current month.", example = "9")
+            @RequestParam(required = false)
+            @Min(1) @Max(12) final Integer month,
+            @Parameter(description = "ISO week number used with period=WEEK (1-53). "
+                    + "Defaults to the current week.", example = "39")
+            @RequestParam(required = false)
+            @Min(1) @Max(53) final Integer week,
+            @Parameter(description = "Inclusive custom-range start. Must be paired "
+                    + "with endDate and period=CUSTOM.", example = "2026-09-01")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) final LocalDate startDate,
+            @Parameter(description = "Inclusive custom-range end. Must be paired "
+                    + "with startDate and period=CUSTOM.", example = "2026-09-30")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) final LocalDate endDate,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         StatisticsResponse statistics = serviceDashboard
-                .getStatistics(userId, year);
+                .getStatistics(
+                        userId, period, year, month, week, startDate, endDate
+                );
 
         return ApiResponse.success(
                 messageService.get("dashboard.statistics.retrieved"),
