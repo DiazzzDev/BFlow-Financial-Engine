@@ -134,7 +134,7 @@ public class ServiceDashboard {
         BigDecimal currentBalance = repositoryWallet
                 .sumBalanceByWalletIds(walletIds);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
         BigDecimal incomeThisMonth = repositoryIncome
@@ -277,7 +277,7 @@ public class ServiceDashboard {
             }
             if (endDate.isBefore(startDate)
                     || endDate.isAfter(startDate.plusDays(
-                            MAX_CUSTOM_RANGE_DAYS - 1))) {
+                            MAX_CUSTOM_RANGE_DAYS - 1L))) {
                 throw new InvalidStatisticsFilterException(
                         "Custom statistics range must be between 1 and 366 days"
                 );
@@ -291,13 +291,13 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         int targetYear = year != null ? year : today.getYear();
 
         return switch (period) {
             case YEAR -> new StatisticsRange(
                     LocalDate.of(targetYear, JANUARY, 1),
-                    LocalDate.of(targetYear, DECEMBER, DECEMBER_LAST_DAY)
+                    LocalDate.of(targetYear, Month.DECEMBER, DECEMBER_LAST_DAY)
             );
             case MONTH -> {
                 int targetMonth = month != null ? month : today.getMonthValue();
@@ -309,14 +309,14 @@ public class ServiceDashboard {
             case WEEK -> {
                 int targetWeek = week != null ? week
                         : today.get(WeekFields.ISO.weekOfWeekBasedYear());
-                int maxWeek = LocalDate.of(targetYear, DECEMBER, 28)
+                int maxWeek = LocalDate.of(targetYear, Month.DECEMBER, 28)
                         .get(WeekFields.ISO.weekOfWeekBasedYear());
                 if (targetWeek > maxWeek) {
                     throw new InvalidStatisticsFilterException(
                             "The selected year does not contain the requested ISO week"
                     );
                 }
-                LocalDate start = LocalDate.of(targetYear, 1, 4)
+                LocalDate start = LocalDate.of(targetYear, Month.JANUARY, 4)
                         .with(WeekFields.ISO.weekOfWeekBasedYear(), targetWeek)
                         .with(WeekFields.ISO.dayOfWeek(), DayOfWeek.MONDAY.getValue());
                 yield new StatisticsRange(start, start.plusDays(6));
@@ -374,7 +374,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);
@@ -524,7 +524,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
         BigDecimal totalExpense = repositoryExpense
@@ -610,7 +610,7 @@ public class ServiceDashboard {
             return new ActivityBreakdownResponse(0, 0.0, 0.0, 0.0, 0.0);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);
