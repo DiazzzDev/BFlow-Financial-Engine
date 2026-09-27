@@ -2,6 +2,8 @@ package bflow.subscription.dto;
 
 import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.SubscriptionStatus;
+import bflow.subscription.mapper.SubscriptionMapper;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,6 +18,10 @@ public record SubscriptionResponse(
         Instant endsAt,
         Instant nextBillingAt
 ) {
+    /** Generated mapper retained behind this record's existing factory. */
+    private static final SubscriptionMapper MAPPER =
+            Mappers.getMapper(SubscriptionMapper.class);
+
     /**
      * Build a response view from the persistence entity.
      *
@@ -23,14 +29,6 @@ public record SubscriptionResponse(
      * @return a public-facing subscription response
      */
     public static SubscriptionResponse from(final Subscription subscription) {
-        return new SubscriptionResponse(
-                subscription.getId(),
-                subscription.getPlan().getName(),
-                subscription.getStatus(),
-                subscription.getBillingAmount(),
-                subscription.getStartsAt(),
-                subscription.getEndsAt(),
-                subscription.getNextBillingAt()
-        );
+        return MAPPER.toResponse(subscription);
     }
 }

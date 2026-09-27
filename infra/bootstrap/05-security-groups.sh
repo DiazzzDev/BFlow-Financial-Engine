@@ -160,6 +160,23 @@ authorize_cloudflare_ranges \
 #    "$CLOUDFLARE_IPV6_URL" \
 #    ipv6
 
+echo "Authorizing inbound webhook traffic (Wompi has no published IP range)..."
+
+WEBHOOK_RULE=$(aws ec2 describe-security-groups \
+    --region "$AWS_REGION" \
+    --group-ids "$ECS_SECURITY_GROUP_ID" \
+    --query "SecurityGroups[0].IpPermissions[?FromPort==\`${APP_PORT}\` && IpRanges[?CidrIp=='0.0.0.0/0']]" \
+    --output text)
+
+if [[ -z "$WEBHOOK_RULE" ]]; then
+    aws ec2 authorize-security-group-ingress \
+        --region "$AWS_REGION" \
+        --group-id "$ECS_SECURITY_GROUP_ID" \
+        --protocol tcp \
+        --port "$APP_PORT" \
+        --cidr "0.0.0.0/0"
+fi
+
 echo "Checking RDS ingress rule..."
 
 RDS_RULE=$(aws ec2 describe-security-groups \

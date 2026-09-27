@@ -4,10 +4,12 @@ import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
+import bflow.budget.mapper.BudgetMapper;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.RepositoryExpense;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,6 +24,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public final class BudgetCalculationService {
+
+    /** Generated budget response mapper. */
+    private static final BudgetMapper BUDGET_MAPPER =
+            Mappers.getMapper(BudgetMapper.class);
 
     /**
      * Percentage multiplier for decimal conversion.
@@ -86,37 +92,15 @@ public final class BudgetCalculationService {
             status = BudgetStatus.OK;
         }
 
-        BudgetResponse response = new BudgetResponse();
-        response.setId(budget.getId());
-
-        if (budget.getWallet() != null) {
-            response.setWalletId(budget.getWallet().getId());
-        }
-
-        response.setScope(budget.getScope());
-        response.setPeriod(budget.getPeriod());
-        response.setStartDate(budget.getStartDate());
-
-        response.setBudgetLimit(budget.getAmount());
-        response.setSpent(spent);
-
         BigDecimal remaining = budget.getAmount().subtract(spent);
 
         if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
             remaining = BigDecimal.ZERO;
         }
 
-        response.setRemaining(remaining);
-
-        response.setPercentage(percentage);
-        response.setStatus(status);
-
-        response.setThresholdWarning(budget.getThresholdWarning());
-        response.setThresholdCritical(budget.getThresholdCritical());
-
-        response.setCreatedAt(budget.getCreatedAt());
-
-        return response;
+        return BUDGET_MAPPER.toCalculatedResponse(
+                budget, spent, remaining, percentage, status
+        );
     }
 
     /**

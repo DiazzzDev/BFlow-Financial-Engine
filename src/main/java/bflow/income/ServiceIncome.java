@@ -219,10 +219,7 @@ public class ServiceIncome {
                 )
         );
 
-        income.setTitle(request.getTitle());
-        income.setDescription(request.getDescription());
-        income.setAmount(newAmount);
-        income.setDate(request.getDate());
+        TransactionMapper.updateIncomeFromRequest(request, income);
         income.setCategory(category);
         income.setRecurring(willBeRecurring);
         income.setRecurrencePattern(request.getRecurrencePattern());
@@ -343,43 +340,7 @@ public class ServiceIncome {
      * @return the mapped IncomeResponse
      */
     private IncomeResponse mapToResponse(final Income income) {
-
-        IncomeResponse response = new IncomeResponse();
-
-        response.setId(income.getId().toString());
-        response.setTitle(income.getTitle());
-        response.setDescription(income.getDescription());
-        response.setAmount(income.getAmount());
-        response.setDate(income.getDate());
-        response.setCategory(
-                TransactionMapper.mapCategoryToResponse(income.getCategory())
-        );
-
-        response.setWalletId(income.getWallet().getId().toString());
-        response.setWalletName(income.getWallet().getName());
-
-        response.setContributorId(income.getContributor().getId()
-                .toString());
-
-        response.setContributorName(
-                income.getContributor().getEmail()
-        );
-
-        response.setSource(income.getSource());
-        response.setConfidenceScore(income.getConfidenceScore());
-        response.setCreatedAt(income.getCreatedAt());
-        response.setCategorizationChanges(income.getCategorizationChanges());
-        response.setEditCount(income.getEditCount());
-
-        response.setRecurring(income.getRecurring());
-        response.setRecurrencePattern(income.getRecurrencePattern());
-        response.setRecurringTransactionId(
-                income.getRecurringTransactionId() != null
-                        ? income.getRecurringTransactionId().toString()
-                        : null
-        );
-
-        return response;
+        return TransactionMapper.mapIncomeToResponse(income);
     }
 
 }

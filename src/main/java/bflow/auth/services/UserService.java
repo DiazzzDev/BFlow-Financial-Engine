@@ -3,6 +3,7 @@ package bflow.auth.services;
 import bflow.auth.DTO.user.UpdateUserProfileRequest;
 import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.entities.User;
+import bflow.auth.mapper.UserProfileMapper;
 import bflow.auth.enums.NameSource;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
@@ -12,6 +13,7 @@ import bflow.common.i18n.MessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.mapstruct.factory.Mappers;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -27,6 +29,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
+
+    /** Generated mapper for the public profile response. */
+    private static final UserProfileMapper PROFILE_MAPPER =
+            Mappers.getMapper(UserProfileMapper.class);
 
     /** Grace period before a pending-deletion account is hard-deleted. */
     private static final int DELETION_GRACE_PERIOD_DAYS = 30;
@@ -197,14 +203,6 @@ public class UserService {
 
         User user = findById(userId);
 
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .pictureUrl(user.getPictureUrl())
-                .roles(user.getRoles())
-                .status(user.getStatus())
-                .language(user.getLanguage())
-                .build();
+        return PROFILE_MAPPER.toResponse(user);
     }
 }

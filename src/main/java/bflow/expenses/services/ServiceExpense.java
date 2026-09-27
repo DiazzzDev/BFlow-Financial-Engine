@@ -248,10 +248,7 @@ public class ServiceExpense {
                 ? expense.getCategory().getId()
                 : null;
 
-        expense.setTitle(request.getTitle());
-        expense.setDescription(request.getDescription());
-        expense.setAmount(newAmount);
-        expense.setDate(request.getDate());
+        TransactionMapper.updateExpenseFromRequest(request, expense);
         expense.setCategory(category);
         expense.setRecurring(willBeRecurring);
         expense.setRecurrencePattern(request.getRecurrencePattern());
@@ -393,50 +390,7 @@ public class ServiceExpense {
      * @return the mapped ExpenseResponse
      */
     public ExpenseResponse mapToResponse(final Expense expense) {
-
-        ExpenseResponse response = new ExpenseResponse();
-
-        response.setId(expense.getId().toString());
-        response.setTitle(expense.getTitle());
-        response.setDescription(expense.getDescription());
-        response.setAmount(expense.getAmount());
-        response.setDate(expense.getDate());
-        response.setCategory(
-                TransactionMapper.mapCategoryToResponse(expense.getCategory())
-        );
-
-        response.setRecurring(expense.getRecurring());
-
-        response.setWalletId(expense.getWallet().getId().toString());
-        response.setWalletName(expense.getWallet().getName());
-
-        response.setContributorId(
-                expense.getContributor().getId().toString()
-        );
-        response.setContributorName(
-                expense.getContributor().getEmail()
-        );
-
-        response.setSource(expense.getSource());
-        response.setConfidenceScore(expense.getConfidenceScore());
-        response.setCreatedAt(expense.getCreatedAt());
-        response.setCategorizationChanges(expense.getCategorizationChanges());
-        response.setEditCount(expense.getEditCount());
-
-        response.setRecurrencePattern(expense.getRecurrencePattern());
-        response.setRecurringTransactionId(
-                expense.getRecurringTransactionId() != null
-                        ? expense.getRecurringTransactionId().toString()
-                        : null
-        );
-
-        response.setReceiptFileId(
-                expense.getReceiptFile() != null
-                        ? expense.getReceiptFile().getId().toString()
-                        : null
-        );
-
-        return response;
+        return TransactionMapper.mapExpenseToResponse(expense);
     }
 
     private StoredFile resolveReceiptFile(

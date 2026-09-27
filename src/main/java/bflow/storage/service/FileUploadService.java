@@ -13,8 +13,10 @@ import bflow.storage.DTO.PresignedUploadRequest;
 import bflow.storage.DTO.PresignedUploadResponse;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
+import bflow.storage.mapper.FileMapper;
 import bflow.storage.repository.RepositoryStoredFile;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class FileUploadService {
+
+    /** Generated mapper for stored file responses. */
+    private static final FileMapper FILE_MAPPER =
+            Mappers.getMapper(FileMapper.class);
 
     /** Prefix under which every user-owned object key is scoped. */
     private static final String USERS_PREFIX = "users/";
@@ -390,15 +396,7 @@ public class FileUploadService {
      * @return the corresponding response DTO
      */
     private FileResponse toResponse(final StoredFile file) {
-        return new FileResponse(
-                file.getId(),
-                file.getObjectKey(),
-                file.getOriginalFilename(),
-                file.getContentType(),
-                file.getSizeBytes(),
-                file.getStatus(),
-                file.getCreatedAt()
-        );
+        return FILE_MAPPER.toResponse(file);
     }
 
     /**

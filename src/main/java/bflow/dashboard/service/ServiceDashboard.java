@@ -13,7 +13,10 @@ import bflow.dashboard.dto.RecentActivityItem;
 import bflow.dashboard.dto.SpendingSummaryResponse;
 import bflow.dashboard.dto.StatisticsResponse;
 import bflow.dashboard.projection.CategorySpendingProjection;
+import bflow.dashboard.projection.DailyTotalProjection;
 import bflow.dashboard.projection.MonthlyTotalProjection;
+import bflow.dashboard.enums.StatisticsPeriod;
+import bflow.dashboard.exception.InvalidStatisticsFilterException;
 import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
 import bflow.income.RepositoryIncome;
@@ -32,8 +35,11 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
+import java.time.DayOfWeek;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -80,6 +86,9 @@ public class ServiceDashboard {
     /** Last day of December, used to build a full-year date range. */
     private static final int DECEMBER_LAST_DAY = 31;
 
+    /** Maximum supported length for an explicit chart range. */
+    private static final int MAX_CUSTOM_RANGE_DAYS = 366;
+
     /** Repository for wallet-user membership queries. */
     private final RepositoryWalletUser repositoryWalletUser;
 
@@ -125,7 +134,7 @@ public class ServiceDashboard {
         BigDecimal currentBalance = repositoryWallet
                 .sumBalanceByWalletIds(walletIds);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
         BigDecimal incomeThisMonth = repositoryIncome
@@ -145,45 +154,203 @@ public class ServiceDashboard {
     }
 
     /**
-     * Builds the "Statistics" widget: total income vs total expenses per
-     * month for the given year (defaults to the current year).
+     * Builds the "Statistics" widget for a selected time range.
      *
      * @param userId the authenticated user's ID.
-     * @param year the target year, or {@code null} for the current year.
-     * @return the monthly income/expense series, Jan through Dec.
+     * @param period chart granularity
+     * @param year optional target year
+     * @param month optional target month for MONTH
+     * @param week optional ISO week number for WEEK
+     * @param startDate optional custom range start
+     * @param endDate optional custom range end
+     * @return complete income/expense series for the resolved range
      */
     public StatisticsResponse getStatistics(
-            final UUID userId, final Integer year
+            final UUID userId,
+            final StatisticsPeriod period,
+            final Integer year,
+            final Integer month,
+            final Integer week,
+            final LocalDate startDate,
+            final LocalDate endDate
     ) {
         userService.validateUserActive(userId);
         List<UUID> walletIds = repositoryWalletUser
                 .findWalletIdsByUserId(userId);
 
-        int targetYear = year != null ? year : LocalDate.now().getYear();
-        LocalDate start = LocalDate.of(targetYear, JANUARY, 1);
-        LocalDate end = LocalDate.of(targetYear, DECEMBER, DECEMBER_LAST_DAY);
+        StatisticsPeriod resolvedPeriod = period != null
+                ? period : StatisticsPeriod.YEAR;
+        StatisticsRange range = resolveStatisticsRange(
+                resolvedPeriod, year, month, week, startDate, endDate
+        );
 
+        List<MonthlyPoint> points = resolvedPeriod == StatisticsPeriod.YEAR
+                ? buildMonthlyPoints(walletIds, range.start(), range.end())
+                : buildDailyPoints(
+                        walletIds, range.start(), range.end(), resolvedPeriod
+                );
+
+        return new StatisticsResponse(
+                points, resolvedPeriod, range.start(), range.end()
+        );
+    }
+
+    private List<MonthlyPoint> buildMonthlyPoints(
+            final List<UUID> walletIds,
+            final LocalDate start,
+            final LocalDate end
+    ) {
         Map<Integer, BigDecimal> incomeByMonth = walletIds.isEmpty()
                 ? Map.of()
-                : toMonthMap(repositoryIncome
-                .sumGroupedByMonth(walletIds, start, end));
+                : toMonthMap(repositoryIncome.sumGroupedByMonth(
+                        walletIds, start, end
+                ));
 
         Map<Integer, BigDecimal> expenseByMonth = walletIds.isEmpty()
                 ? Map.of()
-                : toMonthMap(repositoryExpense
-                .sumGroupedByMonth(walletIds, start, end));
+                : toMonthMap(repositoryExpense.sumGroupedByMonth(
+                        walletIds, start, end
+                ));
 
         List<MonthlyPoint> points = new ArrayList<>();
-        for (int month = JANUARY; month <= DECEMBER; month++) {
+        for (int currentMonth = JANUARY;
+                currentMonth <= DECEMBER; currentMonth++) {
             points.add(new MonthlyPoint(
-                    Month.of(month)
-                            .getDisplayName(TextStyle.SHORT, new Locale("es")),
-                    incomeByMonth.getOrDefault(month, BigDecimal.ZERO),
-                    expenseByMonth.getOrDefault(month, BigDecimal.ZERO)
+                    Month.of(currentMonth).getDisplayName(
+                            TextStyle.SHORT, new Locale("es")
+                    ),
+                    incomeByMonth.getOrDefault(currentMonth, BigDecimal.ZERO),
+                    expenseByMonth.getOrDefault(currentMonth, BigDecimal.ZERO)
             ));
         }
+        return points;
+    }
 
-        return new StatisticsResponse(points);
+    private List<MonthlyPoint> buildDailyPoints(
+            final List<UUID> walletIds,
+            final LocalDate start,
+            final LocalDate end,
+            final StatisticsPeriod period
+    ) {
+        Map<LocalDate, BigDecimal> incomeByDate = walletIds.isEmpty()
+                ? Map.of()
+                : toDateMap(repositoryIncome.sumGroupedByDate(
+                        walletIds, start, end
+                ));
+
+        Map<LocalDate, BigDecimal> expenseByDate = walletIds.isEmpty()
+                ? Map.of()
+                : toDateMap(repositoryExpense.sumGroupedByDate(
+                        walletIds, start, end
+                ));
+
+        List<MonthlyPoint> points = new ArrayList<>();
+        for (LocalDate date = start; !date.isAfter(end);
+                date = date.plusDays(1)) {
+            points.add(new MonthlyPoint(
+                    resolveDayLabel(date, period),
+                    incomeByDate.getOrDefault(date, BigDecimal.ZERO),
+                    expenseByDate.getOrDefault(date, BigDecimal.ZERO)
+            ));
+        }
+        return points;
+    }
+
+    private StatisticsRange resolveStatisticsRange(
+            final StatisticsPeriod period,
+            final Integer year,
+            final Integer month,
+            final Integer week,
+            final LocalDate startDate,
+            final LocalDate endDate
+    ) {
+        if (startDate != null || endDate != null) {
+            if (startDate == null || endDate == null) {
+                throw new InvalidStatisticsFilterException(
+                        "startDate and endDate must be provided together"
+                );
+            }
+            if (period != StatisticsPeriod.CUSTOM) {
+                throw new InvalidStatisticsFilterException(
+                        "CUSTOM period is required with startDate and endDate"
+                );
+            }
+            if (endDate.isBefore(startDate)
+                    || endDate.isAfter(startDate.plusDays(
+                            MAX_CUSTOM_RANGE_DAYS - 1L))) {
+                throw new InvalidStatisticsFilterException(
+                        "Custom statistics range must be between 1 and 366 days"
+                );
+            }
+            return new StatisticsRange(startDate, endDate);
+        }
+
+        if (period == StatisticsPeriod.CUSTOM) {
+            throw new InvalidStatisticsFilterException(
+                    "startDate and endDate are required for CUSTOM period"
+            );
+        }
+
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        int targetYear = year != null ? year : today.getYear();
+
+        return switch (period) {
+            case YEAR -> new StatisticsRange(
+                    LocalDate.of(targetYear, JANUARY, 1),
+                    LocalDate.of(targetYear, Month.DECEMBER, DECEMBER_LAST_DAY)
+            );
+            case MONTH -> {
+                int targetMonth = month != null ? month : today.getMonthValue();
+                LocalDate start = LocalDate.of(targetYear, targetMonth, 1);
+                yield new StatisticsRange(start, start.withDayOfMonth(
+                        start.lengthOfMonth()
+                ));
+            }
+            case WEEK -> {
+                int targetWeek = week != null ? week
+                        : today.get(WeekFields.ISO.weekOfWeekBasedYear());
+                int maxWeek = LocalDate.of(targetYear, Month.DECEMBER, 28)
+                        .get(WeekFields.ISO.weekOfWeekBasedYear());
+                if (targetWeek > maxWeek) {
+                    throw new InvalidStatisticsFilterException(
+                            "The selected year does not contain the requested ISO week"
+                    );
+                }
+                LocalDate start = LocalDate.of(targetYear, Month.JANUARY, 4)
+                        .with(WeekFields.ISO.weekOfWeekBasedYear(), targetWeek)
+                        .with(WeekFields.ISO.dayOfWeek(), DayOfWeek.MONDAY.getValue());
+                yield new StatisticsRange(start, start.plusDays(6));
+            }
+            case CUSTOM -> throw new IllegalStateException("Unexpected CUSTOM period");
+        };
+    }
+
+    private String resolveDayLabel(
+            final LocalDate date,
+            final StatisticsPeriod period
+    ) {
+        if (period == StatisticsPeriod.WEEK) {
+            return date.getDayOfWeek().getDisplayName(
+                    TextStyle.SHORT, new Locale("es")
+            );
+        }
+        if (period == StatisticsPeriod.CUSTOM) {
+            return date.format(DateTimeFormatter.ofPattern(
+                    "d MMM", new Locale("es")
+            ));
+        }
+        return String.valueOf(date.getDayOfMonth());
+    }
+
+    private record StatisticsRange(LocalDate start, LocalDate end) { }
+
+    private Map<LocalDate, BigDecimal> toDateMap(
+            final List<DailyTotalProjection> projections
+    ) {
+        return projections.stream().collect(Collectors.toMap(
+                DailyTotalProjection::getDate,
+                DailyTotalProjection::getTotal
+        ));
     }
 
     /**
@@ -207,7 +374,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);
@@ -357,7 +524,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
         BigDecimal totalExpense = repositoryExpense
@@ -443,7 +610,7 @@ public class ServiceDashboard {
             return new ActivityBreakdownResponse(0, 0.0, 0.0, 0.0, 0.0);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);

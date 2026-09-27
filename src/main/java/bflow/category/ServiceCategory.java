@@ -3,6 +3,7 @@ package bflow.category;
 import bflow.category.DTO.CategoryRequest;
 import bflow.category.DTO.CategoryResponse;
 import bflow.category.entity.Category;
+import bflow.common.financial.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,11 +28,8 @@ public class ServiceCategory {
      */
     public CategoryResponse create(final CategoryRequest request) {
 
-        Category category = new Category();
-        category.setName(request.getName());
-        category.setType(request.getType());
-        category.setIcon(request.getIcon());
-        category.setColor(request.getColor());
+        Category category = TransactionMapper
+                .mapCategoryRequestToEntity(request);
         category.setSystemDefined(false);
         category.setCreatedAt(Instant.now());
 
@@ -45,10 +43,9 @@ public class ServiceCategory {
      * @return a list of all category responses
      */
     public List<CategoryResponse> findAll() {
-        return repositoryCategory.findAll()
-                .stream()
-                .map(this::from)
-                .toList();
+        return TransactionMapper.mapCategoriesToResponses(
+                repositoryCategory.findAll()
+        );
     }
 
     /**
@@ -58,13 +55,7 @@ public class ServiceCategory {
      * @return the mapped response DTO
      */
     private CategoryResponse from(final Category category) {
-        CategoryResponse response = new CategoryResponse();
-        response.setId(category.getId());
-        response.setName(category.getName());
-        response.setType(category.getType());
-        response.setIcon(category.getIcon());
-        response.setColor(category.getColor());
-        return response;
+        return TransactionMapper.mapCategoryToResponse(category);
     }
 
 }

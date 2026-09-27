@@ -10,6 +10,7 @@ import bflow.income.entity.Income;
 import bflow.common.financial.TransactionMapper;
 import bflow.common.i18n.MessageService;
 import bflow.recurring.RepositoryRecurringTransaction;
+import bflow.recurring.mapper.RecurringMapper;
 import bflow.subscription.FeatureCodes;
 import bflow.subscription.services.PlanLimitService;
 import bflow.tranfers.RepositoryTransfers;
@@ -21,6 +22,7 @@ import bflow.wallet.DTO.WalletRequest;
 import bflow.wallet.DTO.WalletResponse;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
+import bflow.wallet.mapper.WalletSharingMapper;
 import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import bflow.auth.repository.RepositoryUser;
@@ -30,6 +32,7 @@ import bflow.wallet.repository.RepositoryWallet;
 import bflow.wallet.repository.RepositoryWalletUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -55,6 +58,14 @@ import org.springframework.data.jpa.domain.Specification;
 @Transactional
 @RequiredArgsConstructor
 public class ServiceWallet {
+
+    /** Generated wallet-sharing response mapper. */
+    private static final WalletSharingMapper SHARING_MAPPER =
+            Mappers.getMapper(WalletSharingMapper.class);
+
+    /** Generated recurring-transaction mapper for wallet summaries. */
+    private static final RecurringMapper RECURRING_MAPPER =
+            Mappers.getMapper(RecurringMapper.class);
 
     /** The repository for wallet database operations. */
     private final RepositoryWallet repositoryWallet;
@@ -180,15 +191,10 @@ public class ServiceWallet {
         List<UpcomingTransactionResponse> upcoming =
                 repositoryRecurringTransaction
                         .findByWalletIdAndActiveTrueOrderByNextExecutionDateAsc(
-                                walletId, PageRequest.of(0, UPCOMING_LIMIT)
-                        )
-                        .stream()
-                        .map(rt -> new UpcomingTransactionResponse(
-                                rt.getTitle(),
-                                rt.getAmount(),
-                                rt.getType(),
-                                rt.getNextExecutionDate()
-                        ))
+                        walletId, PageRequest.of(0, UPCOMING_LIMIT)
+                )
+                .stream()
+                        .map(RECURRING_MAPPER::toUpcomingResponse)
                         .toList();
 
         return new WalletInfoResponse(
@@ -426,24 +432,12 @@ public class ServiceWallet {
     public WalletResponse convertToDTO(final WalletUser walletUser) {
 
         Wallet wallet = walletUser.getWallet();
-
-        WalletResponse dto = new WalletResponse();
-        dto.setId(wallet.getId());
-        dto.setName(wallet.getName());
-        dto.setDescription(wallet.getDescription());
-        dto.setCurrency(wallet.getCurrency());
-        dto.setBalance(wallet.getBalance());
-        dto.setRole(walletUser.getRole());
-        dto.setInitialValue(wallet.getInitialValue());
-        dto.setMemberCount(
-                Math.toIntExact(
-                        repositoryWalletUser.countByWalletId(wallet.getId())
-                )
+        Integer memberCount = Math.toIntExact(
+                repositoryWalletUser.countByWalletId(wallet.getId())
         );
-        dto.setCreatedAt(wallet.getCreatedAt());
-        dto.setUpdatedAt(wallet.getUpdatedAt());
-
-        return dto;
+        return TransactionMapper.mapWalletToResponse(
+                wallet, walletUser, memberCount
+        );
     }
 
     /**
@@ -680,22 +674,7 @@ public class ServiceWallet {
      * @return the mapped expense response DTO.
      */
     public ExpenseResponse toExpenseResponse(final Expense expense) {
-        ExpenseResponse dto = new ExpenseResponse();
-        dto.setId(expense.getId().toString());
-        dto.setTitle(expense.getTitle());
-        dto.setDescription(expense.getDescription());
-        dto.setAmount(expense.getAmount());
-        dto.setDate(expense.getDate());
-        dto.setCategory(
-                TransactionMapper.mapCategoryToResponse(expense.getCategory())
-        );
-        dto.setRecurring(expense.getRecurring());
-        dto.setWalletId(expense.getWallet().getId().toString());
-        dto.setWalletName(expense.getWallet().getName());
-        dto.setContributorId(expense.getContributor().getId().toString());
-        dto.setContributorName(expense.getContributor().getEmail());
-        dto.setCreatedAt(expense.getCreatedAt());
-        return dto;
+        return TransactionMapper.mapExpenseToWalletSummary(expense);
     }
 
     /**
@@ -704,34 +683,12 @@ public class ServiceWallet {
      * @return the mapped income response DTO.
      */
     public IncomeResponse toIncomeResponse(final Income income) {
-        IncomeResponse dto = new IncomeResponse();
-        dto.setId(income.getId().toString());
-        dto.setTitle(income.getTitle());
-        dto.setDescription(income.getDescription());
-        dto.setAmount(income.getAmount());
-        dto.setDate(income.getDate());
-        dto.setCategory(
-                TransactionMapper.mapCategoryToResponse(income.getCategory())
-        );
-        dto.setWalletId(income.getWallet().getId().toString());
-        dto.setWalletName(income.getWallet().getName());
-        dto.setContributorId(income.getContributor().getId().toString());
-        dto.setContributorName(income.getContributor().getEmail());
-        dto.setCreatedAt(income.getCreatedAt());
-        return dto;
+        return TransactionMapper.mapIncomeToWalletSummary(income);
     }
 
     private WalletMemberResponse toMemberResponse(
             final WalletUser walletUser
     ) {
-
-        return new WalletMemberResponse(
-                walletUser.getUser().getId(),
-                walletUser.getUser().getEmail(),
-                walletUser.getUser().getName(),
-                walletUser.getUser().getPictureUrl(),
-                walletUser.getRole(),
-                walletUser.getCreatedAt()
-        );
+        return SHARING_MAPPER.toMemberResponse(walletUser);
     }
 }

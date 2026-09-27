@@ -3,6 +3,7 @@ package bflow.expenses;
 import bflow.auth.entities.User;
 import bflow.dashboard.projection.CategorySpendingProjection;
 import bflow.dashboard.projection.MonthlyTotalProjection;
+import bflow.dashboard.projection.DailyTotalProjection;
 import bflow.expenses.entity.Expense;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -262,6 +263,25 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
     GROUP BY EXTRACT(MONTH FROM e.date)
 """)
     List<MonthlyTotalProjection> sumGroupedByMonth(
+            List<UUID> walletIds, LocalDate start, LocalDate end);
+
+    /**
+     * Groups expenses by transaction date within a range.
+     *
+     * @param walletIds wallet IDs to search
+     * @param start range start (inclusive)
+     * @param end range end (inclusive)
+     * @return daily expense totals
+     */
+    @Query("""
+    SELECT e.date as date,
+           COALESCE(SUM(e.amount), 0) as total
+    FROM Expense e
+    WHERE e.wallet.id IN :walletIds
+    AND e.date BETWEEN :start AND :end
+    GROUP BY e.date
+""")
+    List<DailyTotalProjection> sumGroupedByDate(
             List<UUID> walletIds, LocalDate start, LocalDate end);
 
     /**

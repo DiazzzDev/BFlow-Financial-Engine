@@ -9,8 +9,11 @@ import bflow.common.i18n.MessageService;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
+import bflow.notifications.mapper.NotificationMapper;
 import bflow.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.factory.Mappers;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public final class NotificationService {
+
+    /** Generated response mapper kept behind the existing service API. */
+    private static final NotificationMapper NOTIFICATION_MAPPER =
+            Mappers.getMapper(NotificationMapper.class);
     /**
      * Repository for notification operations.
      */
@@ -42,6 +49,9 @@ public final class NotificationService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Publishes notification events after persistence. */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Send a warning notification about budget usage.
@@ -132,7 +142,10 @@ public final class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
 
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                saved.getId(), userId, type, title, message
+        ));
     }
 
     /**
@@ -247,17 +260,7 @@ public final class NotificationService {
      * @return the notification response
      */
     private NotificationResponse toResponse(final Notification n) {
-
-        NotificationResponse r = new NotificationResponse();
-
-        r.setId(n.getId());
-        r.setTitle(n.getTitle());
-        r.setMessage(n.getMessage());
-        r.setType(n.getType().name());
-        r.setRead(n.getRead());
-        r.setCreatedAt(n.getCreatedAt());
-
-        return r;
+        return NOTIFICATION_MAPPER.toResponse(n);
     }
 
     private void sendEmail(

@@ -225,6 +225,73 @@ create_or_update_wompi_secret() {
 
 }
 
+# --- Firebase Cloud Messaging credentials -------------------------------
+FIREBASE_SECRET_NAME="${PROJECT_NAME}/firebase"
+
+create_or_update_firebase_secret() {
+
+    if [[ ! -f "$SCRIPT_DIR/../firebase.env" ]]; then
+        echo "infra/firebase.env not found - creating a disabled placeholder."
+        FIREBASE_PROJECT_ID=""
+        FIREBASE_SERVICE_ACCOUNT_JSON_BASE64=""
+    else
+        source "$SCRIPT_DIR/../firebase.env"
+
+        for VAR in FIREBASE_PROJECT_ID \
+                   FIREBASE_SERVICE_ACCOUNT_JSON_BASE64; do
+            if [[ -z "${!VAR:-}" ]]; then
+                echo "Missing $VAR in infra/firebase.env."
+                exit 1
+            fi
+        done
+
+        if ! printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON_BASE64" \
+                | base64 --decode 2>/dev/null | jq empty >/dev/null; then
+            echo "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 is not valid JSON base64."
+            exit 1
+        fi
+    fi
+
+    local SECRET_ARN
+    SECRET_ARN=$(aws secretsmanager describe-secret \
+        --region "$AWS_REGION" \
+        --secret-id "$FIREBASE_SECRET_NAME" \
+        --query ARN \
+        --output text 2>/dev/null || true)
+
+    SECRET_VALUE=$(jq -n \
+        --arg projectId "$FIREBASE_PROJECT_ID" \
+        --arg serviceAccount "$FIREBASE_SERVICE_ACCOUNT_JSON_BASE64" \
+        '{
+            "FIREBASE_PROJECT_ID": $projectId,
+            "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64": $serviceAccount
+        }')
+
+    if [[ -z "$SECRET_ARN" || "$SECRET_ARN" == "None" ]]; then
+        echo "Creating Firebase secret..."
+        SECRET_ARN=$(aws secretsmanager create-secret \
+            --region "$AWS_REGION" \
+            --name "$FIREBASE_SECRET_NAME" \
+            --description "Firebase Admin credentials for ${PROJECT_NAME}" \
+            --secret-string "$SECRET_VALUE" \
+            --tags \
+                Key=Project,Value="$PROJECT_NAME" \
+                Key=Environment,Value="$ENVIRONMENT" \
+                Key=ManagedBy,Value="$MANAGED_BY" \
+            --query ARN \
+            --output text)
+    else
+        echo "Firebase secret already exists. Updating value..."
+        aws secretsmanager put-secret-value \
+            --region "$AWS_REGION" \
+            --secret-id "$FIREBASE_SECRET_NAME" \
+            --secret-string "$SECRET_VALUE" \
+            >/dev/null
+    fi
+
+    append_output "FIREBASE_SECRET_ARN" "$SECRET_ARN"
+}
+
 resolve_connection_values
 
 create_or_update_secret
@@ -232,5 +299,6 @@ create_or_update_secret
 remove_password_from_outputs
 
 create_or_update_wompi_secret
+create_or_update_firebase_secret
 
 echo "Secret ready (provider: ${DB_PROVIDER})."

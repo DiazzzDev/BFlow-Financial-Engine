@@ -21,6 +21,15 @@ RUN rm -f /etc/apt/sources.list.d/*yarn* \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Install ngrok for sharing the development API through a secure tunnel.
+RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+    | gpg --dearmor -o /etc/apt/trusted.gpg.d/ngrok.gpg \
+    && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
+    > /etc/apt/sources.list.d/ngrok.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ngrok \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Go (needed to build the dns-sync Lambda in infra/dns-sync)
 ARG GO_VERSION=1.23.4
 RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
