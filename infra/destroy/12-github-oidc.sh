@@ -7,83 +7,246 @@ source "$SCRIPT_DIR/../config.env"
 source "$SCRIPT_DIR/../outputs.env"
 source "$SCRIPT_DIR/../lib/helpers.sh"
 
-echo "Checking GitHub OIDC resources..."
+OUTPUT_FILE="$SCRIPT_DIR/../outputs.env"
 
-ROLE_NAME="${GITHUB_OIDC_ROLE_NAME:-${PROJECT_NAME}-github-actions-role}"
+OIDC_PROVIDER_URL="token.actions.githubusercontent.com"
 
-ROLE_ARN=$(aws iam get-role \
-    --role-name "$ROLE_NAME" \
-    --query "Role.Arn" \
-    --output text 2>/dev/null || true)
+create_oidc_provider() {
 
+    local PROVIDER_ARN
 
-if [[ -z "$ROLE_ARN" || "$ROLE_ARN" == "None" ]]; then
-
-    echo "GitHub OIDC IAM role already deleted."
-
-    exit 0
-
-fi
+    PROVIDER_ARN=$(aws iam list-open-id-connect-providers \
+        --query "OpenIDConnectProviderList[?contains(Arn, 'token.actions.githubusercontent.com')].Arn" \
+        --output text)
 
 
-echo "Removing attached policies..."
+    if [[ -n "$PROVIDER_ARN" && "$PROVIDER_ARN" != "None" ]]; then
 
-ATTACHED_POLICIES=$(aws iam list-attached-role-policies \
-    --role-name "$ROLE_NAME" \
-    --query "AttachedPolicies[].PolicyArn" \
-    --output text)
+        echo "GitHub OIDC provider already exists."
 
+        append_output "GITHUB_OIDC_PROVIDER_ARN" "$PROVIDER_ARN"
 
-if [[ -n "$ATTACHED_POLICIES" ]]; then
+        return
 
-    while read -r POLICY_ARN; do
+    fi
 
-        if [[ -n "$POLICY_ARN" ]]; then
+    echo "Creating GitHub OIDC provider..."
 
-            echo "Detaching policy: $POLICY_ARN"
+    PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
+        --url "https://${OIDC_PROVIDER_URL}" \
+        --client-id-list "sts.amazonaws.com" \
+        --thumbprint-list "6938fd4d98bab03faadb97b34396831e3780aea1" \
+        --query "OpenIDConnectProviderArn" \
+        --output text)
 
-            aws iam detach-role-policy \
-                --role-name "$ROLE_NAME" \
-                --policy-arn "$POLICY_ARN"
+    append_output "GITHUB_OIDC_PROVIDER_ARN" "$PROVIDER_ARN"
 
-        fi
+}
 
-    done <<< "$ATTACHED_POLICIES"
+create_deploy_role() {
 
-fi
+    local ROLE_NAME="$GITHUB_ACTIONS_ROLE_NAME"
 
+    local ROLE_ARN
 
-echo "Removing inline policies..."
+    ROLE_ARN=$(aws iam get-role \
+        --role-name "$ROLE_NAME" \
+        --query "Role.Arn" \
+        --output text 2>/dev/null || true)
 
-INLINE_POLICIES=$(aws iam list-role-policies \
-    --role-name "$ROLE_NAME" \
-    --query "PolicyNames[]" \
-    --output text)
+    # Jobs that declare "environment: production" get an OIDC token whose sub
+    # claim is "repo:OWNER/REPO:environment:production", NOT
+    # "repo:OWNER/REPO:ref:refs/heads/BRANCH". Confirmed working in production
+    # with StringEquals on this single value - kept exactly as verified.
+    TRUST_POLICY=$(cat <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/${OIDC_PROVIDER_URL}"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "token.actions.githubusercontent.com:sub": "repo:${GITHUB_OWNER}/${GITHUB_REPOSITORY}:environment:production",
+                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                }
+            }
+        }
+    ]
+}
+EOF
+)
 
+    if [[ -n "$ROLE_ARN" && "$ROLE_ARN" != "None" ]]; then
 
-if [[ -n "$INLINE_POLICIES" ]]; then
+        echo "GitHub Actions role already exists. Updating trust policy..."
 
-    while read -r POLICY_NAME; do
+        aws iam update-assume-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-document "$TRUST_POLICY"
 
-        if [[ -n "$POLICY_NAME" ]]; then
+    else
 
-            echo "Deleting inline policy: $POLICY_NAME"
+        echo "Creating GitHub Actions role..."
 
-            aws iam delete-role-policy \
-                --role-name "$ROLE_NAME" \
-                --policy-name "$POLICY_NAME"
+        ROLE_ARN=$(aws iam create-role \
+            --role-name "$ROLE_NAME" \
+            --assume-role-policy-document "$TRUST_POLICY" \
+            --tags \
+                Key=Project,Value="$PROJECT_NAME" \
+                Key=Environment,Value="$ENVIRONMENT" \
+                Key=ManagedBy,Value="$MANAGED_BY" \
+            --query "Role.Arn" \
+            --output text)
 
-        fi
+    fi
 
-    done <<< "$INLINE_POLICIES"
+    append_output "GITHUB_ACTIONS_ROLE_ARN" "$ROLE_ARN"
 
-fi
+}
 
+create_inline_policy() {
 
-echo "Deleting GitHub OIDC role..."
+    local ROLE_NAME="$GITHUB_ACTIONS_ROLE_NAME"
 
-aws iam delete-role \
-    --role-name "$ROLE_NAME"
+    ECS_EXECUTION_ROLE_ARN=$(require_output ECS_TASK_EXECUTION_ROLE_ARN)
 
+    ECS_TASK_ROLE_ARN=$(require_output ECS_TASK_ROLE_ARN)
 
-echo "GitHub OIDC role deleted successfully."
+    SECRET_ARN=$(require_output RDS_SECRET_ARN)
+
+    # Optional - only present if infra/wompi.env existed when 08-secrets.sh
+    # last ran. Fall back to the DB secret ARN (a harmless duplicate in the
+    # Resource array) so this script stays idempotent either way.
+    WOMPI_SECRET_ARN=$(grep "^WOMPI_SECRET_ARN=" "$SCRIPT_DIR/../outputs.env" | cut -d= -f2- || true)
+    WOMPI_SECRET_ARN="${WOMPI_SECRET_ARN:-$SECRET_ARN}"
+
+    # Same pattern for Firebase: deploy.yml's "Validate Secrets Manager secret"
+    # step calls describe-secret on RDS, Wompi AND Firebase, so all three ARNs
+    # must be in the Resource array below.
+    FIREBASE_SECRET_ARN=$(grep "^FIREBASE_SECRET_ARN=" "$SCRIPT_DIR/../outputs.env" | cut -d= -f2- || true)
+    FIREBASE_SECRET_ARN="${FIREBASE_SECRET_ARN:-$SECRET_ARN}"
+
+    ACCOUNT_ID=$(aws sts get-caller-identity \
+        --query Account \
+        --output text)
+
+    # This policy must cover every AWS call .github/workflows/deploy.yml makes,
+    # across both the "validate-environment" job (read-only checks) and the
+    # "deploy" job (build/push/register/update-service/DNS). Kept scoped to
+    # what the workflow actually calls; secretsmanager:GetSecretValue is
+    # intentionally NOT here — only the ECS execution role needs it, to
+    # resolve the container definition's "secrets" block at task launch.
+    POLICY=$(cat <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+
+        {
+            "Sid": "SecretsManagerValidate",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:DescribeSecret"
+            ],
+            "Resource": [
+                "${SECRET_ARN}",
+                "${WOMPI_SECRET_ARN}",
+                "${FIREBASE_SECRET_ARN}"
+            ]
+        },
+
+        {
+            "Sid": "ECRAuth",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken"
+            ],
+            "Resource": "*"
+        },
+
+        {
+            "Sid": "ECRPushAndValidate",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:CompleteLayerUpload",
+                "ecr:DescribeRepositories",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:InitiateLayerUpload",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart"
+            ],
+            "Resource": "arn:aws:ecr:${AWS_REGION}:${ACCOUNT_ID}:repository/${ECR_REPOSITORY}"
+        },
+
+        {
+            "Sid": "ECSDeploy",
+            "Effect": "Allow",
+            "Action": [
+                "ecs:RegisterTaskDefinition",
+                "ecs:DescribeTaskDefinition",
+                "ecs:DescribeClusters",
+                "ecs:DescribeServices",
+                "ecs:CreateService",
+                "ecs:UpdateService",
+                "ecs:ListTasks",
+                "ecs:DescribeTasks",
+                "ecs:TagResource"
+            ],
+            "Resource": "*"
+        },
+
+        {
+            "Sid": "EC2NetworkingValidate",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSubnets",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeNetworkInterfaces"
+            ],
+            "Resource": "*"
+        },
+
+        {
+            "Sid": "CloudWatchValidate",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups"
+            ],
+            "Resource": "*"
+        },
+
+        {
+            "Sid": "IAMValidateAndPass",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole",
+                "iam:PassRole"
+            ],
+            "Resource": [
+                "$ECS_EXECUTION_ROLE_ARN",
+                "$ECS_TASK_ROLE_ARN"
+            ]
+        }
+
+    ]
+}
+EOF
+)
+    aws iam put-role-policy \
+        --role-name "$ROLE_NAME" \
+        --policy-name "${PROJECT_NAME}-github-deploy-policy" \
+        --policy-document "$POLICY"
+
+}
+
+create_oidc_provider
+
+create_deploy_role
+
+create_inline_policy
+
+echo "GitHub OIDC configured."
