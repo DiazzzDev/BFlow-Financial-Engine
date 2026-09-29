@@ -134,6 +134,10 @@ create_inline_policy() {
         --query Account \
         --output text)
 
+    # Must match the S3_BUCKET repo variable used by deploy.yml (default
+    # mirrors infra/s3/config.sh). Override via env if the bucket differs.
+    S3_BUCKET="${S3_BUCKET:-${PROJECT_NAME}-files-prod}"
+
     # This policy must cover every AWS call .github/workflows/deploy.yml makes,
     # across both the "validate-environment" job (read-only checks) and the
     # "deploy" job (build/push/register/update-service/DNS). Kept scoped to
@@ -156,6 +160,33 @@ create_inline_policy() {
                 "${WOMPI_SECRET_ARN}",
                 "${FIREBASE_SECRET_ARN}"
             ]
+        },
+
+        {
+            "Sid": "S3ValidateBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::${S3_BUCKET}"
+        },
+
+        {
+            "Sid": "SqsValidate",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:GetQueueAttributes"
+            ],
+            "Resource": "arn:aws:sqs:${AWS_REGION}:${ACCOUNT_ID}:${PROJECT_NAME}-receipt-ocr-*"
+        },
+
+        {
+            "Sid": "SnsValidate",
+            "Effect": "Allow",
+            "Action": [
+                "sns:GetTopicAttributes"
+            ],
+            "Resource": "arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:${PROJECT_NAME}-receipt-ocr-*"
         },
 
         {
@@ -217,6 +248,15 @@ create_inline_policy() {
                 "logs:DescribeLogGroups"
             ],
             "Resource": "*"
+        },
+
+        {
+            "Sid": "TextractRoleValidate",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole"
+            ],
+            "Resource": "arn:aws:iam::${ACCOUNT_ID}:role/${PROJECT_NAME}-textract-sns-role"
         },
 
         {
