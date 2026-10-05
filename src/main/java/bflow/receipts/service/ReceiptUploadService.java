@@ -21,6 +21,7 @@ import bflow.receipts.repository.RepositoryReceiptUpload;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
 import bflow.storage.repository.RepositoryStoredFile;
+import bflow.storage.service.FileUploadService;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletUser;
@@ -29,6 +30,7 @@ import org.mapstruct.factory.Mappers;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -51,6 +53,9 @@ public class ReceiptUploadService {
      * receipt.
      */
     private final RepositoryStoredFile repositoryStoredFile;
+
+    /** Service used to store direct multipart receipt uploads. */
+    private final FileUploadService fileUploadService;
 
     /**
      * Repository for verifying the user has access to a wallet.
@@ -79,7 +84,7 @@ public class ReceiptUploadService {
 
     /**
      * Service used to delete the underlying file when a receipt is
-     * discarded.
+     * discarded or direct registration fails.
      */
     private final StorageService storageService;
 
@@ -115,6 +120,51 @@ public class ReceiptUploadService {
                 .orElseThrow(() -> new FileAccessDeniedException(
                         messageService.get("receipt.file.accessDenied")));
 
+        return registerUploadedFile(userId, file, request.getWalletId());
+    }
+
+    /**
+     * Uploads an image through the application and registers it as a
+     * receipt in the same request. This is the camera-first shortcut
+     * for clients that do not need the presigned-upload flow.
+     *
+     * @param userId the authenticated user's identifier
+     * @param file the receipt image or PDF sent as multipart data
+     * @param walletId optional wallet; the default OWNER wallet is
+     *         used when omitted
+     * @return the newly registered receipt in {@code RECEIVED} status
+     */
+    @Transactional
+    public ReceiptUploadResponse uploadAndRegister(
+            final UUID userId,
+            final MultipartFile file,
+            final UUID walletId
+    ) {
+        StoredFile uploadedFile = fileUploadService.uploadDirect(userId, file);
+
+        try {
+            return registerUploadedFile(userId, uploadedFile, walletId);
+        } catch (RuntimeException ex) {
+            deleteDirectUploadAfterRegistrationFailure(uploadedFile, ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Registers a file which was either uploaded directly or
+     * previously confirmed through the presigned flow.
+     *
+     * @param userId the authenticated user's identifier
+     * @param file uploaded file to associate with the receipt
+     * @param walletId optional wallet identifier
+     * @return the newly registered receipt
+     */
+    private ReceiptUploadResponse registerUploadedFile(
+            final UUID userId,
+            final StoredFile file,
+            final UUID walletId
+    ) {
+
         if (file.getStatus() != FileStatus.UPLOADED) {
             throw new IllegalStateException(
                     messageService.get(
@@ -129,7 +179,7 @@ public class ReceiptUploadService {
         }
 
         Wallet wallet;
-        if (request.getWalletId() == null) {
+        if (walletId == null) {
             wallet = repositoryWalletUser
                     .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
                             userId, WalletRole.OWNER)
@@ -138,7 +188,7 @@ public class ReceiptUploadService {
                             messageService.get("receipt.wallet.accessDenied")));
         } else {
             wallet = repositoryWalletUser
-                    .findByWalletIdAndUserId(request.getWalletId(), userId)
+                    .findByWalletIdAndUserId(walletId, userId)
                     .map(walletUser -> walletUser.getWallet())
                     .orElseThrow(() -> new WalletAccessDeniedException(
                             messageService.get("receipt.wallet.accessDenied")));
@@ -160,6 +210,24 @@ public class ReceiptUploadService {
                 new ReceiptRegisteredEvent(saved.getId()));
 
         return toResponse(saved);
+    }
+
+    /**
+     * Deletes a newly stored object when receipt registration cannot
+     * complete. The original business failure is preserved even if
+     * cleanup itself encounters a storage error.
+     *
+     * @param file directly uploaded file to remove from storage
+     * @param originalException registration failure to preserve
+     */
+    private void deleteDirectUploadAfterRegistrationFailure(
+            final StoredFile file, final RuntimeException originalException
+    ) {
+        try {
+            storageService.delete(file.getObjectKey());
+        } catch (RuntimeException cleanupException) {
+            originalException.addSuppressed(cleanupException);
+        }
     }
 
     /**

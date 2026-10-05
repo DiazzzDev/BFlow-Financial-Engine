@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -29,6 +30,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -40,7 +43,9 @@ import java.util.UUID;
  * Handles the lifecycle of user-uploaded files: issuing presigned S3
  * upload URLs, creating the corresponding {@link StoredFile} record
  * in {@code PENDING} status, and confirming completion once the
- * client has uploaded the object.
+ * client has uploaded the object. It also supports server-mediated
+ * multipart uploads for flows, such as receipt capture, where a
+ * single API call is preferable.
  *
  * <p>Only the file's declared metadata (name, content type, size)
  * is validated when the upload is initiated, since the request
@@ -172,6 +177,59 @@ public class FileUploadService {
                 Instant.now().plus(signatureDuration),
                 requiredHeaders
         );
+    }
+
+    /**
+     * Stores a multipart file immediately and records it as ready
+     * for use. Intended for small, camera-first flows that need one
+     * application request instead of a presigned-upload round trip.
+     *
+     * @param userId the authenticated owner's identifier
+     * @param multipartFile the file bytes and client-declared metadata
+     * @return the persisted file in {@code UPLOADED} status
+     * @throws InvalidFileException if the file is empty, too large,
+     *         or its content type is not allowed
+     */
+    @Transactional
+    public StoredFile uploadDirect(
+            final UUID userId, final MultipartFile multipartFile
+    ) {
+
+        userService.validateUserActive(userId);
+        validateMultipartFile(multipartFile);
+
+        String originalFilename = StringUtils.hasText(
+                multipartFile.getOriginalFilename()
+        ) ? multipartFile.getOriginalFilename() : "receipt";
+        String objectKey = generateKey(userId, originalFilename);
+
+        try (InputStream content = multipartFile.getInputStream()) {
+            storageService.upload(
+                    objectKey,
+                    content,
+                    multipartFile.getSize(),
+                    multipartFile.getContentType()
+            );
+        } catch (IOException ex) {
+            throw new InvalidFileException(
+                    messageService.get("file.readError")
+            );
+        }
+
+        StoredFile file = new StoredFile();
+        file.setUser(repositoryUser.getReferenceById(userId));
+        file.setObjectKey(objectKey);
+        file.setOriginalFilename(originalFilename);
+        file.setContentType(multipartFile.getContentType());
+        file.setSizeBytes(multipartFile.getSize());
+        file.setStatus(FileStatus.UPLOADED);
+
+        try {
+            return repositoryStoredFile.save(file);
+        } catch (RuntimeException ex) {
+            deleteObjectAfterFailedPersistence(objectKey, ex);
+            throw ex;
+        }
     }
 
     /**
@@ -321,6 +379,28 @@ public class FileUploadService {
     }
 
     /**
+     * Validates a server-received multipart file before it is sent to
+     * object storage.
+     *
+     * @param multipartFile the file supplied in the request
+     */
+    private void validateMultipartFile(final MultipartFile multipartFile) {
+
+        if (multipartFile == null || multipartFile.isEmpty()) {
+            throw new InvalidFileException(messageService.get("file.missing"));
+        }
+
+        if (!StringUtils.hasText(multipartFile.getContentType())) {
+            throw new InvalidFileException(
+                    messageService.get("file.contentType.required")
+            );
+        }
+
+        validateContentType(multipartFile.getContentType());
+        validateSize(multipartFile.getSize());
+    }
+
+    /**
      * Validates that the declared size does not exceed the
      * application's configured maximum.
      *
@@ -397,6 +477,24 @@ public class FileUploadService {
      */
     private FileResponse toResponse(final StoredFile file) {
         return FILE_MAPPER.toResponse(file);
+    }
+
+    /**
+     * Removes an object uploaded before its database record could be
+     * persisted. The original persistence error always wins; a
+     * cleanup failure is attached for diagnostics.
+     *
+     * @param objectKey key of the just-uploaded object
+     * @param originalException persistence failure to preserve
+     */
+    private void deleteObjectAfterFailedPersistence(
+            final String objectKey, final RuntimeException originalException
+    ) {
+        try {
+            storageService.delete(objectKey);
+        } catch (RuntimeException cleanupException) {
+            originalException.addSuppressed(cleanupException);
+        }
     }
 
     /**
