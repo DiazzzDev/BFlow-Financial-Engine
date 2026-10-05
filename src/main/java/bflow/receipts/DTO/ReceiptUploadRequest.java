@@ -1,12 +1,13 @@
 package bflow.receipts.DTO;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.UUID;
 
-/** Registers a previously uploaded file as a receipt for a wallet. */
+/** Registers a previously uploaded file as a receipt. */
 @Getter
 @Setter
 public class ReceiptUploadRequest {
@@ -15,7 +16,7 @@ public class ReceiptUploadRequest {
     @NotNull(message = "The file id is required")
     private UUID fileId;
 
-    /** Identifier of the wallet associated with the receipt. */
-    @NotNull(message = "The wallet id is required")
+    @Schema(description = "Optional wallet UUID. When omitted, the server "
+            + "uses the caller's default OWNER wallet.", nullable = true)
     private UUID walletId;
 }

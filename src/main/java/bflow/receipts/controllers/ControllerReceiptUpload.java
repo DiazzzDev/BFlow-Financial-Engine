@@ -41,7 +41,7 @@ public final class ControllerReceiptUpload {
     private final MessageService messageService;
 
     /**
-     * Registers an uploaded photo as a receipt for a wallet.
+     * Registers an uploaded photo as a receipt.
      * Camera-first flow: file already uploaded via the existing
      * presigned-upload endpoints; this is the only extra input the
      * user provides — everything else comes from OCR later.
@@ -52,8 +52,11 @@ public final class ControllerReceiptUpload {
      * @return response containing the registered receipt information
      */
     @Operation(
-            summary = "Registers an uploaded photo as a receipt for a wallet.",
-            description = "Registers an uploaded photo as a receipt for a wallet. Camera-first flow: file already uploaded via the existing presigned-upload endpoints; this is the only extra input the user provides — everything else comes from OCR later."
+            summary = "Registers an uploaded photo as a receipt.",
+            description = "Registers an uploaded photo as a receipt. Camera-first "
+                    + "flow: fileId is required and walletId is optional. When "
+                    + "walletId is omitted, the caller's default OWNER wallet "
+                    + "is selected."
     )
     @PostMapping
     public ResponseEntity<ApiResponse<ReceiptUploadResponse>> register(

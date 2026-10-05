@@ -188,6 +188,10 @@ class ReceiptModuleE2ETest {
                 .thenReturn(Optional.of(storedFile));
         when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
                 .thenReturn(Optional.of(walletUser));
+        when(repositoryWalletUser
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
+                .thenReturn(Optional.of(walletUser));
         when(repositoryUser.getReferenceById(userId)).thenReturn(user);
         when(currentUserService.getCurrentUserId(authentication))
                 .thenReturn(userId);
@@ -648,6 +652,23 @@ class ReceiptModuleE2ETest {
     }
 
     // ---- ownership ----------------------------------------------------------
+
+    @Test
+    void registerWithoutWalletUsesTheCallersDefaultOwnerWallet() {
+        ReceiptUploadRequest request = new ReceiptUploadRequest();
+        request.setFileId(fileId);
+
+        ResponseEntity<?> response = controller.register(
+                request, authentication, httpServletRequest);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(store).hasSize(1);
+        assertThat(store.values().iterator().next().getWallet())
+                .isSameAs(wallet);
+        verify(repositoryWalletUser)
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER);
+    }
 
     @Test
     void anotherUsersReceiptCannotBePolledOrConfirmed() {

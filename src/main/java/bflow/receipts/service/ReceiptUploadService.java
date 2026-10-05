@@ -22,6 +22,7 @@ import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
 import bflow.storage.repository.RepositoryStoredFile;
 import bflow.wallet.entities.Wallet;
+import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
 import org.mapstruct.factory.Mappers;
@@ -95,8 +96,8 @@ public class ReceiptUploadService {
      * took — no title, amount, or category exists yet.
      *
      * @param userId the id of the user registering the receipt
-     * @param request the file and wallet to register the receipt
-     *         against
+     * @param request the file and optional wallet to register the receipt
+     *         against; when omitted, the default OWNER wallet is used
      * @return the newly registered receipt, in RECEIVED status
      * @throws FileAccessDeniedException if the file doesn't belong
      *         to the user or isn't UPLOADED yet
@@ -127,11 +128,21 @@ public class ReceiptUploadService {
                     messageService.get("receipt.alreadyRegistered"));
         }
 
-        Wallet wallet = repositoryWalletUser
-                .findByWalletIdAndUserId(request.getWalletId(), userId)
-                .map(walletUser -> walletUser.getWallet())
-                .orElseThrow(() -> new WalletAccessDeniedException(
-                        messageService.get("receipt.wallet.accessDenied")));
+        Wallet wallet;
+        if (request.getWalletId() == null) {
+            wallet = repositoryWalletUser
+                    .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                            userId, WalletRole.OWNER)
+                    .map(walletUser -> walletUser.getWallet())
+                    .orElseThrow(() -> new WalletAccessDeniedException(
+                            messageService.get("receipt.wallet.accessDenied")));
+        } else {
+            wallet = repositoryWalletUser
+                    .findByWalletIdAndUserId(request.getWalletId(), userId)
+                    .map(walletUser -> walletUser.getWallet())
+                    .orElseThrow(() -> new WalletAccessDeniedException(
+                            messageService.get("receipt.wallet.accessDenied")));
+        }
 
         ReceiptUpload receipt = new ReceiptUpload();
         receipt.setUser(repositoryUser.getReferenceById(userId));
