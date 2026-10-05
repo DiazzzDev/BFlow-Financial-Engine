@@ -11,18 +11,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Receipts", description = "Upload and processing of receipts")
@@ -67,6 +71,57 @@ public final class ControllerReceiptUpload {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         ReceiptUploadResponse response =
                 receiptUploadService.register(userId, body);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        messageService.get("receipt.registered"),
+                        response, request.getRequestURI()));
+    }
+
+    /**
+     * Uploads a receipt file and registers it for OCR in one request.
+     *
+     * @param file receipt image or PDF to store and process
+     * @param walletId optional destination wallet identifier
+     * @param authentication authentication information of the current user
+     * @param request HTTP request used to obtain the request URI
+     * @return response containing the newly registered receipt
+     */
+    @Operation(
+            summary = "Uploads and registers a receipt in one request.",
+            description = "Camera-first multipart endpoint. file is required "
+                    + "and is uploaded to private storage before OCR is "
+                    + "queued. walletId is optional; when omitted, the "
+                    + "caller's default OWNER wallet is selected."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Receipt registered and queued for OCR"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "File is missing, too large, or has an "
+                            + "unsupported content type"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "Caller cannot use the requested wallet")
+    })
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ReceiptUploadResponse>> uploadAndRegister(
+            @Parameter(description = "Receipt image or PDF. Allowed content "
+                    + "types and the configured multipart size limit apply.",
+                    required = true)
+            @RequestParam("file") final MultipartFile file,
+            @Parameter(description = "Optional wallet UUID. The caller's "
+                    + "default OWNER wallet is used when omitted.")
+            @RequestParam(value = "walletId", required = false)
+            final UUID walletId,
+            final Authentication authentication,
+            final HttpServletRequest request
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        ReceiptUploadResponse response = receiptUploadService
+                .uploadAndRegister(userId, file, walletId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(

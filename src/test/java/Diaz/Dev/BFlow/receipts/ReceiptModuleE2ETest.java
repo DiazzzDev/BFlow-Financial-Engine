@@ -32,6 +32,7 @@ import bflow.receipts.service.TextractExpenseMapper;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
 import bflow.storage.repository.RepositoryStoredFile;
+import bflow.storage.service.FileUploadService;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
 import bflow.wallet.enums.Currency;
@@ -53,7 +54,9 @@ import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -128,6 +131,7 @@ class ReceiptModuleE2ETest {
 
     @Mock private RepositoryReceiptUpload repositoryReceiptUpload;
     @Mock private RepositoryStoredFile repositoryStoredFile;
+    @Mock private FileUploadService fileUploadService;
     @Mock private RepositoryWalletUser repositoryWalletUser;
     @Mock private RepositoryUser repositoryUser;
     @Mock private ServiceExpense serviceExpense;
@@ -226,7 +230,7 @@ class ReceiptModuleE2ETest {
 
         ReceiptUploadService receiptUploadService = new ReceiptUploadService(
                 repositoryReceiptUpload, repositoryStoredFile,
-                repositoryWalletUser, repositoryUser, messageService,
+                fileUploadService, repositoryWalletUser, repositoryUser, messageService,
                 serviceExpense, serviceIncome, storageService, publisher);
 
         controller = new ControllerReceiptUpload(
@@ -668,6 +672,24 @@ class ReceiptModuleE2ETest {
         verify(repositoryWalletUser)
                 .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
                         userId, WalletRole.OWNER);
+    }
+
+    @Test
+    void uploadAndRegisterUsesTheDefaultWalletInOneRequest() {
+        MultipartFile file = new MockMultipartFile(
+                "file", "receipt.jpg", "image/jpeg", new byte[] {1}
+        );
+        when(fileUploadService.uploadDirect(userId, file))
+                .thenReturn(storedFile);
+
+        ResponseEntity<?> response = controller.uploadAndRegister(
+                file, null, authentication, httpServletRequest);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(store).hasSize(1);
+        assertThat(store.values().iterator().next().getWallet())
+                .isSameAs(wallet);
+        verify(fileUploadService).uploadDirect(userId, file);
     }
 
     @Test
