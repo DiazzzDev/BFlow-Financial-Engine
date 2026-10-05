@@ -36,8 +36,9 @@ public record BudgetHealthItem(
                 + "Zero when no matching expenses exist.", requiredMode =
                 Schema.RequiredMode.REQUIRED)
         BigDecimal spent,
-        @Schema(description = "budgetLimit minus spent. Negative means the "
-                + "budget has been exceeded.", requiredMode =
+        @Schema(description = "budgetLimit minus spent, floored at zero. Use "
+                + "percentage above 100 or status EXCEEDED to detect an "
+                + "overspent budget.", requiredMode =
                 Schema.RequiredMode.REQUIRED)
         BigDecimal remaining,
         @Schema(description = "Whole percentage of budgetLimit already spent. "

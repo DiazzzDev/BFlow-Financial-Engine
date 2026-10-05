@@ -87,7 +87,7 @@ public class QuickExpenseService {
             .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
                     userId, WalletRole.OWNER)
             .orElseThrow(() ->
-                new RuntimeException(messageService.get("noWalletFound"))
+                new ResourceNotFoundException(messageService.get("noWalletFound"))
         );
 
         // Lock the wallet row for the duration of this transaction so

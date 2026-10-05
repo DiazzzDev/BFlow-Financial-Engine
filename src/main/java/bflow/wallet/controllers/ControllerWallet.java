@@ -395,6 +395,29 @@ public final class ControllerWallet {
     }
 
     /**
+     * Sets the wallet used by default when a quick expense is created.
+     *
+     * @param id wallet identifier
+     * @param authentication authenticated wallet owner
+     * @return HTTP 204 after replacing the caller's previous selection
+     */
+    @Operation(
+            summary = "Set the caller's default wallet.",
+            description = "The default wallet receives quick expenses. Only "
+                    + "wallets the caller owns can be default; only one is "
+                    + "default at a time. The response has no body."
+    )
+    @PutMapping("/{id}/default")
+    public ResponseEntity<Void> setDefaultWallet(
+            @PathVariable final UUID id,
+            final Authentication authentication
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        serviceWallet.setDefaultWallet(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Permanently deletes a wallet the authenticated user owns.
      *
      * @param id the wallet's identifier.

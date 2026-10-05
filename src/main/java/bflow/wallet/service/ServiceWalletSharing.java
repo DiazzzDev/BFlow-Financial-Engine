@@ -338,22 +338,29 @@ public class ServiceWalletSharing {
     private void sendInvitation(
             final WalletInvitation invitation
     ) {
+        User inviter = invitation.getInvitedByUser();
+        User invited = invitation.getInvitedUser();
+        String inviterName = inviter.getName() != null
+                && !inviter.getName().isBlank()
+                ? inviter.getName()
+                : inviter.getEmail();
+
         emailTemplateService.sendWalletInvitationEmail(
                 invitation.getInvitedEmail(),
-                invitation.getInvitedByUser().getEmail(),
+                inviterName,
                 invitation.getWallet().getName(),
                 invitation.getToken(),
                 invitation.getExpiresAt(),
-                invitation.getInvitedUser() == null
+                invited == null
                         ? bflow.auth.enums.SupportedLanguage.ES
-                        : invitation.getInvitedUser().getLanguage()
+                        : invited.getLanguage()
         );
 
-        if (invitation.getInvitedUser() != null) {
+        if (invited != null) {
             notificationService.sendWalletInvitation(
-                    invitation.getInvitedUser(),
+                    invited,
                     invitation.getId(),
-                    invitation.getInvitedByUser().getName(),
+                    inviterName,
                     invitation.getWallet().getName()
             );
         }

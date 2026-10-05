@@ -247,8 +247,9 @@ public class RecurringExecutionService {
         return switch (frequency) {
             case DAILY -> startDate.plusDays(nextMultiple(
                     ChronoUnit.DAYS.between(startDate, today), interval));
-            case WEEKLY -> startDate.plusWeeks(nextMultiple(
-                    ChronoUnit.WEEKS.between(startDate, today), interval));
+            case WEEKLY -> startDate.plusDays(nextMultiple(
+                    ChronoUnit.DAYS.between(startDate, today),
+                    7 * interval));
             case MONTHLY -> advanceUntilCurrent(
                     startDate, today, interval, ChronoUnit.MONTHS);
             case YEARLY -> advanceUntilCurrent(

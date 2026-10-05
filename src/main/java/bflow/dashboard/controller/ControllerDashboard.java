@@ -228,7 +228,7 @@ public final class ControllerDashboard {
             summary = "Retrieves the 'Budgets health' widget data (top 3 budgets).",
             description = "Returns up to three most recently updated budgets. "
                     + "Each item contains budgetLimit, spent, remaining "
-                    + "(budgetLimit minus spent, which can be negative), and "
+                    + "(budgetLimit minus spent, never below zero), and "
                     + "percentage spent. All monetary fields use the item's "
                     + "currency; an empty array means the user has no budgets."
     )

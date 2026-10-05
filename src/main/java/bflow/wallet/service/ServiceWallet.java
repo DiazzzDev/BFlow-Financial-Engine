@@ -675,6 +675,35 @@ public class ServiceWallet {
     }
 
     /**
+     * Selects the owner's default wallet for flows, such as quick expense,
+     * that do not ask the caller to choose a wallet explicitly.
+     *
+     * @param walletId wallet to make default
+     * @param userId authenticated caller
+     * @throws AccessDeniedException when the caller does not own the wallet
+     */
+    @Transactional
+    public void setDefaultWallet(
+            final UUID walletId,
+            final UUID userId
+    ) {
+        userService.validateUserActive(userId);
+
+        WalletUser target = repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        messageService.get("wallet.accessDenied")));
+
+        if (target.getRole() != WalletRole.OWNER) {
+            throw new AccessDeniedException(
+                    messageService.get("wallet.owner.onlyUpdate"));
+        }
+
+        repositoryWalletUser.clearDefault(userId);
+        repositoryWalletUser.markDefault(walletId, userId);
+    }
+
+    /**
      * Permanently deletes a wallet only when it has no financial history.
      *
      * @param walletId wallet identifier.

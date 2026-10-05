@@ -5,7 +5,9 @@ import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -47,6 +49,21 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID>,
     Optional<WalletUser> findFirstByUserIdAndRole(
             UUID userId,
             WalletRole role
+    );
+
+    /** Clears the caller's current default wallet selection. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE WalletUser wu SET wu.defaultWallet = false "
+            + "WHERE wu.user.id = :userId AND wu.defaultWallet = true")
+    int clearDefault(@Param("userId") UUID userId);
+
+    /** Marks a wallet membership as the caller's default wallet. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE WalletUser wu SET wu.defaultWallet = true "
+            + "WHERE wu.wallet.id = :walletId AND wu.user.id = :userId")
+    int markDefault(
+            @Param("walletId") UUID walletId,
+            @Param("userId") UUID userId
     );
 
     /**
