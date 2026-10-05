@@ -65,11 +65,23 @@
 				<artifactId>postgresql</artifactId>
 				<version>42.7.13</version>
 			</dependency>
-			<!-- Jackson databind security fixes (CVE-2026-68497). -->
+			<!-- Jackson security fixes reported by Trivy. Keep core and databind
+			     aligned so transitive Spring/AWS dependencies cannot downgrade
+			     either Jackson line. -->
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>2.22.3</version>
+			</dependency>
 			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
 				<version>2.22.3</version>
+			</dependency>
+			<dependency>
+				<groupId>tools.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>3.1.7</version>
 			</dependency>
 			<dependency>
 				<groupId>tools.jackson.core</groupId>
