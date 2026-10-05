@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -129,6 +130,9 @@ public class BudgetService {
      * Entity manager used for persistence operations.
      */
     private final EntityManager entityManager;
+
+    /** Business-calendar clock used for budget windows and lifecycle checks. */
+    private final Clock clock;
 
     /**
      * Get the status of a specific budget.
@@ -555,7 +559,7 @@ public class BudgetService {
         Budget budget = getOwnedBudget(budgetId, userId);
         BudgetResponse base = calculationService.calculate(budget);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate start = budget.getStartDate();
         LocalDate end = lifecycleService.calculateEndDate(budget);
 
@@ -865,7 +869,7 @@ public class BudgetService {
      * @param budget the budget to evaluate
      */
     private void evaluateOne(final Budget budget) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate start = budget.getStartDate();
         LocalDate end = lifecycleService.calculateEndDate(budget);
 

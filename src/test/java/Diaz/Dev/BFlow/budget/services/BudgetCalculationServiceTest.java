@@ -23,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,7 +67,8 @@ class BudgetCalculationServiceTest {
         // real instance (not a mock) keeps calculateEndDate's actual
         // DAILY/WEEKLY/MONTHLY math under test instead of stubbing it.
         BudgetLifecycleService lifecycleService =
-                new BudgetLifecycleService(messageService);
+                new BudgetLifecycleService(messageService,
+                        Clock.system(ZoneId.of("America/El_Salvador")));
 
         service = new BudgetCalculationService(
                 repositoryExpense,

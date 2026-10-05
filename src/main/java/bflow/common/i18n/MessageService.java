@@ -1,9 +1,12 @@
 package bflow.common.i18n;
 
+import bflow.auth.enums.SupportedLanguage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.util.Locale;
 
 /**
  * Thin facade over {@link MessageSource} so callers resolve a message
@@ -29,5 +32,25 @@ public class MessageService {
         return messageSource.getMessage(
                 code, args, LocaleContextHolder.getLocale()
         );
+    }
+
+    /**
+     * Resolves a message in a persisted user's preferred language. This is
+     * intended for asynchronous notifications, where there is no recipient
+     * request locale to use.
+     *
+     * @param code message bundle key
+     * @param language recipient's preferred language; Spanish is the fallback
+     * @param args optional placeholder values
+     * @return the localized message
+     */
+    public String getForLanguage(
+            final String code,
+            final SupportedLanguage language,
+            final Object... args
+    ) {
+        Locale locale = language == SupportedLanguage.EN
+                ? Locale.ENGLISH : new Locale("es");
+        return messageSource.getMessage(code, args, locale);
     }
 }

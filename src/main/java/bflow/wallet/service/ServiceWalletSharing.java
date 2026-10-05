@@ -8,6 +8,7 @@ import bflow.common.exception.ConflictException;
 import bflow.common.exception.NotFoundException;
 import bflow.common.exception.PlanLimitExceededException;
 import bflow.common.i18n.MessageService;
+import bflow.notifications.service.NotificationService;
 import bflow.subscription.FeatureCodes;
 import bflow.subscription.services.PlanLimitService;
 import bflow.wallet.DTO.CollaboratorSearchResult;
@@ -23,6 +24,7 @@ import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletInvitation;
 import bflow.wallet.repository.RepositoryWalletUser;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -37,6 +39,7 @@ import java.util.UUID;
 import java.util.HashSet;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -83,6 +86,9 @@ public class ServiceWalletSharing {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Creates in-app notifications for registered invitees. */
+    private final NotificationService notificationService;
 
     /**
      * Maximum number of matches returned by the collaborator search,
@@ -332,14 +338,32 @@ public class ServiceWalletSharing {
     private void sendInvitation(
             final WalletInvitation invitation
     ) {
+        User inviter = invitation.getInvitedByUser();
+        User invited = invitation.getInvitedUser();
+        String inviterName = inviter.getName() != null
+                && !inviter.getName().isBlank()
+                ? inviter.getName()
+                : inviter.getEmail();
+
         emailTemplateService.sendWalletInvitationEmail(
                 invitation.getInvitedEmail(),
-                invitation.getInvitedByUser().getEmail(),
+                inviterName,
                 invitation.getWallet().getName(),
                 invitation.getToken(),
                 invitation.getExpiresAt(),
-                bflow.auth.enums.SupportedLanguage.ES
+                invited == null
+                        ? bflow.auth.enums.SupportedLanguage.ES
+                        : invited.getLanguage()
         );
+
+        if (invited != null) {
+            notificationService.sendWalletInvitation(
+                    invited,
+                    invitation.getId(),
+                    inviterName,
+                    invitation.getWallet().getName()
+            );
+        }
     }
 
     /**

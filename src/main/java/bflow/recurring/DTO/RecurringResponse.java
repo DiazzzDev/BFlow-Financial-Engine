@@ -2,6 +2,7 @@ package bflow.recurring.DTO;
 
 import bflow.recurring.enums.RecurringFrequency;
 import bflow.recurring.enums.RecurringType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -42,6 +43,19 @@ public final class RecurringResponse {
      * The interval value for custom frequencies.
      */
     private Integer intervalValue;
+
+    /** Original date from which the recurrence pattern is calculated. */
+    @Schema(description = "Original recurrence start date in ISO-8601 format. "
+            + "Never null.", requiredMode = Schema.RequiredMode.REQUIRED)
+    private LocalDate startDate;
+
+    /**
+     * Inclusive final execution date, or {@code null} when the recurrence
+     * continues indefinitely.
+     */
+    @Schema(description = "Inclusive final execution date in ISO-8601 format. "
+            + "Null means the recurrence never ends.", nullable = true)
+    private LocalDate endDate;
 
     /**
      * The next execution date.

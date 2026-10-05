@@ -1,9 +1,14 @@
 package bflow.dashboard.service;
 
 import bflow.auth.services.UserService;
+import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.entity.Budget;
 import bflow.budget.repository.RepositoryBudget;
+import bflow.budget.services.BudgetCalculationService;
+import bflow.common.i18n.MessageService;
+import bflow.common.exception.WalletAccessDeniedException;
 import bflow.dashboard.dto.ActivityBreakdownResponse;
+import bflow.dashboard.dto.ActivityTypeFilter;
 import bflow.dashboard.dto.AveragesResponse;
 import bflow.dashboard.dto.BalanceSummaryResponse;
 import bflow.dashboard.dto.BudgetHealthItem;
@@ -33,10 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.DayOfWeek;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.WeekFields;
@@ -89,6 +94,10 @@ public class ServiceDashboard {
     /** Maximum supported length for an explicit chart range. */
     private static final int MAX_CUSTOM_RANGE_DAYS = 366;
 
+    private static final int RECENT_ACTIVITY_MAX_LIMIT = 50;
+
+    private static final int MAX_SEARCH_LENGTH = 100;
+
     /** Repository for wallet-user membership queries. */
     private final RepositoryWalletUser repositoryWalletUser;
 
@@ -110,6 +119,12 @@ public class ServiceDashboard {
     /** Repository for transfer aggregation queries. */
     private final RepositoryTransfers repositoryTransfer;
 
+    private final BudgetCalculationService budgetCalculationService;
+    private final MessageService messageService;
+
+    /** Business-calendar clock for all date-only dashboard ranges. */
+    private final Clock clock;
+
     /**
      * Builds the "Balance total" widget: current balance across every
      * wallet the user belongs to, plus percentage change vs the balance
@@ -122,35 +137,48 @@ public class ServiceDashboard {
      * @param userId the authenticated user's ID.
      * @return the balance summary.
      */
-    public BalanceSummaryResponse getBalanceSummary(final UUID userId) {
+    public BalanceSummaryResponse getBalanceSummary(
+            final UUID userId,
+            final UUID walletId
+    ) {
         userService.validateUserActive(userId);
-        List<UUID> walletIds = repositoryWalletUser
+        List<UUID> allWalletIds = repositoryWalletUser
                 .findWalletIdsByUserId(userId);
 
-        if (walletIds.isEmpty()) {
-            return new BalanceSummaryResponse(BigDecimal.ZERO, 0.0);
+        if (walletId != null && !allWalletIds.contains(walletId)) {
+            throw new WalletAccessDeniedException(
+                    messageService.get("wallet.accessDenied"));
+        }
+        if (allWalletIds.isEmpty()) {
+            return new BalanceSummaryResponse(
+                    BigDecimal.ZERO, 0.0, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
-        BigDecimal currentBalance = repositoryWallet
-                .sumBalanceByWalletIds(walletIds);
+        List<UUID> scopedWalletIds = walletId == null
+                ? allWalletIds : List.of(walletId);
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        BigDecimal currentBalance = repositoryWallet
+                .sumBalanceByWalletIds(scopedWalletIds);
+
+        LocalDate today = LocalDate.now(clock);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
-        BigDecimal incomeThisMonth = repositoryIncome
-                .sumByWalletsAndDateRange(walletIds, startOfMonth, today);
-        BigDecimal expenseThisMonth = repositoryExpense
-                .sumByWalletsAndDateRange(walletIds, startOfMonth, today);
+        BigDecimal monthIncome = repositoryIncome
+                .sumByWalletsAndDateRange(scopedWalletIds, startOfMonth, today);
+        BigDecimal monthExpenses = repositoryExpense
+                .sumByWalletsAndDateRange(scopedWalletIds, startOfMonth, today);
 
-        BigDecimal balanceStartOfMonth = currentBalance
-                .subtract(incomeThisMonth)
-                .add(expenseThisMonth);
+        Double percentageChange = null;
+        if (walletId == null) {
+            BigDecimal balanceStartOfMonth = currentBalance
+                    .subtract(monthIncome)
+                    .add(monthExpenses);
+            percentageChange = calculatePercentageChange(
+                    balanceStartOfMonth, currentBalance);
+        }
 
-        Double percentageChange = calculatePercentageChange(
-                balanceStartOfMonth, currentBalance
-        );
-
-        return new BalanceSummaryResponse(currentBalance, percentageChange);
+        return new BalanceSummaryResponse(
+                currentBalance, percentageChange, monthIncome, monthExpenses);
     }
 
     /**
@@ -291,7 +319,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         int targetYear = year != null ? year : today.getYear();
 
         return switch (period) {
@@ -374,7 +402,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);
@@ -420,7 +448,12 @@ public class ServiceDashboard {
      * @param userId the authenticated user's ID.
      * @return up to 5 recent activity items, most recent first.
      */
-    public List<RecentActivityItem> getRecentActivity(final UUID userId) {
+    public List<RecentActivityItem> getRecentActivity(
+            final UUID userId,
+            final ActivityTypeFilter type,
+            final String query,
+            final int limit
+    ) {
         userService.validateUserActive(userId);
         List<UUID> walletIds = repositoryWalletUser
                 .findWalletIdsByUserId(userId);
@@ -429,52 +462,71 @@ public class ServiceDashboard {
             return List.of();
         }
 
-        Pageable limit = PageRequest.of(0, RECENT_ACTIVITY_LIMIT);
+        int size = Math.min(Math.max(limit, 1), RECENT_ACTIVITY_MAX_LIMIT);
+        Pageable page = PageRequest.of(0, size);
+        String pattern = toSearchPattern(query);
 
-        List<Expense> recentExpenses = repositoryExpense
-                .findByWalletIdInOrderByCreatedAtDesc(walletIds, limit);
-        List<Income> recentIncomes = repositoryIncome
-                .findByWalletIdInOrderByCreatedAtDesc(walletIds, limit);
+        List<RecentActivityItem> expenses = type == ActivityTypeFilter.INCOME
+                ? List.of()
+                : repositoryExpense.searchRecent(walletIds, pattern, page)
+                .stream().map(this::toActivityItem).toList();
+        List<RecentActivityItem> incomes = type == ActivityTypeFilter.EXPENSE
+                ? List.of()
+                : repositoryIncome.searchRecent(walletIds, pattern, page)
+                .stream().map(this::toActivityItem).toList();
 
-        return Stream.concat(
-                        recentExpenses.stream().map(this::toActivityItem),
-                        recentIncomes.stream().map(this::toActivityItem)
-                )
-                .sorted(Comparator.comparing(
-                        RecentActivityItem::createdAt).reversed())
-                .limit(RECENT_ACTIVITY_LIMIT)
+        return Stream.concat(expenses.stream(), incomes.stream())
+                .sorted(Comparator.comparing(RecentActivityItem::date)
+                        .thenComparing(RecentActivityItem::createdAt)
+                        .reversed())
+                .limit(size)
                 .toList();
+    }
+
+    private String toSearchPattern(final String query) {
+        if (query == null || query.isBlank()) {
+            return "%";
+        }
+        String trimmed = query.trim();
+        if (trimmed.length() > MAX_SEARCH_LENGTH) {
+            trimmed = trimmed.substring(0, MAX_SEARCH_LENGTH);
+        }
+        return "%" + trimmed.toLowerCase(Locale.ROOT) + "%";
     }
 
     private RecentActivityItem toActivityItem(final Expense expense) {
         return new RecentActivityItem(
+                expense.getId(),
                 "EXPENSE",
                 expense.getTitle(),
+                expense.getDate(),
                 expense.getCreatedAt(),
                 expense.getAmount().negate(),
-                 expense.getWallet().getName(),
-                 expense.getCategory() != null
-                         ? expense.getCategory().getIcon()
-                         : null,
-                 expense.getCategory() != null
-                         ? expense.getCategory().getColor()
-                         : null
+                expense.getWallet().getCurrency(),
+                expense.getWallet().getName(),
+                expense.getSource(),
+                expense.getCategory() != null
+                        ? expense.getCategory().getIcon() : null,
+                expense.getCategory() != null
+                        ? expense.getCategory().getColor() : null
         );
     }
 
     private RecentActivityItem toActivityItem(final Income income) {
         return new RecentActivityItem(
+                income.getId(),
                 "INCOME",
                 income.getTitle(),
+                income.getDate(),
                 income.getCreatedAt(),
                 income.getAmount(),
-                 income.getWallet().getName(),
-                 income.getCategory() != null
-                         ? income.getCategory().getIcon()
-                         : null,
-                 income.getCategory() != null
-                         ? income.getCategory().getColor()
-                         : null
+                income.getWallet().getCurrency(),
+                income.getWallet().getName(),
+                income.getSource(),
+                income.getCategory() != null
+                        ? income.getCategory().getIcon() : null,
+                income.getCategory() != null
+                        ? income.getCategory().getColor() : null
         );
     }
 
@@ -524,7 +576,7 @@ public class ServiceDashboard {
             );
         }
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         LocalDate startOfMonth = today.withDayOfMonth(1);
 
         BigDecimal totalExpense = repositoryExpense
@@ -570,9 +622,9 @@ public class ServiceDashboard {
     }
 
     /**
-     * Builds the "Budgets health" widget: the 3 most recently updated
-     * budgets belonging to the user, with a display name derived from
-     * their wallet/category scope.
+     * Builds the "Budgets health" widget: the three budgets with the highest
+     * spending percentage, with a display name derived from their
+     * wallet/category scope.
      *
      * @param userId the authenticated user's ID.
      * @return up to 3 budget health items.
@@ -581,15 +633,29 @@ public class ServiceDashboard {
         userService.validateUserActive(userId);
 
         return repositoryBudget
-                .findTop3ByUserIdOrderByUpdatedAtDesc(userId)
+                .findByUserId(userId)
                 .stream()
-                .map(budget -> new BudgetHealthItem(
-                        budget.getId(),
-                        resolveDisplayName(budget),
-                        budget.getUpdatedAt(),
-                        budget.getLastAlertStatus(),
-                        budget.getCurrency()
-                ))
+                .map(budget -> {
+                    BudgetResponse calc = budgetCalculationService.calculate(budget);
+                    return new BudgetHealthItem(
+                            budget.getId(),
+                            resolveDisplayName(budget),
+                            budget.getUpdatedAt(),
+                            calc.getStatus(),
+                            budget.getCurrency(),
+                            budget.getAmount(),
+                            calc.getSpent(),
+                            calc.getRemaining(),
+                            calc.getPercentage(),
+                            budget.getWallet() != null ? budget.getWallet().getName() : null,
+                            budget.getCategory() != null ? budget.getCategory().getName() : null
+                    );
+                })
+                .sorted(Comparator.comparing(BudgetHealthItem::percentage,
+                        Comparator.reverseOrder())
+                        .thenComparing(BudgetHealthItem::updatedAt,
+                                Comparator.reverseOrder()))
+                .limit(3)
                 .toList();
     }
 
@@ -610,17 +676,17 @@ public class ServiceDashboard {
             return new ActivityBreakdownResponse(0, 0.0, 0.0, 0.0, 0.0);
         }
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         LocalDate startOfThisMonth = today.withDayOfMonth(1);
         LocalDate endOfLastMonth = startOfThisMonth.minusDays(1);
         LocalDate startOfLastMonth = endOfLastMonth.withDayOfMonth(1);
 
         Instant startOfThisMonthInstant =
-                startOfThisMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
+                startOfThisMonth.atStartOfDay(clock.getZone()).toInstant();
         Instant startOfTomorrowInstant =
-                today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                today.plusDays(1).atStartOfDay(clock.getZone()).toInstant();
         Instant startOfLastMonthInstant =
-                startOfLastMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
+                startOfLastMonth.atStartOfDay(clock.getZone()).toInstant();
 
         long incomeCount = repositoryIncome.countByWalletsAndDateRange(
                 walletIds, startOfThisMonth, today);

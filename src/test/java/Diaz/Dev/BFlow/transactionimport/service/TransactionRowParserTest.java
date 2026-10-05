@@ -12,11 +12,13 @@ import bflow.transactionimport.service.TransactionRowParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +38,6 @@ class TransactionRowParserTest {
     @Mock
     private InputSanitizer inputSanitizer;
 
-    @InjectMocks
     private TransactionRowParser parser;
 
     private ColumnMapping mapping;
@@ -48,6 +49,9 @@ class TransactionRowParserTest {
         );
         when(inputSanitizer.sanitize(anyString(), any()))
             .thenAnswer(inv -> inv.getArgument(1));
+        parser = new TransactionRowParser(repositoryCategory, inputSanitizer,
+                Clock.fixed(Instant.parse("2026-10-05T03:00:00Z"),
+                        ZoneId.of("America/El_Salvador")));
     }
 
     private ImportRow rowOf(final Map<String, String> values) {
@@ -82,7 +86,7 @@ class TransactionRowParserTest {
                 "category", "Salario"
         )), 1, mapping);
 
-        assertThat(result.date()).isEqualTo(LocalDate.now());
+        assertThat(result.date()).isEqualTo(LocalDate.of(2026, 10, 4));
     }
 
     @Test

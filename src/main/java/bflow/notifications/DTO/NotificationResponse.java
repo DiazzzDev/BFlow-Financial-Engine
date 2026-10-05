@@ -31,7 +31,7 @@ public class NotificationResponse {
     @Schema(description = "Notification category.", allowableValues = {
             "BUDGET_SUCCESS", "BUDGET_GROUP_SUCCESS", "BUDGET_WARNING",
             "BUDGET_CRITICAL", "BUDGET_EXCEEDED", "GOAL_REACHED",
-            "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED"})
+            "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED", "WALLET_INVITATION"})
     private String type;
     /**
      * Whether the notification has been read.
@@ -41,4 +41,12 @@ public class NotificationResponse {
      * The creation timestamp.
      */
     private Instant createdAt;
+
+    /**
+     * Related resource identifier. Present for actionable notifications; for
+     * {@code WALLET_INVITATION} it is the invitation ID, otherwise null.
+     */
+    @Schema(nullable = true, description = "Related resource UUID. Null when "
+            + "the notification has no action target.")
+    private UUID referenceId;
 }

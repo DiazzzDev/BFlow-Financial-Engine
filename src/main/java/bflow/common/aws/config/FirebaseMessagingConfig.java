@@ -30,8 +30,14 @@ public class FirebaseMessagingConfig {
      * @throws IOException when the credentials cannot be decoded
      */
     @Bean
-    public FirebaseApp firebaseApp(final Environment environment)
+    public synchronized FirebaseApp firebaseApp(final Environment environment)
             throws IOException {
+        // FirebaseApp is process-wide. Multiple Spring application contexts
+        // (for example, integration-test contexts) must share its default app.
+        if (!FirebaseApp.getApps().isEmpty()) {
+            return FirebaseApp.getInstance();
+        }
+
         String encodedCredentials = environment.getProperty(
                 "firebase.service-account-json-base64", ""
         );

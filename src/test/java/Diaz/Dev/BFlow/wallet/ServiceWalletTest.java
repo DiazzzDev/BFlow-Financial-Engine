@@ -101,6 +101,7 @@ class ServiceWalletTest {
         walletUser.setUser(user);
         walletUser.setWallet(wallet);
         walletUser.setRole(WalletRole.OWNER);
+        walletUser.setDefaultWallet(true);
     }
 
     @Test
@@ -116,6 +117,7 @@ class ServiceWalletTest {
         // Assert
         assertEquals(walletId, result.getId());
         assertEquals("Test Wallet", result.getName());
+        assertEquals(true, result.isDefaultWallet());
         verify(repositoryWalletUser).findByWalletIdAndUserId(walletId, userId);
     }
 
@@ -149,6 +151,48 @@ class ServiceWalletTest {
         // Act & Assert
         assertThrows(AccessDeniedException.class,
                 () -> serviceWallet.patchWallet(walletId, request, userId));
+    }
+
+    @Test
+    void setOpeningBalance_updatesInitialAndCurrentBalanceByDifference() {
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+
+        serviceWallet.setOpeningBalance(
+                walletId, BigDecimal.valueOf(1200), userId);
+
+        assertEquals(new BigDecimal("1200.00"), wallet.getInitialValue());
+        assertEquals(new BigDecimal("1200.00"), wallet.getBalance());
+        verify(repositoryWallet).save(wallet);
+    }
+
+    @Test
+    void setDefaultWallet_ownedWalletClearsPreviousAndMarksTarget() {
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+
+        serviceWallet.setDefaultWallet(walletId, userId);
+
+        verify(repositoryWalletUser).clearDefault(userId);
+        verify(repositoryWalletUser).markDefault(walletId, userId);
+    }
+
+    @Test
+    void setDefaultWallet_memberWalletIsRejectedWithoutChangingSelection() {
+        walletUser.setRole(WalletRole.MEMBER);
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+
+        assertThrows(AccessDeniedException.class,
+                () -> serviceWallet.setDefaultWallet(walletId, userId));
+
+        verify(repositoryWalletUser, never()).clearDefault(any());
+        verify(repositoryWalletUser, never()).markDefault(any(), any());
     }
 
     // ---- addBalance ----

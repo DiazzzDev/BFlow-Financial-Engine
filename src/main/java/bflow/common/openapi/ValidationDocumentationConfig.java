@@ -11,9 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Enriches request schemas with the Bean Validation constraints that
- * Springdoc already exposes structurally. This makes the same rules readable
- * directly in Swagger UI without duplicating validation logic in DTOs.
+ * Enriches every request schema with the Bean Validation constraints that
+ * Springdoc exposes structurally. It also explicitly documents whether each
+ * request property is required or optional, while preserving any explicit
+ * nullable declaration supplied by the DTO.
  */
 @Configuration
 public class ValidationDocumentationConfig {
@@ -53,6 +54,9 @@ public class ValidationDocumentationConfig {
             if (requiredProperties != null
                     && requiredProperties.contains(propertyName)) {
                 validations.add("required");
+                propertySchema.setNullable(false);
+            } else {
+                validations.add("optional; omit when unused");
             }
             appendRange(validations, propertySchema);
             appendLength(validations, propertySchema);

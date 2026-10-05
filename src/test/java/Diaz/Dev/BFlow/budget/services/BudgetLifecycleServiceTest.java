@@ -8,6 +8,8 @@ import bflow.common.i18n.MessageService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -24,7 +26,7 @@ class BudgetLifecycleServiceTest {
         budget.setStartDate(LocalDate.of(2024, 2, 29));
 
         BudgetLifecycleService service = new BudgetLifecycleService(
-                mock(MessageService.class)
+                mock(MessageService.class), Clock.system(ZoneId.of("America/El_Salvador"))
         );
 
         assertEquals(

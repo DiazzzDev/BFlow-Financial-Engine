@@ -80,7 +80,8 @@ class CsvImportServiceGapsTest {
         service = new CsvImportService(
                 new CsvFileSniffer(),
                 new ImportColumnMapper(),
-                new TransactionRowParser(repositoryCategory, new InputSanitizer()),
+                new TransactionRowParser(repositoryCategory, new InputSanitizer(),
+                        java.time.Clock.system(java.time.ZoneId.of("America/El_Salvador"))),
                 batchExecutor,
                 repositoryWalletUser,
                 userService

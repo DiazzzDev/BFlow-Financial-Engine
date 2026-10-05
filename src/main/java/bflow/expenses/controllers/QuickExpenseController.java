@@ -38,8 +38,10 @@ public final class QuickExpenseController {
      * @return the created expense response
      */
     @Operation(
-            summary = "Create a quick expense.",
-            description = "Create a quick expense."
+            summary = "Create an amount-only quick expense.",
+            description = "Accepts only a positive amount. The server uses the "
+                    + "user's default owned wallet, assigns today's date, no "
+                    + "category, and the title 'Quick expense'."
     )
     @PostMapping("/quick")
     public ExpenseResponse createQuickExpense(

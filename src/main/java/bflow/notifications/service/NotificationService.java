@@ -122,33 +122,6 @@ public final class NotificationService {
     }
 
     /**
-     * Create and save a notification.
-     *
-     * @param userId the user ID
-     * @param type the notification type
-     * @param title the notification title
-     * @param message the notification message
-     */
-    private void create(
-            final UUID userId,
-            final NotificationType type,
-            final String title,
-            final String message
-    ) {
-        Notification notification = new Notification();
-
-        notification.setUserId(userId);
-        notification.setType(type);
-        notification.setTitle(title);
-        notification.setMessage(message);
-
-        Notification saved = notificationRepository.save(notification);
-        eventPublisher.publishEvent(new NotificationCreatedEvent(
-                saved.getId(), userId, type, title, message
-        ));
-    }
-
-    /**
      * Get all notifications for a user.
      *
      * @param userId the user ID
@@ -276,5 +249,50 @@ public final class NotificationService {
                                 message
                         )
                 );
+    }
+
+    private void create(final UUID userId, final NotificationType type,
+                        final String title, final String message) {
+        create(userId, type, title, message, null);
+    }
+
+    private void create(final UUID userId, final NotificationType type,
+                        final String title, final String message, final UUID referenceId) {
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setReferenceId(referenceId);
+
+        Notification saved = notificationRepository.save(notification);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                saved.getId(), userId, type, title, message));
+    }
+
+    /**
+     * Creates an actionable, localized in-app notification for an existing
+     * user who has been invited to a wallet. The reference ID is the wallet
+     * invitation ID that the client can use to accept or reject it.
+     *
+     * @param invitedUser registered recipient of the invitation
+     * @param invitationId pending invitation identifier
+     * @param inviterName display name of the wallet owner
+     * @param walletName name of the shared wallet
+     */
+    public void sendWalletInvitation(
+            final User invitedUser,
+            final UUID invitationId,
+            final String inviterName,
+            final String walletName
+    ) {
+        create(invitedUser.getId(), NotificationType.WALLET_INVITATION,
+                messageService.getForLanguage(
+                        "notification.walletInvitation.title",
+                        invitedUser.getLanguage()),
+                messageService.getForLanguage(
+                        "notification.walletInvitation.message",
+                        invitedUser.getLanguage(), inviterName, walletName),
+                invitationId);
     }
 }

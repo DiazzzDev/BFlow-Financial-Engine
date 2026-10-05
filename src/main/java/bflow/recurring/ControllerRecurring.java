@@ -4,7 +4,9 @@ import bflow.auth.services.CurrentUserService;
 import bflow.recurring.DTO.RecurringRequest;
 import bflow.recurring.DTO.RecurringResponse;
 import bflow.recurring.services.RecurringExecutionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -37,6 +41,16 @@ public class ControllerRecurring {
     /** Service used to resolve the authenticated user. */
     private final CurrentUserService currentUserService;
 
+    /** Request to set or clear a recurrence end date. */
+    @Schema(description = "End-date change for a recurrence. A null or omitted "
+            + "endDate means the recurrence continues indefinitely.")
+    public record EndDateRequest(
+            @Schema(nullable = true, example = "2027-12-31",
+                    description = "Inclusive final execution date. Null clears "
+                            + "the end date and makes the recurrence indefinite.")
+            LocalDate endDate
+    ) { }
+
     /**
      * Create a new recurring transaction.
      *
@@ -46,11 +60,15 @@ public class ControllerRecurring {
      */
     @Operation(
             summary = "Create a new recurring transaction.",
-            description = "Create a new recurring transaction."
+            description = "Creates a scheduled income or expense. title, amount, "
+                    + "walletId, categoryId, type, frequency, and startDate are "
+                    + "required. intervalValue defaults to 1 when omitted. "
+                    + "endDate is nullable; omit it or send null for an "
+                    + "indefinite recurrence."
     )
     @PostMapping
     public RecurringResponse create(
-            @RequestBody final RecurringRequest request,
+            @Valid @RequestBody final RecurringRequest request,
             final Authentication authentication
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
@@ -111,6 +129,30 @@ public class ControllerRecurring {
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         recurringService.toggleRecurring(id, userId, false);
+    }
+
+    /**
+     * Sets or clears the inclusive final execution date of a recurrence.
+     *
+     * @param id recurrence identifier
+     * @param body nullable end date; null creates an indefinite recurrence
+     * @param authentication authenticated recurrence owner
+     * @return no-content response after the change
+     */
+    @Operation(
+            summary = "Set or clear a recurring transaction end date.",
+            description = "endDate is nullable. Send null to make the recurrence "
+                    + "indefinite; when present, it must not precede startDate."
+    )
+    @PatchMapping("/{id}/end-date")
+    public ResponseEntity<Void> updateEndDate(
+            @PathVariable final UUID id,
+            @RequestBody final EndDateRequest body,
+            final Authentication authentication
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        recurringService.updateEndDate(id, userId, body.endDate());
+        return ResponseEntity.noContent().build();
     }
 
     /**

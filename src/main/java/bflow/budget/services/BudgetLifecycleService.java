@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.Clock;
 
 @Component
 @RequiredArgsConstructor
@@ -14,6 +15,9 @@ public class BudgetLifecycleService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Business-calendar clock used when a budget period is reset. */
+    private final Clock clock;
 
     /**
      * Calculate the end date of a budget based on its period type.
@@ -50,7 +54,7 @@ public class BudgetLifecycleService {
      */
     public void resetBudgetPeriod(final Budget budget) {
 
-        budget.setStartDate(LocalDate.now());
+        budget.setStartDate(LocalDate.now(clock));
         resetAlerts(budget);
     }
 }

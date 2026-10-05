@@ -25,6 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,6 +60,9 @@ class RecurringTransactionExecutorTest {
     @Mock
     private ServiceIncome serviceIncome;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private RecurringTransactionExecutor executor;
 
@@ -68,6 +74,10 @@ class RecurringTransactionExecutorTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(clock.instant())
+                .thenReturn(Instant.parse("2026-10-05T03:00:00Z"));
+        org.mockito.Mockito.lenient().when(clock.getZone())
+                .thenReturn(ZoneId.of("America/El_Salvador"));
         recurringId = UUID.randomUUID();
 
         user = new User();
@@ -210,6 +220,23 @@ class RecurringTransactionExecutorTest {
         executor.executeSingle(recurringId);
 
         assertEquals(LocalDate.of(2026, 8, 18),
+                recurring.getNextExecutionDate());
+    }
+
+    @Test
+    void executeSingle_yearlyFrequency_advancesNextExecutionByInterval() {
+        recurring.setFrequency(RecurringFrequency.YEARLY);
+        recurring.setIntervalValue(2);
+        recurring.setNextExecutionDate(LocalDate.of(2026, 8, 17));
+
+        when(repository.findById(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertEquals(LocalDate.of(2028, 8, 17),
                 recurring.getNextExecutionDate());
     }
 

@@ -112,7 +112,8 @@ class BudgetServiceTest {
                 overlapValidationService,
                 planLimitService,
                 repositoryExpense,
-                entityManager
+                entityManager,
+                java.time.Clock.systemDefaultZone()
         );
 
         userId = UUID.randomUUID();

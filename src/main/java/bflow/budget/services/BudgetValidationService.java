@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.UUID;
 
 @Component
@@ -19,6 +20,9 @@ public final class BudgetValidationService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Business-calendar clock used to validate date-only inputs. */
+    private final Clock clock;
 
     /**
      * Validate that the budget start date is valid and not in the future.
@@ -34,7 +38,7 @@ public final class BudgetValidationService {
             );
         }
 
-        if (startDate.isAfter(LocalDate.now())) {
+        if (startDate.isAfter(LocalDate.now(clock))) {
             throw new InvalidBudgetDateException(
                     messageService.get("budget.startDate.future")
             );

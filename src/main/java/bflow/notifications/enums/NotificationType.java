@@ -8,7 +8,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Kind of notification delivered to a user.",
         allowableValues = {"BUDGET_SUCCESS", "BUDGET_GROUP_SUCCESS",
         "BUDGET_WARNING", "BUDGET_CRITICAL", "BUDGET_EXCEEDED",
-        "GOAL_REACHED", "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED"})
+        "GOAL_REACHED", "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED",
+        "WALLET_INVITATION"})
 public enum NotificationType {
     /**
      * Budget success notification.
@@ -42,5 +43,8 @@ public enum NotificationType {
     /**
      * Account locked notification.
      */
-    ACCOUNT_LOCKED
+    ACCOUNT_LOCKED,
+
+    /** A wallet owner has invited the recipient to collaborate. */
+    WALLET_INVITATION
 }

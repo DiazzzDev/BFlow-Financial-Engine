@@ -52,6 +52,9 @@ public final class WalletResponse {
     /** The role of the current user in this wallet. */
     private WalletRole role;
 
+    /** Whether this is the caller's default owned wallet. */
+    private boolean defaultWallet;
+
     /** The number of members in this wallet. */
     private Integer memberCount;
 }
