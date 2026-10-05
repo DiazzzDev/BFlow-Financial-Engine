@@ -56,7 +56,7 @@ public class Wallet {
     private BigDecimal balance;
 
     /** The balance the wallet started with. */
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private BigDecimal initialValue;
 
     /** The timestamp when the wallet was created. */

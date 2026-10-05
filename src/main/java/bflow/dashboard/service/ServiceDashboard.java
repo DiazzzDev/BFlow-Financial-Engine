@@ -1,8 +1,10 @@
 package bflow.dashboard.service;
 
 import bflow.auth.services.UserService;
+import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.entity.Budget;
 import bflow.budget.repository.RepositoryBudget;
+import bflow.budget.services.BudgetCalculationService;
 import bflow.dashboard.dto.ActivityBreakdownResponse;
 import bflow.dashboard.dto.AveragesResponse;
 import bflow.dashboard.dto.BalanceSummaryResponse;
@@ -109,6 +111,8 @@ public class ServiceDashboard {
 
     /** Repository for transfer aggregation queries. */
     private final RepositoryTransfers repositoryTransfer;
+
+    private final BudgetCalculationService budgetCalculationService;
 
     /**
      * Builds the "Balance total" widget: current balance across every
@@ -583,13 +587,20 @@ public class ServiceDashboard {
         return repositoryBudget
                 .findTop3ByUserIdOrderByUpdatedAtDesc(userId)
                 .stream()
-                .map(budget -> new BudgetHealthItem(
-                        budget.getId(),
-                        resolveDisplayName(budget),
-                        budget.getUpdatedAt(),
-                        budget.getLastAlertStatus(),
-                        budget.getCurrency()
-                ))
+                .map(budget -> {
+                    BudgetResponse calc = budgetCalculationService.calculate(budget);
+                    return new BudgetHealthItem(
+                            budget.getId(),
+                            resolveDisplayName(budget),
+                            budget.getUpdatedAt(),
+                            calc.getStatus(),
+                            budget.getCurrency(),
+                            budget.getAmount(),
+                            calc.getSpent(),
+                            calc.getRemaining(),
+                            calc.getPercentage()
+                    );
+                })
                 .toList();
     }
 

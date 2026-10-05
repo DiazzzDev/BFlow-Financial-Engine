@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Recurring frequency enumeration.
  */
 @Schema(description = "Frequency used to schedule a recurring transaction.",
-        allowableValues = {"DAILY", "WEEKLY", "MONTHLY"})
+        allowableValues = {"DAILY", "WEEKLY", "MONTHLY", "YEARLY"})
 public enum RecurringFrequency {
     /**
      * Daily frequency.
@@ -19,5 +19,9 @@ public enum RecurringFrequency {
     /**
      * Monthly frequency.
      */
-    MONTHLY
+    MONTHLY,
+    /**
+     * Yearly frequency.
+     */
+    YEARLY
 }

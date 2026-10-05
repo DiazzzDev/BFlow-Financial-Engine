@@ -226,7 +226,11 @@ public final class ControllerDashboard {
      */
     @Operation(
             summary = "Retrieves the 'Budgets health' widget data (top 3 budgets).",
-            description = "Retrieves the 'Budgets health' widget data (top 3 budgets)."
+            description = "Returns up to three most recently updated budgets. "
+                    + "Each item contains budgetLimit, spent, remaining "
+                    + "(budgetLimit minus spent, which can be negative), and "
+                    + "percentage spent. All monetary fields use the item's "
+                    + "currency; an empty array means the user has no budgets."
     )
     @GetMapping("/budgets-health")
     public ApiResponse<List<BudgetHealthItem>> getBudgetsHealth(

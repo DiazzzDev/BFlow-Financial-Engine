@@ -175,11 +175,17 @@ public class RecurringTransactionExecutor {
             case MONTHLY:
                 nextDate = next.plusMonths(recurring.getIntervalValue());
                 break;
+            case YEARLY:
+                nextDate = next.plusYears(recurring.getIntervalValue());
+                break;
             default:
                 break;
         }
 
         recurring.setNextExecutionDate(nextDate);
+        if (recurring.getEndDate() != null && nextDate.isAfter(recurring.getEndDate())) {
+            recurring.setActive(false);
+        }
     }
 
     /**

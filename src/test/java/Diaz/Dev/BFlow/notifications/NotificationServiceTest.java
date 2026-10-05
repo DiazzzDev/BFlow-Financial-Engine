@@ -134,4 +134,34 @@ class NotificationServiceTest {
         verify(emailTemplateService, never())
                 .sendBudgetGroupSuccessEmail(any(), any(), any(), any(), any());
     }
+
+    @Test
+    void sendWalletInvitation_createsLocalizedActionableNotification() {
+        User invitedUser = user("member@example.com", "Member");
+        invitedUser.setLanguage(SupportedLanguage.EN);
+        UUID invitationId = UUID.randomUUID();
+
+        when(messageService.getForLanguage(
+                "notification.walletInvitation.title", SupportedLanguage.EN))
+                .thenReturn("Wallet invitation");
+        when(messageService.getForLanguage(
+                "notification.walletInvitation.message", SupportedLanguage.EN,
+                "Alice", "Shared"))
+                .thenReturn("Alice invited you to collaborate in \"Shared\".");
+
+        notificationService.sendWalletInvitation(
+                invitedUser, invitationId, "Alice", "Shared");
+
+        ArgumentCaptor<Notification> notificationCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+
+        Notification saved = notificationCaptor.getValue();
+        assertEquals(invitedUser.getId(), saved.getUserId());
+        assertEquals(NotificationType.WALLET_INVITATION, saved.getType());
+        assertEquals(invitationId, saved.getReferenceId());
+        assertEquals("Wallet invitation", saved.getTitle());
+        assertEquals("Alice invited you to collaborate in \"Shared\".",
+                saved.getMessage());
+    }
 }

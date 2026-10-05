@@ -51,6 +51,9 @@ public class WalletUser {
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
 
+    @Column(name = "is_default", nullable = false)
+    private boolean defaultWallet = false;
+
     /** The user associated with this record. */
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

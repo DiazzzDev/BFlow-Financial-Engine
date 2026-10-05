@@ -80,7 +80,7 @@ class RecurringLinkServiceTest {
         category = new Category();
         category.setId(UUID.randomUUID());
 
-        startDate = LocalDate.of(2026, 8, 17);
+        startDate = LocalDate.now().plusDays(10);
 
         lenient().when(repository.save(any(RecurringTransaction.class)))
                 .thenAnswer(invocation -> {
@@ -104,7 +104,7 @@ class RecurringLinkServiceTest {
 
         assertEquals(RecurringFrequency.MONTHLY, result.getFrequency());
         assertEquals(startDate, result.getStartDate());
-        assertEquals(LocalDate.of(2026, 9, 17), result.getNextExecutionDate());
+        assertEquals(startDate.plusMonths(1), result.getNextExecutionDate());
         assertTrue(result.getActive());
         assertEquals(1, result.getIntervalValue());
     }
@@ -118,7 +118,7 @@ class RecurringLinkServiceTest {
                         startDate));
 
         assertEquals(RecurringFrequency.DAILY, result.getFrequency());
-        assertEquals(LocalDate.of(2026, 8, 18), result.getNextExecutionDate());
+        assertEquals(startDate.plusDays(1), result.getNextExecutionDate());
     }
 
     @Test
@@ -129,7 +129,30 @@ class RecurringLinkServiceTest {
                         user, "Freelance retainer", null,
                         BigDecimal.valueOf(200), startDate));
 
-        assertEquals(LocalDate.of(2026, 8, 24), result.getNextExecutionDate());
+        assertEquals(startDate.plusWeeks(1), result.getNextExecutionDate());
+    }
+
+    @Test
+    void linkRecurring_yearly_nextExecutionDateIsStartPlusOneYear() {
+        RecurringTransaction result = recurringLinkService.linkRecurring(
+                new RecurringLinkService.RecurringCreateRequest(
+                        RecurringType.EXPENSE, "YEARLY", wallet, category,
+                        user, "Insurance", null, BigDecimal.valueOf(200),
+                        startDate));
+
+        assertEquals(RecurringFrequency.YEARLY, result.getFrequency());
+        assertEquals(startDate.plusYears(1), result.getNextExecutionDate());
+    }
+
+    @Test
+    void linkRecurring_historicalStartDoesNotScheduleCatchUpExecutions() {
+        RecurringTransaction result = recurringLinkService.linkRecurring(
+                new RecurringLinkService.RecurringCreateRequest(
+                        RecurringType.EXPENSE, "MONTHLY", wallet, category,
+                        user, "Historic subscription", null,
+                        BigDecimal.TEN, LocalDate.now().minusMonths(8)));
+
+        assertFalse(result.getNextExecutionDate().isBefore(LocalDate.now()));
     }
 
     @Test
@@ -146,8 +169,7 @@ class RecurringLinkServiceTest {
 
     @Test
     void linkRecurring_unsupportedPattern_throwsIllegalArgumentException() {
-        // YEARLY passes BaseTransactionRequest's @Pattern regex but isn't
-        // a RecurringFrequency value yet — must fail loudly, not silently.
+        // A value outside the public enum must fail loudly, not silently.
         lenient().when(messageService.get(
                 eq("recurring.recurrencePattern.unsupported"), any()
         )).thenAnswer(inv -> "Unsupported recurrencePattern '"
@@ -157,12 +179,12 @@ class RecurringLinkServiceTest {
                 IllegalArgumentException.class, () ->
                         recurringLinkService.linkRecurring(
                                 new RecurringLinkService.RecurringCreateRequest(
-                                        RecurringType.EXPENSE, "YEARLY",
+                                        RecurringType.EXPENSE, "QUARTERLY",
                                         wallet, category, user,
                                         "Insurance", null,
                                         BigDecimal.TEN, startDate)));
 
-        assertTrue(ex.getMessage().contains("YEARLY"));
+        assertTrue(ex.getMessage().contains("QUARTERLY"));
         verify(repository, never()).save(any());
     }
 
@@ -287,7 +309,7 @@ class RecurringLinkServiceTest {
                         BigDecimal.valueOf(40), startDate));
 
         assertEquals(RecurringFrequency.WEEKLY, existing.getFrequency());
-        assertEquals(LocalDate.of(2026, 8, 24), existing.getNextExecutionDate());
+        assertEquals(startDate.plusWeeks(1), existing.getNextExecutionDate());
     }
 
     @Test

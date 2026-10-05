@@ -214,6 +214,23 @@ class RecurringTransactionExecutorTest {
     }
 
     @Test
+    void executeSingle_yearlyFrequency_advancesNextExecutionByInterval() {
+        recurring.setFrequency(RecurringFrequency.YEARLY);
+        recurring.setIntervalValue(2);
+        recurring.setNextExecutionDate(LocalDate.of(2026, 8, 17));
+
+        when(repository.findById(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertEquals(LocalDate.of(2028, 8, 17),
+                recurring.getNextExecutionDate());
+    }
+
+    @Test
     void executeSingle_monthEndDate_clampsInsteadOfThrowing() {
         // Jan 31 + 1 month must clamp to Feb 28/29, not throw — this
         // is java.time's built-in behavior, but it's exactly the kind

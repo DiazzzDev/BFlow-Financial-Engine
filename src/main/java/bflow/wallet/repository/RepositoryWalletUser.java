@@ -30,6 +30,20 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID>,
      * @param role the wallet role
      * @return optional wallet-user relationship
      */
+    Optional<WalletUser> findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+            UUID userId,
+            WalletRole role
+    );
+
+    /**
+     * Finds an owner wallet without imposing a display order.
+     *
+     * @param userId the user UUID
+     * @param role the wallet role
+     * @return an owner wallet membership when one exists
+     * @deprecated use the default-wallet ordered query for user-facing flows.
+     */
+    @Deprecated
     Optional<WalletUser> findFirstByUserIdAndRole(
             UUID userId,
             WalletRole role

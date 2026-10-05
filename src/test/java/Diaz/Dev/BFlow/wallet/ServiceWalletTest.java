@@ -101,6 +101,7 @@ class ServiceWalletTest {
         walletUser.setUser(user);
         walletUser.setWallet(wallet);
         walletUser.setRole(WalletRole.OWNER);
+        walletUser.setDefaultWallet(true);
     }
 
     @Test
@@ -116,6 +117,7 @@ class ServiceWalletTest {
         // Assert
         assertEquals(walletId, result.getId());
         assertEquals("Test Wallet", result.getName());
+        assertEquals(true, result.isDefaultWallet());
         verify(repositoryWalletUser).findByWalletIdAndUserId(walletId, userId);
     }
 

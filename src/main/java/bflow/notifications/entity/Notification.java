@@ -60,4 +60,8 @@ public class Notification {
      * The creation timestamp.
      */
     private Instant createdAt;
+
+    /** Optional ID of the resource the user can act on. */
+    private UUID referenceId;
+
 }

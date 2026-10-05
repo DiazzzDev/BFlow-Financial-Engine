@@ -1,6 +1,7 @@
 package bflow.wallet.service;
 
 import bflow.auth.services.UserService;
+import bflow.common.exception.ResourceNotFoundException;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
@@ -594,7 +595,7 @@ public class ServiceWallet {
 
         if (repositoryWalletUser.existsByUserId(user.getId())) {
             return repositoryWalletUser
-                    .findFirstByUserIdAndRole(
+                    .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
                             user.getId(),
                             WalletRole.OWNER
                     )
@@ -617,10 +618,60 @@ public class ServiceWallet {
         walletUser.setWallet(wallet);
         walletUser.setUser(user);
         walletUser.setRole(WalletRole.OWNER);
+        walletUser.setDefaultWallet(true);
 
         repositoryWalletUser.save(walletUser);
 
         return wallet;
+    }
+
+    /**
+     * Replaces a wallet's opening balance while preserving the net effect of
+     * every income, expense, and transfer already registered against it.
+     * Only the wallet owner may perform this onboarding adjustment.
+     *
+     * @param walletId wallet to update
+     * @param amount non-negative opening amount with at most two decimals
+     * @param userId authenticated owner requesting the change
+     * @return updated wallet, including the recalculated current balance
+     */
+    @Transactional
+    public WalletResponse setOpeningBalance(
+            final UUID walletId,
+            final BigDecimal amount,
+            final UUID userId
+    ) {
+        userService.validateUserActive(userId);
+
+        WalletUser walletUser = repositoryWalletUser
+                .findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        messageService.get("wallet.accessDenied")));
+
+        if (walletUser.getRole() != WalletRole.OWNER) {
+            throw new AccessDeniedException(
+                    messageService.get("wallet.owner.onlyUpdate"));
+        }
+
+        Wallet wallet = repositoryWallet.findByIdForUpdate(walletId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("wallet.notFound")));
+
+        BigDecimal newInitial = amount.setScale(2, RoundingMode.HALF_EVEN);
+        BigDecimal newBalance = wallet.getBalance()
+                .add(newInitial.subtract(wallet.getInitialValue()));
+
+        if (newBalance.signum() < 0) {
+            throw new IllegalArgumentException(
+                    messageService.get("wallet.balance.insufficient",
+                            wallet.getBalance()));
+        }
+
+        wallet.setInitialValue(newInitial);
+        wallet.setBalance(newBalance);
+        repositoryWallet.save(wallet);
+
+        return convertToDTO(walletUser);
     }
 
     /**

@@ -252,10 +252,25 @@ public class RecurringLinkService {
     private LocalDate nextDateAfter(
             final LocalDate start, final RecurringFrequency frequency
     ) {
-        return switch (frequency) {
+        LocalDate candidate = switch (frequency) {
             case DAILY -> start.plusDays(DEFAULT_INTERVAL);
             case WEEKLY -> start.plusWeeks(DEFAULT_INTERVAL);
             case MONTHLY -> start.plusMonths(DEFAULT_INTERVAL);
+            case YEARLY -> start.plusYears(DEFAULT_INTERVAL);
         };
+
+        // The original transaction already represents the first occurrence.
+        // When it is imported or created with a historical date, advance the
+        // template to the next current occurrence instead of replaying all
+        // missed executions one scheduler run at a time.
+        while (candidate.isBefore(LocalDate.now())) {
+            candidate = switch (frequency) {
+                case DAILY -> candidate.plusDays(DEFAULT_INTERVAL);
+                case WEEKLY -> candidate.plusWeeks(DEFAULT_INTERVAL);
+                case MONTHLY -> candidate.plusMonths(DEFAULT_INTERVAL);
+                case YEARLY -> candidate.plusYears(DEFAULT_INTERVAL);
+            };
+        }
+        return candidate;
     }
 }

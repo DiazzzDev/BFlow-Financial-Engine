@@ -31,7 +31,9 @@ public final class WompiWebhookController {
      */
     @Operation(
             summary = "Receive and process a Wompi webhook event.",
-            description = "Receive and process a Wompi webhook event."
+            description = "Receives Wompi's raw JSON payload and the required "
+                    + "wompi_hash signature header. A valid event returns 200 "
+                    + "with no body; an invalid signature is rejected."
     )
     @PostMapping
     public ResponseEntity<Void> receive(
@@ -47,11 +49,7 @@ public final class WompiWebhookController {
             log.warn("Webhook de Wompi rechazado: firma inválida");
             throw e;
         } catch (Exception e) {
-            log.error(
-                    "Error procesando webhook de Wompi: {}",
-                    e.getMessage(),
-                    e
-            );
+            log.error("Error procesando webhook de Wompi", e);
             throw e;
         }
     }

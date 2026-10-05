@@ -4,6 +4,7 @@ import bflow.auth.services.CurrentUserService;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.income.DTO.IncomeResponse;
+import bflow.wallet.DTO.OpeningBalanceRequest;
 import bflow.wallet.DTO.UpdateWalletRequest;
 import bflow.wallet.DTO.WalletInfoResponse;
 import bflow.wallet.DTO.WalletMemberResponse;
@@ -20,15 +21,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
@@ -358,6 +360,38 @@ public final class ControllerWallet {
         return ResponseEntity
                 .created(location)
                 .body(response);
+    }
+
+    /**
+     * Updates the amount with which an owner started a wallet. This changes
+     * the current balance only by the requested opening-balance difference;
+     * it never recreates or deletes financial history.
+     *
+     * @param id wallet identifier
+     * @param body required non-negative replacement amount
+     * @param authentication authenticated wallet owner
+     * @param request current HTTP request
+     * @return updated wallet response
+     */
+    @Operation(
+            summary = "Set a wallet's opening balance.",
+            description = "Owner-only onboarding adjustment. amount is required, "
+                    + "non-null, non-negative, and supports up to 12 integer "
+                    + "digits and 2 decimals. Existing transaction history is "
+                    + "preserved and balance is adjusted by the difference."
+    )
+    @PutMapping("/{id}/opening-balance")
+    public ApiResponse<WalletResponse> setOpeningBalance(
+            @PathVariable final UUID id,
+            @Valid @RequestBody final OpeningBalanceRequest body,
+            final Authentication authentication,
+            final HttpServletRequest request
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        return ApiResponse.success(
+                messageService.get("wallet.openingBalance.updated"),
+                serviceWallet.setOpeningBalance(id, body.amount(), userId),
+                request.getRequestURI());
     }
 
     /**

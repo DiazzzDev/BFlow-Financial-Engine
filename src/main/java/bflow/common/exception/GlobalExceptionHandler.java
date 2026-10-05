@@ -550,6 +550,13 @@ public final class GlobalExceptionHandler {
             if (invalidFormat.getTargetType() == UUID.class) {
                 message = "El campo '%s' debe ser un UUID válido."
                         .formatted(field);
+            } else if (invalidFormat.getTargetType().isEnum()) {
+                String acceptedValues = java.util.Arrays.stream(
+                                invalidFormat.getTargetType().getEnumConstants())
+                        .map(Object::toString)
+                        .collect(Collectors.joining(", "));
+                message = "El campo '%s' debe ser uno de: %s."
+                        .formatted(field, acceptedValues);
             } else {
                 message = "El campo '%s' tiene un formato inválido."
                         .formatted(field);

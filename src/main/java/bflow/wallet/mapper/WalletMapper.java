@@ -20,6 +20,7 @@ public interface WalletMapper {
      * @return wallet response
      */
     @Mapping(target = "role", source = "walletUser.role")
+    @Mapping(target = "defaultWallet", source = "walletUser.defaultWallet")
     @Mapping(target = "memberCount", source = "memberCount")
     @Mapping(target = "id", source = "wallet.id")
     @Mapping(target = "createdAt", source = "wallet.createdAt")

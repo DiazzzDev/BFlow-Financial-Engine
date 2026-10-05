@@ -3,8 +3,6 @@ package Diaz.Dev.BFlow.expenses;
 import bflow.auth.entities.User;
 import bflow.auth.services.UserService;
 import bflow.budget.services.BudgetService;
-import bflow.category.entity.Category;
-import bflow.category.enums.CategoryType;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -12,7 +10,6 @@ import bflow.expenses.DTO.QuickExpenseRequest;
 import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
 import bflow.expenses.services.QuickExpenseService;
-import bflow.merchant.MerchantDetectionService;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
 import bflow.wallet.enums.Currency;
@@ -65,9 +62,6 @@ class QuickExpenseServiceTest {
     private UserService userService;
 
     @Mock
-    private MerchantDetectionService merchantDetectionService;
-
-    @Mock
     private RepositoryWalletUser walletUserRepository;
 
     @Mock
@@ -84,7 +78,6 @@ class QuickExpenseServiceTest {
     private User user;
     private Wallet wallet;
     private WalletUser walletUser;
-    private Category category;
 
     @BeforeEach
     void setUp() {
@@ -107,28 +100,22 @@ class QuickExpenseServiceTest {
         walletUser.setWallet(wallet);
         walletUser.setRole(WalletRole.OWNER);
 
-        category = new Category();
-        category.setId(UUID.randomUUID());
-        category.setName("Food");
-        category.setType(CategoryType.EXPENSE);
     }
 
     private QuickExpenseRequest request(final BigDecimal amount) {
         QuickExpenseRequest request = new QuickExpenseRequest();
         request.setAmount(amount);
-        request.setDescription("Coffee");
         return request;
     }
 
     @Test
     void createQuickExpense_debitsWalletBalance_onCreation() {
         when(walletUserRepository
-                .findFirstByUserIdAndRole(userId, WalletRole.OWNER))
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
                 .thenReturn(Optional.of(walletUser));
         when(repositoryWallet.findByIdForUpdate(walletId))
                 .thenReturn(Optional.of(wallet));
-        when(merchantDetectionService.detectCategory(any()))
-                .thenReturn(category);
         when(repositoryExpense.save(any(Expense.class)))
                 .thenAnswer(inv -> {
                     Expense e = inv.getArgument(0);
@@ -157,12 +144,11 @@ class QuickExpenseServiceTest {
         lockedWallet.setCurrency(Currency.USD);
 
         when(walletUserRepository
-                .findFirstByUserIdAndRole(userId, WalletRole.OWNER))
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
                 .thenReturn(Optional.of(walletUser));
         when(repositoryWallet.findByIdForUpdate(walletId))
                 .thenReturn(Optional.of(lockedWallet));
-        when(merchantDetectionService.detectCategory(any()))
-                .thenReturn(category);
         when(repositoryExpense.save(any(Expense.class)))
                 .thenAnswer(inv -> {
                     Expense e = inv.getArgument(0);
@@ -187,12 +173,11 @@ class QuickExpenseServiceTest {
     @Test
     void createQuickExpense_insufficientBalance_neverPersistsExpense() {
         when(walletUserRepository
-                .findFirstByUserIdAndRole(userId, WalletRole.OWNER))
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
                 .thenReturn(Optional.of(walletUser));
         when(repositoryWallet.findByIdForUpdate(walletId))
                 .thenReturn(Optional.of(wallet));
-        when(merchantDetectionService.detectCategory(any()))
-                .thenReturn(category);
 
         // Simulate ServiceWallet enforcing that balance can't go
         // negative — this is the real guard the previous
@@ -237,7 +222,8 @@ class QuickExpenseServiceTest {
     @Test
     void createQuickExpense_missingWallet_throwsResourceNotFound() {
         when(walletUserRepository
-                .findFirstByUserIdAndRole(userId, WalletRole.OWNER))
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
                 .thenReturn(Optional.of(walletUser));
         when(repositoryWallet.findByIdForUpdate(walletId))
                 .thenReturn(Optional.empty());
@@ -255,12 +241,11 @@ class QuickExpenseServiceTest {
     @Test
     void createQuickExpense_roundsAmountToTwoDecimals_beforeDebitAndSave() {
         when(walletUserRepository
-                .findFirstByUserIdAndRole(userId, WalletRole.OWNER))
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
                 .thenReturn(Optional.of(walletUser));
         when(repositoryWallet.findByIdForUpdate(walletId))
                 .thenReturn(Optional.of(wallet));
-        when(merchantDetectionService.detectCategory(any()))
-                .thenReturn(category);
         when(repositoryExpense.save(any(Expense.class)))
                 .thenAnswer(inv -> {
                     Expense e = inv.getArgument(0);
@@ -280,6 +265,8 @@ class QuickExpenseServiceTest {
                 2, java.math.RoundingMode.HALF_EVEN);
 
         assertEquals(0, expected.compareTo(response.getAmount()));
+        assertEquals(walletId.toString(), response.getWalletId());
+        assertEquals("Test Wallet", response.getWalletName());
         verify(serviceWallet).subtractBalance(eq(wallet), eq(expected));
     }
 }

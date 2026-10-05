@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -208,14 +209,71 @@ public class RecurringExecutionService {
         recurring.setIntervalValue(request.getIntervalValue());
 
         recurring.setStartDate(request.getStartDate());
-        recurring.setNextExecutionDate(request.getStartDate());
+        LocalDate nextExecutionDate = resolveFirstExecutionDate(
+                request.getStartDate(), request.getFrequency(),
+                request.getIntervalValue()
+        );
+        recurring.setNextExecutionDate(nextExecutionDate);
 
         recurring.setEndDate(request.getEndDate());
-        recurring.setActive(true);
+        recurring.setActive(request.getEndDate() == null
+                || !nextExecutionDate.isAfter(request.getEndDate()));
 
         RecurringTransaction saved = repository.save(recurring);
 
         return mapToResponse(saved);
+    }
+
+    /**
+     * Finds the first scheduled occurrence on or after the server's current
+     * date. Historical start dates remain valid, but do not make the scheduler
+     * replay one missed occurrence per run.
+     *
+     * @param startDate recurrence's original start date
+     * @param frequency recurrence unit
+     * @param interval number of units between executions
+     * @return first due date that is not in the past
+     */
+    private LocalDate resolveFirstExecutionDate(
+            final LocalDate startDate,
+            final bflow.recurring.enums.RecurringFrequency frequency,
+            final int interval
+    ) {
+        LocalDate today = LocalDate.now();
+        if (!startDate.isBefore(today)) {
+            return startDate;
+        }
+
+        return switch (frequency) {
+            case DAILY -> startDate.plusDays(nextMultiple(
+                    ChronoUnit.DAYS.between(startDate, today), interval));
+            case WEEKLY -> startDate.plusWeeks(nextMultiple(
+                    ChronoUnit.WEEKS.between(startDate, today), interval));
+            case MONTHLY -> advanceUntilCurrent(
+                    startDate, today, interval, ChronoUnit.MONTHS);
+            case YEARLY -> advanceUntilCurrent(
+                    startDate, today, interval, ChronoUnit.YEARS);
+        };
+    }
+
+    /** Returns the first positive interval multiple that reaches the target. */
+    private long nextMultiple(final long elapsedUnits, final int interval) {
+        return ((elapsedUnits + interval - 1L) / interval) * interval;
+    }
+
+    /** Advances calendar-based dates without treating months and years as days. */
+    private LocalDate advanceUntilCurrent(
+            final LocalDate startDate,
+            final LocalDate today,
+            final int interval,
+            final ChronoUnit unit
+    ) {
+        long elapsed = unit.between(startDate, today);
+        LocalDate candidate = startDate.plus(nextMultiple(elapsed, interval), unit);
+        while (candidate.isBefore(today)) {
+            candidate = candidate.plus(interval, unit);
+        }
+        return candidate;
     }
 
     /**
@@ -254,6 +312,35 @@ public class RecurringExecutionService {
         }
 
         recurring.setActive(active);
+    }
+
+    /**
+     * Updates a recurrence's inclusive end date. A null end date intentionally
+     * represents an indefinite recurrence and is persisted as null.
+     *
+     * @param id recurring transaction identifier
+     * @param userId authenticated owner of the recurrence
+     * @param endDate inclusive final execution date, or null for no end date
+     * @throws WalletAccessDeniedException when the caller is not the owner
+     * @throws IllegalArgumentException when the date precedes startDate
+     */
+    public void updateEndDate(
+            final UUID id,
+            final UUID userId,
+            final LocalDate endDate
+    ) {
+        RecurringTransaction recurring = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("recurring.notFound")));
+
+        if (!recurring.getUser().getId().equals(userId)) {
+            throw new WalletAccessDeniedException(messageService.get("wallet.accessDenied"));
+        }
+        if (endDate != null && endDate.isBefore(recurring.getStartDate())) {
+            throw new IllegalArgumentException(
+                    messageService.get("recurring.endDate.beforeStart"));
+        }
+        recurring.setEndDate(endDate);
     }
 
     /**
