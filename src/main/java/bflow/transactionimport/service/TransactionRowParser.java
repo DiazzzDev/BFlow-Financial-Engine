@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.format.DateTimeParseException;
 
 /**
@@ -30,6 +31,9 @@ public class TransactionRowParser {
     private final RepositoryCategory repositoryCategory;
 
     private final InputSanitizer inputSanitizer;
+
+    /** Business-calendar clock used when an import row omits its date. */
+    private final Clock clock;
 
     /**
      * Parses and validates one row.
@@ -137,7 +141,7 @@ public class TransactionRowParser {
      */
     private LocalDate parseDate(final String rawDate) {
         if (rawDate == null || rawDate.isBlank()) {
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
         try {
             return LocalDate.parse(rawDate.trim());

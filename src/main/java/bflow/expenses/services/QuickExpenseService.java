@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.UUID;
 
 @Service
@@ -69,6 +70,9 @@ public class QuickExpenseService {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    /** Business-calendar clock used to date quick expenses. */
+    private final Clock clock;
+
     /**
      * Create a quick expense for a user.
      *
@@ -106,7 +110,7 @@ public class QuickExpenseService {
 
         expense.setAmount(amount);
         expense.setTitle(QUICK_EXPENSE_TITLE);
-        expense.setDate(LocalDate.now());
+        expense.setDate(LocalDate.now(clock));
 
         expense.setWallet(wallet);
         expense.setCategory(null);

@@ -360,4 +360,14 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
 
     List<Expense> findByWalletIdIn(List<UUID> walletIds);
     void deleteByWalletIdIn(List<UUID> walletIds);
+
+    @Query("""
+    SELECT e FROM Expense e
+    WHERE e.wallet.id IN :walletIds
+    AND (LOWER(e.title) LIKE :pattern
+         OR LOWER(COALESCE(e.description, '')) LIKE :pattern)
+    ORDER BY e.date DESC, e.createdAt DESC
+""")
+    List<Expense> searchRecent(
+            List<UUID> walletIds, String pattern, Pageable pageable);
 }

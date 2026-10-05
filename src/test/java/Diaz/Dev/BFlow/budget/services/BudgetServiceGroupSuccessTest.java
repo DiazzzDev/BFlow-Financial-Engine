@@ -111,7 +111,8 @@ class BudgetServiceGroupSuccessTest {
                 overlapValidationService,
                 planLimitService,
                 repositoryExpense,
-                entityManager
+                entityManager,
+                java.time.Clock.systemDefaultZone()
         );
 
         walletId = UUID.randomUUID();

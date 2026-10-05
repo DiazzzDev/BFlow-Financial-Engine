@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -84,6 +85,9 @@ public class RecurringExecutionService {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    /** Business-calendar clock used for due-date calculations. */
+    private final Clock clock;
+
     /**
      * Execute all due recurring transactions on the current date.
      * Each one runs in its own isolated transaction (delegated to
@@ -92,7 +96,7 @@ public class RecurringExecutionService {
      */
     public void executeDueTransactions() {
         List<RecurringTransaction> due =
-                repository.findDueTransactions(LocalDate.now());
+                repository.findDueTransactions(LocalDate.now(clock));
 
         for (RecurringTransaction recurring : due) {
             UUID id = recurring.getId();
@@ -239,7 +243,7 @@ public class RecurringExecutionService {
             final bflow.recurring.enums.RecurringFrequency frequency,
             final int interval
     ) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         if (!startDate.isBefore(today)) {
             return startDate;
         }

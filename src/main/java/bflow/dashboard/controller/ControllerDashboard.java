@@ -4,6 +4,7 @@ import bflow.auth.services.CurrentUserService;
 import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
 import bflow.dashboard.dto.ActivityBreakdownResponse;
+import bflow.dashboard.dto.ActivityTypeFilter;
 import bflow.dashboard.dto.AveragesResponse;
 import bflow.dashboard.dto.BalanceSummaryResponse;
 import bflow.dashboard.dto.BudgetHealthItem;
@@ -57,17 +58,22 @@ public final class ControllerDashboard {
      * @return the balance summary.
      */
     @Operation(
-            summary = "Retrieves the 'Balance total' widget data.",
-            description = "Retrieves the 'Balance total' widget data."
+            summary = "Retrieves the 'Tienes ahora' balance widget.",
+            description = "Current balance across every wallet the caller "
+                    + "belongs to, or only walletId when provided. monthIncome "
+                    + "and monthExpenses use the same wallet scope. "
+                    + "percentageChangeLastMonth is null when walletId is given."
     )
     @GetMapping("/balance")
     public ApiResponse<BalanceSummaryResponse> getBalance(
+            @Parameter(description = "Optional wallet filter; omit for all wallets.")
+            @RequestParam(required = false) final UUID walletId,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         BalanceSummaryResponse balance = serviceDashboard
-                .getBalanceSummary(userId);
+                .getBalanceSummary(userId, walletId);
 
         return ApiResponse.success(
                 messageService.get("dashboard.balance.retrieved"),
@@ -171,17 +177,27 @@ public final class ControllerDashboard {
      * @return up to 5 recent activity items.
      */
     @Operation(
-            summary = "Retrieves the 'Recent activity' widget data (top 5 transactions).",
-            description = "Retrieves the 'Recent activity' widget data (top 5 transactions)."
+            summary = "Retrieves the 'Recent activity' widget data.",
+            description = "Most recent incomes and expenses across the caller's "
+                    + "wallets, newest first. type filters by direction (ALL by "
+                    + "default); query matches title or description; limit is "
+                    + "clamped to 1-50 (default 5). Transfers are not included."
     )
     @GetMapping("/recent-activity")
     public ApiResponse<List<RecentActivityItem>> getRecentActivity(
+            @Parameter(description = "Direction filter.",
+                    schema = @Schema(implementation = ActivityTypeFilter.class))
+            @RequestParam(defaultValue = "ALL") final ActivityTypeFilter type,
+            @Parameter(description = "Optional text matched against title and description.")
+            @RequestParam(required = false) final String query,
+            @Parameter(description = "Maximum items, 1-50.")
+            @RequestParam(defaultValue = "5") final int limit,
             final Authentication authentication,
             final HttpServletRequest request
     ) {
         UUID userId = currentUserService.getCurrentUserId(authentication);
         List<RecentActivityItem> activity = serviceDashboard
-                .getRecentActivity(userId);
+                .getRecentActivity(userId, type, query, limit);
 
         return ApiResponse.success(
                 messageService.get("dashboard.recentActivity.retrieved"),
@@ -226,7 +242,8 @@ public final class ControllerDashboard {
      */
     @Operation(
             summary = "Retrieves the 'Budgets health' widget data (top 3 budgets).",
-            description = "Returns up to three most recently updated budgets. "
+            description = "Returns up to three budgets with the highest spending "
+                    + "percentage. "
                     + "Each item contains budgetLimit, spent, remaining "
                     + "(budgetLimit minus spent, never below zero), and "
                     + "percentage spent. All monetary fields use the item's "

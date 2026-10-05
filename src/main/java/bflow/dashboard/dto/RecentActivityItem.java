@@ -1,26 +1,31 @@
 package bflow.dashboard.dto;
 
+import bflow.wallet.enums.Currency;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
- * A single item in the "recent activity" feed.
- *
- * @param type the type of activity, such as income or expense
- * @param name the name of the activity
- * @param createdAt the date and time when the activity was created
- * @param amount the activity amount,
- * negative for expenses and positive for incomes
-     * @param walletName the name of the wallet associated with the activity
-     * @param categoryIcon the icon identifier of the associated category
-     * @param categoryColor the color code of the associated category
+ * One income or expense row of the recent activity widget.
  */
+@Schema(description = "One income or expense row of the recent activity widget.")
 public record RecentActivityItem(
-        String type,
-        String name,
+        @Schema(description = "Transaction UUID.") UUID id,
+        @Schema(description = "EXPENSE or INCOME.",
+                allowableValues = {"EXPENSE", "INCOME"}) String type,
+        @Schema(description = "Transaction title.") String name,
+        @Schema(description = "Business date; use it for 'hoy'/'ayer' labels.")
+        LocalDate date,
+        @Schema(description = "When the transaction was registered.")
         Instant createdAt,
-             BigDecimal amount,
-             String walletName,
-             String categoryIcon,
-             String categoryColor
-     ) { }
+        @Schema(description = "Signed amount: negative for expenses.")
+        BigDecimal amount,
+        @Schema(description = "Currency of the wallet.") Currency currency,
+        @Schema(description = "Wallet name.") String walletName,
+        @Schema(description = "Origin of the row, e.g. 'quick'.") String source,
+        @Schema(nullable = true) String categoryIcon,
+        @Schema(nullable = true) String categoryColor
+) { }

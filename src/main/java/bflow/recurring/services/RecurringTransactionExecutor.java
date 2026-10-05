@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -50,6 +51,9 @@ public class RecurringTransactionExecutor {
 
     /** Service used to create the income when the recurring type is INCOME. */
     private final ServiceIncome serviceIncome;
+
+    /** Business-calendar clock used for generated transaction dates. */
+    private final Clock clock;
 
     /**
      * Executes a single recurring transaction in its own transaction,
@@ -138,7 +142,7 @@ public class RecurringTransactionExecutor {
         request.setTitle(recurring.getTitle());
         request.setDescription(recurring.getDescription());
         request.setAmount(recurring.getAmount());
-        request.setDate(LocalDate.now());
+        request.setDate(LocalDate.now(clock));
         request.setWalletId(recurring.getWallet().getId());
         request.setCategoryId(recurring.getCategory().getId());
         request.setSource("recurring");
@@ -152,7 +156,7 @@ public class RecurringTransactionExecutor {
         request.setTitle(recurring.getTitle());
         request.setDescription(recurring.getDescription());
         request.setAmount(recurring.getAmount());
-        request.setDate(LocalDate.now());
+        request.setDate(LocalDate.now(clock));
         request.setWalletId(recurring.getWallet().getId());
         request.setCategoryId(recurring.getCategory().getId());
         request.setSource("recurring");

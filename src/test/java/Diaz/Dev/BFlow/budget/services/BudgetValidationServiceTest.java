@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -26,11 +28,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class BudgetValidationServiceTest {
 
     private BudgetValidationService validationService;
+    private LocalDate today;
 
     @BeforeEach
     void setUp() {
+        Clock clock = Clock.fixed(java.time.Instant.parse("2026-10-05T03:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        today = LocalDate.now(clock);
         validationService = new BudgetValidationService(
-                org.mockito.Mockito.mock(MessageService.class)
+                org.mockito.Mockito.mock(MessageService.class),
+                clock
         );
     }
 
@@ -46,19 +53,19 @@ class BudgetValidationServiceTest {
     void validateStartDate_tomorrow_throwsInvalidBudgetDateException() {
         assertThrows(InvalidBudgetDateException.class,
                 () -> validationService.validateStartDate(
-                        LocalDate.now().plusDays(1)));
+                        today.plusDays(1)));
     }
 
     @Test
     void validateStartDate_today_isAllowed() {
         assertDoesNotThrow(() -> validationService.validateStartDate(
-                LocalDate.now()));
+                today));
     }
 
     @Test
     void validateStartDate_past_isAllowed() {
         assertDoesNotThrow(() -> validationService.validateStartDate(
-                LocalDate.now().minusYears(1)));
+                today.minusYears(1)));
     }
 
     // ---- validateThresholds ----

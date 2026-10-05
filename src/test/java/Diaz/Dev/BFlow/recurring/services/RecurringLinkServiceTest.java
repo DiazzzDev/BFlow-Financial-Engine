@@ -22,6 +22,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,6 +61,9 @@ class RecurringLinkServiceTest {
     @Mock
     private MessageService messageService;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private RecurringLinkService recurringLinkService;
 
@@ -69,6 +75,10 @@ class RecurringLinkServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(clock.instant())
+                .thenReturn(Instant.parse("2026-10-05T03:00:00Z"));
+        lenient().when(clock.getZone())
+                .thenReturn(ZoneId.of("America/El_Salvador"));
         userId = UUID.randomUUID();
 
         user = new User();

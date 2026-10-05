@@ -57,7 +57,8 @@ class RecurringExecutionServiceTest {
         RecurringExecutionService service = new RecurringExecutionService(
                 repository, executor, emailTemplateService, userService,
                 repositoryCategory, repositoryWalletUser, planLimitService,
-                messageService);
+                messageService, java.time.Clock.system(
+                        java.time.ZoneId.of("America/El_Salvador")));
         RecurringRequest request = request(LocalDate.now().minusDays(10), null);
         WalletUser walletUser = walletUser(userId);
 
@@ -88,7 +89,8 @@ class RecurringExecutionServiceTest {
         RecurringExecutionService service = new RecurringExecutionService(
                 repository, executor, emailTemplateService, userService,
                 repositoryCategory, repositoryWalletUser, planLimitService,
-                messageService);
+                messageService, java.time.Clock.system(
+                        java.time.ZoneId.of("America/El_Salvador")));
         LocalDate start = LocalDate.now().minusMonths(2);
         RecurringRequest request = request(start, LocalDate.now().minusDays(1));
         WalletUser walletUser = walletUser(userId);
@@ -116,7 +118,8 @@ class RecurringExecutionServiceTest {
         RecurringExecutionService service = new RecurringExecutionService(
                 repository, executor, emailTemplateService, userService,
                 repositoryCategory, repositoryWalletUser, planLimitService,
-                messageService);
+                messageService, java.time.Clock.system(
+                        java.time.ZoneId.of("America/El_Salvador")));
         RecurringRequest request = request(LocalDate.now().minusDays(10), null);
         request.setFrequency(RecurringFrequency.WEEKLY);
         WalletUser walletUser = walletUser(userId);
@@ -146,7 +149,8 @@ class RecurringExecutionServiceTest {
         RecurringExecutionService service = new RecurringExecutionService(
                 repository, executor, emailTemplateService, userService,
                 repositoryCategory, repositoryWalletUser, planLimitService,
-                messageService);
+                messageService, java.time.Clock.system(
+                        java.time.ZoneId.of("America/El_Salvador")));
         RecurringTransaction recurring = new RecurringTransaction();
         User owner = new User();
         owner.setId(userId);

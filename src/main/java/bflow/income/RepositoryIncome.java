@@ -143,4 +143,14 @@ public interface RepositoryIncome extends JpaRepository<Income, UUID> {
 
     List<Income> findByWalletIdIn(List<UUID> walletIds);
     void deleteByWalletIdIn(List<UUID> walletIds);
+
+    @Query("""
+    SELECT i FROM Income i
+    WHERE i.wallet.id IN :walletIds
+    AND (LOWER(i.title) LIKE :pattern
+         OR LOWER(COALESCE(i.description, '')) LIKE :pattern)
+    ORDER BY i.date DESC, i.createdAt DESC
+""")
+    List<Income> searchRecent(
+            List<UUID> walletIds, String pattern, Pageable pageable);
 }

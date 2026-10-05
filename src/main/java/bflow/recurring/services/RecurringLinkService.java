@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.UUID;
 
 @Slf4j
@@ -42,6 +43,9 @@ public class RecurringLinkService {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Business-calendar clock used to avoid historical catch-up runs. */
+    private final Clock clock;
 
     /**
      * Request payload for a new recurring transaction.
@@ -263,7 +267,7 @@ public class RecurringLinkService {
         // When it is imported or created with a historical date, advance the
         // template to the next current occurrence instead of replaying all
         // missed executions one scheduler run at a time.
-        while (candidate.isBefore(LocalDate.now())) {
+        while (candidate.isBefore(LocalDate.now(clock))) {
             candidate = switch (frequency) {
                 case DAILY -> candidate.plusDays(DEFAULT_INTERVAL);
                 case WEEKLY -> candidate.plusWeeks(DEFAULT_INTERVAL);

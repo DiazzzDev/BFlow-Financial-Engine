@@ -44,5 +44,12 @@ public record BudgetHealthItem(
         @Schema(description = "Whole percentage of budgetLimit already spent. "
                 + "Values above 100 indicate an exceeded budget.", requiredMode =
                 Schema.RequiredMode.REQUIRED)
-        Integer percentage
+        Integer percentage,
+        @Schema(nullable = true, description = "Wallet name; null for "
+                + "CATEGORY_GLOBAL budgets.")
+        String walletName,
+        @Schema(nullable = true, description = "Raw category name as stored "
+                + "(system categories are in English, translate on the client); "
+                + "null for WALLET budgets.")
+        String categoryName
 ) { }
