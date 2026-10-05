@@ -159,7 +159,10 @@ public class TextractExpenseMapper {
         String normalized = raw.replaceAll("[^0-9.,-]", "")
                 .replace(",", "");
         try {
-            return new BigDecimal(normalized);
+            // A receipt total represents a magnitude. Some OCR
+            // outputs add a minus sign for a charge, but BFlow stores
+            // expense and income amounts as positive values.
+            return new BigDecimal(normalized).abs();
         } catch (NumberFormatException ex) {
             log.debug("Could not parse Textract TOTAL '{}' as a number", raw);
             return null;

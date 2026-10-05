@@ -73,7 +73,10 @@ import software.amazon.awssdk.services.textract.model.StartExpenseAnalysisReques
 import software.amazon.awssdk.services.textract.model.StartExpenseAnalysisResponse;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +131,10 @@ class ReceiptModuleE2ETest {
             "arn:aws:sns:test:receipt-ocr-results";
     private static final String TEXTRACT_SNS_ROLE_ARN =
             "arn:aws:iam::test:role/textract-sns";
+    private static final Clock BUSINESS_CLOCK = Clock.fixed(
+            Instant.parse("2026-10-05T12:00:00Z"),
+            ZoneId.of("America/El_Salvador")
+    );
 
     @Mock private RepositoryReceiptUpload repositoryReceiptUpload;
     @Mock private RepositoryStoredFile repositoryStoredFile;
@@ -231,7 +238,8 @@ class ReceiptModuleE2ETest {
         ReceiptUploadService receiptUploadService = new ReceiptUploadService(
                 repositoryReceiptUpload, repositoryStoredFile,
                 fileUploadService, repositoryWalletUser, repositoryUser, messageService,
-                serviceExpense, serviceIncome, storageService, publisher);
+                serviceExpense, serviceIncome, storageService, publisher,
+                BUSINESS_CLOCK);
 
         controller = new ControllerReceiptUpload(
                 receiptUploadService, currentUserService, messageService);
@@ -356,6 +364,23 @@ class ReceiptModuleE2ETest {
                 .build();
     }
 
+    @Test
+    void textractNegativeTotalIsExposedAsPositiveMagnitude() {
+        ExpenseDocument document = ExpenseDocument.builder()
+                .summaryFields(List.of(
+                        summaryField("TOTAL", "-$500.00", 98.41f)))
+                .build();
+        GetExpenseAnalysisResponse response = GetExpenseAnalysisResponse.builder()
+                .expenseDocuments(List.of(document))
+                .build();
+
+        BigDecimal suggestedAmount = new TextractExpenseMapper(
+                new ObjectMapper()).map(response).suggestedAmount();
+
+        assertThat(suggestedAmount)
+                .isEqualByComparingTo(new BigDecimal("500.00"));
+    }
+
     // ---- happy path -----------------------------------------------------
 
     @Test
@@ -439,6 +464,38 @@ class ReceiptModuleE2ETest {
                 .isEqualTo(ReceiptTransactionType.EXPENSE);
         assertThat(confirmed.getResultingTransactionId()).isEqualTo(expenseId);
         verify(serviceIncome, never()).newIncome(any(), any());
+    }
+
+    @Test
+    void confirmAllowsAnUncategorizedReceiptWithNegativeOcrAmount()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ExpenseResponse expenseResponse = new ExpenseResponse();
+        expenseResponse.setId(UUID.randomUUID().toString());
+        ArgumentCaptor<ExpenseRequest> expenseCaptor =
+                ArgumentCaptor.forClass(ExpenseRequest.class);
+        when(serviceExpense.newExpense(expenseCaptor.capture(), eq(userId)))
+                .thenReturn(expenseResponse);
+
+        ReceiptConfirmRequest confirmRequest = new ReceiptConfirmRequest();
+        confirmRequest.setType(ReceiptTransactionType.EXPENSE);
+        confirmRequest.setTitle("DevTesting Merchant Store");
+        confirmRequest.setAmount(new BigDecimal("-500.00"));
+        confirmRequest.setCategoryId(null);
+        confirmRequest.setDate(null);
+
+        controller.confirm(
+                receiptId, confirmRequest, authentication, httpServletRequest);
+
+        ExpenseRequest transaction = expenseCaptor.getValue();
+        assertThat(transaction.getAmount())
+                .isEqualByComparingTo(new BigDecimal("500.00"));
+        assertThat(transaction.getCategoryId()).isNull();
+        assertThat(transaction.getDate()).isEqualTo(LocalDate.of(2026, 10, 5));
+        assertThat(transaction.getSource()).isEqualTo("receipt");
+        assertThat(transaction.getReceiptFileId()).isEqualTo(fileId);
     }
 
     @Test

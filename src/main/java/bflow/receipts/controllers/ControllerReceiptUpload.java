@@ -169,8 +169,14 @@ public final class ControllerReceiptUpload {
      *         CONFIRMED and linked to the resulting Expense/Income
      */
     @Operation(
-            summary = "Confirms a receipt's suggested data — as edited by the user — into a new Expense or Income.",
-            description = "Confirms a receipt's suggested data — as edited by the user — into a new Expense or Income."
+            summary = "Confirm a receipt draft as an Expense or Income.",
+            description = "Creates the transaction from the values supplied "
+                    + "by the client. title, type and a non-zero amount are "
+                    + "required. categoryId is optional and creates an "
+                    + "uncategorized transaction when omitted. date is optional "
+                    + "and defaults to today in America/El_Salvador. Negative "
+                    + "OCR amounts are accepted and stored as their positive "
+                    + "magnitude. The receipt must be in EXTRACTED status."
     )
     @PostMapping("/{id}/confirm")
     public ResponseEntity<ApiResponse<ReceiptUploadResponse>> confirm(

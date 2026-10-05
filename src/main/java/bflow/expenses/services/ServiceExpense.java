@@ -149,7 +149,9 @@ public class ServiceExpense {
 
         serviceBudget.evaluateBudgetsForExpenseEvent(
                 savedExpense.getWallet().getId(),
-                savedExpense.getCategory().getId()
+                savedExpense.getCategory() != null
+                        ? savedExpense.getCategory().getId()
+                        : null
         );
 
         return mapToResponse(savedExpense);
@@ -326,16 +328,7 @@ public class ServiceExpense {
             final Wallet wallet,
             final User contributor
     ) {
-        // Resolve and validate category
-        Category category = repositoryCategory
-                .findById(request.getCategoryId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                messageService.get("category.notFound")
-                        )
-                );
-
-        categoryValidator.validateExpenseCategory(category);
+        Category category = resolveExpenseCategory(request.getCategoryId());
 
         Expense expense = new Expense();
 
@@ -381,6 +374,27 @@ public class ServiceExpense {
         }
 
         return expense;
+    }
+
+    /**
+     * Resolves an expense category when one was supplied. Receipt OCR
+     * confirmations may create an uncategorized expense because the
+     * provider has no knowledge of the user's categories.
+     *
+     * @param categoryId optional category identifier
+     * @return the validated category, or {@code null} when omitted
+     */
+    private Category resolveExpenseCategory(final UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+
+        Category category = repositoryCategory.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("category.notFound")
+                ));
+        categoryValidator.validateExpenseCategory(category);
+        return category;
     }
 
     /**

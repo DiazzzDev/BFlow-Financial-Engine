@@ -32,11 +32,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ReceiptUploadService {
+
+    /** Source assigned to transactions confirmed from a receipt. */
+    private static final String RECEIPT_SOURCE = "receipt";
 
     /** Generated mapper for receipt upload responses. */
     private static final ReceiptUploadMapper RECEIPT_MAPPER =
@@ -93,6 +99,9 @@ public class ReceiptUploadService {
      * OCR processing once this transaction commits.
      */
     private final ApplicationEventPublisher applicationEventPublisher;
+
+    /** Clock used when OCR does not provide a receipt date. */
+    private final Clock businessClock;
 
     /**
      * Registers an already-uploaded file as a receipt pending OCR
@@ -259,7 +268,8 @@ public class ReceiptUploadService {
      *
      * @param userId the id of the user confirming the receipt
      * @param receiptId the id of the receipt being confirmed
-     * @param request the confirmed transaction data
+     * @param request the confirmed transaction data; category and date
+     *         may be null, and a negative OCR amount is normalized
      * @return the receipt, now in CONFIRMED status
      * @throws FileAccessDeniedException if the receipt doesn't
      *         belong to the user
@@ -284,6 +294,10 @@ public class ReceiptUploadService {
                     ));
         }
 
+        BigDecimal normalizedAmount = request.getAmount().abs();
+        LocalDate transactionDate = request.getDate() != null
+                ? request.getDate()
+                : LocalDate.now(businessClock);
         UUID resultingId;
 
         if (request.getType() == ReceiptTransactionType.EXPENSE) {
@@ -292,9 +306,10 @@ public class ReceiptUploadService {
             expenseRequest.setCategoryId(request.getCategoryId());
             expenseRequest.setTitle(request.getTitle());
             expenseRequest.setDescription(request.getDescription());
-            expenseRequest.setAmount(request.getAmount());
-            expenseRequest.setDate(request.getDate());
+            expenseRequest.setAmount(normalizedAmount);
+            expenseRequest.setDate(transactionDate);
             expenseRequest.setReceiptFileId(receipt.getStoredFile().getId());
+            expenseRequest.setSource(RECEIPT_SOURCE);
 
             resultingId = UUID.fromString(
                     serviceExpense.newExpense(expenseRequest, userId).getId());
@@ -304,9 +319,10 @@ public class ReceiptUploadService {
             incomeRequest.setCategoryId(request.getCategoryId());
             incomeRequest.setTitle(request.getTitle());
             incomeRequest.setDescription(request.getDescription());
-            incomeRequest.setAmount(request.getAmount());
-            incomeRequest.setDate(request.getDate());
+            incomeRequest.setAmount(normalizedAmount);
+            incomeRequest.setDate(transactionDate);
             incomeRequest.setReceiptFileId(receipt.getStoredFile().getId());
+            incomeRequest.setSource(RECEIPT_SOURCE);
 
             resultingId = UUID.fromString(
                     serviceIncome.newIncome(incomeRequest, userId).getId());
