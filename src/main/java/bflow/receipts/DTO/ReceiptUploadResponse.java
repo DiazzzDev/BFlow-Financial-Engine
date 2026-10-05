@@ -53,8 +53,9 @@ public class ReceiptUploadResponse {
     private final String suggestedTitle;
 
     /**
-     * Textract's suggested amount, once EXTRACTED. Editable draft —
-     * not final until confirmed.
+     * Textract's suggested amount, once EXTRACTED. It is always a
+     * positive magnitude even when OCR read a charge with a minus
+     * sign. Editable draft — not final until confirmed.
      */
     private final BigDecimal suggestedAmount;
 

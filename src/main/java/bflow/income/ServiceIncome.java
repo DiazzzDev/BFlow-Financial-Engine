@@ -278,16 +278,7 @@ public class ServiceIncome {
             final Wallet wallet,
             final User contributor
     ) {
-        // Resolve and validate category
-        Category category = repositoryCategory
-                .findById(request.getCategoryId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                messageService.get("category.notFound")
-                        )
-                );
-
-        categoryValidator.validateIncomeCategory(category);
+        Category category = resolveIncomeCategory(request.getCategoryId());
 
         Income income = new Income();
 
@@ -331,6 +322,27 @@ public class ServiceIncome {
         }
 
         return income;
+    }
+
+    /**
+     * Resolves an income category when one was supplied. Receipt OCR
+     * confirmations may create an uncategorized income because the
+     * provider cannot map merchants to the user's categories.
+     *
+     * @param categoryId optional category identifier
+     * @return the validated category, or {@code null} when omitted
+     */
+    private Category resolveIncomeCategory(final UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+
+        Category category = repositoryCategory.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("category.notFound")
+                ));
+        categoryValidator.validateIncomeCategory(category);
+        return category;
     }
 
     /**
