@@ -13,17 +13,3 @@ CVE-2026-27145
 CVE-2026-39822
 CVE-2026-42504
 
-# --- usr/bin/pebble (Canonical's service manager, bundled in the Ubuntu
-# 26.04 base under eclipse-temurin:21-jre) --------------------------------
-# Not part of our execution path: Dockerfile's ENTRYPOINT runs `java -jar
-# app.jar` directly and never invokes pebble. Go stdlib CVEs in a binary we
-# never execute. Re-check when eclipse-temurin publishes an updated base
-# image; if pebble is ever used (e.g. as PID 1 supervisor), remove these
-# and patch instead.
-CVE-2026-33818
-CVE-2026-46600
-CVE-2026-56853
-CVE-2026-56858
-CVE-2026-56859
-CVE-2026-56860
-CVE-2026-56862

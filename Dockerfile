@@ -1,7 +1,7 @@
 # Multi-stage build for BFlow Backend Application
 
 # Stage 1: Build stage
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-21-noble AS build
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests -B
 
 # Stage 2: Runtime stage
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-noble
 
 WORKDIR /app
 
