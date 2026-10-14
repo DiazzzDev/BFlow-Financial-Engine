@@ -2,6 +2,7 @@ package bflow.subscription.repository;
 
 import bflow.subscription.entities.PlanFeature;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,5 +30,6 @@ public interface RepositoryPlanFeature
      * @param planId the plan UUID
      * @return a list of plan features
      */
+    @EntityGraph(attributePaths = "feature")
     List<PlanFeature> findByPlanId(UUID planId);
 }

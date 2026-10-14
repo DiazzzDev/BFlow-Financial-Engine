@@ -1,5 +1,8 @@
 # ADR-0005: Portable and Idempotent Infrastructure Provisioning with Bash Scripts
 
+> **Superseded by ADR-0011.** This documents the former Bash/AWS CLI design;
+> Terraform is now the active infrastructure source of truth.
+
 - **Status:** Accepted
 - **Date:** 2026-07-12
 

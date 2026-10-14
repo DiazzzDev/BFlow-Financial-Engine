@@ -57,3 +57,8 @@ infra/secrets.env
 infra/supabase.env
 infra/wompi.env
 infra/dns-sync/.build/
+infra/terraform/terraform.tfvars
+infra/terraform/imports.local.tf
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/.terraform/
