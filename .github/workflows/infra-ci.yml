@@ -2,9 +2,7 @@ name: BFlow Infra CI
 
 on:
   pull_request:
-    branches:
-      - "main"
-      - "develop"
+    branches: [main, develop]
     paths:
       - "infra/**"
       - "ecs/**"
@@ -16,65 +14,31 @@ permissions:
 
 jobs:
   validate-infra:
-    name: Validate infra scripts and templates
+    name: Validate Terraform and deployment templates
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Bash syntax check (all infra scripts)
-        run: |
-          set -e
-          FAILED=0
-          while IFS= read -r -d '' script; do
-            echo "Checking: $script"
-            bash -n "$script" || FAILED=1
-          done < <(find infra -name "*.sh" -print0)
-          exit $FAILED
-
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          scandir: "./infra"
-          severity: error
-          ignore_names: "helpers.sh"
+          terraform_version: "1.9.8"
+
+      - name: Terraform format
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+
+      - name: Terraform validation
+        run: |
+          terraform -chdir=infra/terraform init -backend=false
+          terraform -chdir=infra/terraform validate
 
       - name: Validate ECS templates are valid JSON
         run: |
           jq empty ecs/task-definition.template.json
           jq empty ecs/network-config.template.json
 
-      - name: Guard-rail - RDS scripts must not be deleted
+      - name: Guard rail — pre-revenue defaults remain inexpensive
         run: |
-          set -e
-          for f in \
-            infra/bootstrap/07-rds.sh \
-            infra/destroy/07-rds.sh \
-            infra/README.md
-          do
-            if [ ! -f "$f" ]; then
-              echo "::error::$f was removed. RDS support must stay reversible - see ADR-0008."
-              exit 1
-            fi
-          done
-
-      - name: Guard-rail - destroy.sh must still reference every destroy script it depends on
-        run: |
-          set -e
-          while IFS= read -r script; do
-            name=$(basename "$script" | tr -d '"\\')
-            if [ ! -f "infra/destroy/$name" ]; then
-              echo "::error::infra/destroy.sh references missing script: $name"
-              exit 1
-            fi
-          done < <(grep -oE '"\$ROOT/destroy/[0-9]+-[a-z-]+\.sh"' infra/destroy.sh | sed 's#.*/##')
-
-      - name: Validate config.env.example documents DB_PROVIDER
-        run: |
-          grep -q "^DB_PROVIDER=" infra/config.env.example || {
-            echo "::error::infra/config.env.example must document DB_PROVIDER (supabase|rds)."
-            exit 1
-          }
+          grep -q 'default     = "supabase"' infra/terraform/variables.tf
+          grep -q 'default     = false' infra/terraform/variables.tf

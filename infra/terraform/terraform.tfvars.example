@@ -1,0 +1,37 @@
+# Copy this file to terraform.tfvars. It contains no credentials and is ignored by Git.
+# These are sanitized-but-real production values read from AWS on 2026-10-13.
+aws_region             = "us-east-1"
+project_name           = "bflow"
+environment            = "production"
+managed_by             = "bash" # preserve current tags during the import
+github_owner           = "DiazzzDev"
+github_repository      = "BFlow-Financial-Engine"
+github_environment     = "production"
+s3_bucket_name         = "bflow-files-dev"
+cognito_user_pool_id   = "us-east-1_M6tN3H360"
+frontend_origins       = ["https://bflow-studio.com", "https://www.bflow-studio.com", "http://localhost:5173"]
+budget_limit_usd       = "20"
+budget_notification_emails = ["replace-with-a-monitored-email@example.com"]
+ecr_lifecycle_max_images = null # no lifecycle policy exists yet; opt in deliberately.
+
+ecs_ingress_rules = [
+  {
+    description = "Application HTTP"
+    from_port   = 8080
+    to_port     = 8080
+    cidr_blocks = ["0.0.0.0/0"]
+  },
+  {
+    description = "Cloudflare HTTP alternate port"
+    from_port   = 8081
+    to_port     = 8081
+    cidr_blocks = ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"]
+  }
+]
+
+# Keep this as supabase until the revenue model justifies RDS charges.
+db_provider = "supabase"
+
+# Existing resources must be imported before the first apply. See README.md.
+# manage_cognito_client = true
+# dns_sync_enabled      = true

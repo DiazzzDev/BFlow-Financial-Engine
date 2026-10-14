@@ -15,31 +15,20 @@ At the same time, the project must not lose the ability to move to RDS
 later — e.g. once traffic, compliance, or VPC-isolation requirements justify
 it — without a rewrite.
 
-ADR-0005 already established that infrastructure is provisioned through
-modular, idempotent Bash scripts, with `config.env` holding user-defined
-configuration and `outputs.env` holding generated identifiers. That design
-made this change straightforward: the database connection was already fully
-externalized into generic `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` /
-`DB_PASSWORD` values consumed via Spring's standard `spring.datasource.*`
-properties, sourced from a single AWS Secrets Manager secret
-(`${PROJECT_NAME}/database`). Nothing in the application, the ECS task
-definition, or the IAM policy grants was ever coupled to "RDS" beyond that
+The database connection is fully externalized into generic `DB_HOST` /
+`DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` values consumed via Spring's
+standard `spring.datasource.*` properties, sourced from a single AWS Secrets
+Manager secret (`${PROJECT_NAME}/database`). Nothing in the application, the
+ECS task definition, or the IAM policy grants is coupled to "RDS" beyond that
 secret's contents.
 
 ## Decision
 
-`config.env` gains one new variable, `DB_PROVIDER` (`supabase` | `rds`).
-
-`infra/bootstrap/08-secrets.sh` is the single script that branches on it: it
-resolves connection values either from `infra/supabase.env` (Supabase) or
-from the existing RDS outputs/`secrets.env` (RDS), then creates or **updates
-in place** the same generic Secrets Manager secret. `infra/deploy.sh` skips
-`infra/bootstrap/07-rds.sh` when the provider is not `rds`.
-
-No other script is modified. `07-rds.sh` and every `infra/destroy/*.sh`
-script are untouched and remain fully functional — `destroy/07-rds.sh`
-already no-ops safely when no RDS instance exists, so no RDS capability was
-removed from the repository, only left unprovisioned by default.
+Terraform variable `db_provider` selects `supabase` (default) or `rds`.
+Terraform creates no RDS resources while the value is `supabase`; switching to
+`rds` is an explicit, reviewed infrastructure change. The database secret ARN
+remains stable, while its connection value is updated directly in Secrets
+Manager. See ADR-0011 for the Terraform migration and state-import process.
 
 Explicitly out of scope for this change: Supabase Auth, Supabase Storage,
 and the Supabase client SDK. Supabase is used strictly as managed
@@ -55,10 +44,10 @@ S3, SES, and the ECS/ECR/CloudWatch/IAM/OIDC layers are unaffected.
 - Spring Boot, Flyway, ECS, and IAM remain completely unaware of which
   provider is active — the abstraction ADR-0005 already provided turned out
   to be sufficient, so no new abstraction layer was introduced.
-- Reverting to RDS is a config change plus rerunning two scripts
-  (`07-rds.sh`, `08-secrets.sh`), documented step by step in
-  `infra/README.md`. No downtime-inducing IAM/ECS/task-definition edits are
-  needed because the secret ARN never changes.
+- Moving to RDS is an explicit Terraform plan/apply plus a database-secret
+  update, documented in `infra/README.md`. No downtime-inducing
+  IAM/ECS/task-definition edits are needed because the secret ARN never
+  changes.
 - ECS tasks already run in public subnets with `assignPublicIp: ENABLED`
   (for the existing Cloudflare dynamic DNS flow), so outbound connectivity
   to Supabase's public endpoint requires no NAT Gateway, no VPC peering, and
@@ -73,19 +62,11 @@ S3, SES, and the ECS/ECR/CloudWatch/IAM/OIDC layers are unaffected.
   and TLS (`sslmode=require`) is enforced on the connection.
 - Data migration between the two Postgres instances (`pg_dump`/`pg_restore`
   or logical replication) is a manual step, not automated by this toggle.
-- Two credential files now exist locally (`secrets.env` for RDS,
-  `supabase.env` for Supabase); both are gitignored, but this is one more
-  file for a developer to keep track of than a single-provider setup would
-  need.
+- Secret values are deliberately managed outside Terraform state, which means
+  an operator must update Secrets Manager after changing providers.
 
 ## Implementation Notes
 
-- `infra/config.env.example` documents `DB_PROVIDER` with inline comments.
-- `infra/supabase.env.example` mirrors the existing `secrets.env` pattern
-  used for the RDS master password: copy it, fill in real values, never
-  commit it.
-- The Secrets Manager output/GitHub secret name `RDS_SECRET_ARN` was
-  deliberately **not** renamed. It is plumbing internal to the bootstrap
-  scripts, IAM policy, and ECS task definition template, not
-  application-facing configuration — renaming it would require manually
-  recreating a GitHub environment secret for no functional benefit.
+- `infra/terraform/terraform.tfvars.example` documents the cost-safe default.
+- The Secrets Manager/GitHub name `RDS_SECRET_ARN` remains unchanged for
+  deployment compatibility even when it points to Supabase credentials.

@@ -21,9 +21,25 @@ RUN rm -f /etc/apt/sources.list.d/*yarn* \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Terraform is installed in the image so every developer uses the same CLI.
+# HashiCorp's signed Debian repository also keeps upgrades reproducible.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates gnupg wget \
+    && wget -qO- https://apt.releases.hashicorp.com/gpg \
+        | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com bookworm main" \
+        > /etc/apt/sources.list.d/hashicorp.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends terraform \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install ngrok for sharing the development API through a secure tunnel.
-RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-    | gpg --dearmor -o /etc/apt/trusted.gpg.d/ngrok.gpg \
+RUN curl --fail --show-error --location --retry 5 --retry-all-errors \
+        --connect-timeout 20 --max-time 60 \
+        https://ngrok-agent.s3.amazonaws.com/ngrok.asc -o /tmp/ngrok.asc \
+    && test -s /tmp/ngrok.asc \
+    && gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/ngrok.gpg /tmp/ngrok.asc \
+    && rm /tmp/ngrok.asc \
     && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
     > /etc/apt/sources.list.d/ngrok.list \
     && apt-get update \

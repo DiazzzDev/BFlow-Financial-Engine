@@ -441,4 +441,4 @@ jobs:
         run: |
           echo "Deployment completed successfully."
           echo "Task definition family: ${{ vars.ECS_TASK_FAMILY }}"
-          echo "DNS is synced independently by the dns-sync Lambda (infra/bootstrap/15-dns-sync.sh) on every ECS Task State Change."
+          echo "DNS is synced independently by the Terraform-managed dns-sync Lambda on every ECS Task State Change."
