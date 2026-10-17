@@ -63,7 +63,7 @@
 			<dependency>
 				<groupId>org.postgresql</groupId>
 				<artifactId>postgresql</artifactId>
-				<version>42.7.13</version>
+				<version>42.7.14</version>
 			</dependency>
 			<!-- Jackson security fixes reported by Trivy. Keep core and databind
 			     aligned so transitive Spring/AWS dependencies cannot downgrade
