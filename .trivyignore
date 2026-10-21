@@ -1,9 +1,17 @@
 # ============================================================================
 # BFlow Backend - Trivy Ignore List
 #
-# Temporary ignores for vulnerabilities reported in the base image/tooling.
-# Review and remove these entries when the base image is updated.
+# Temporary ignores for vulnerabilities reported in the ADOT agent.
+# Trivy ignores CVE IDs globally, not just for this artifact. Confirm these
+# findings remain limited to aws-opentelemetry-agent.jar in each scan.
 # ============================================================================
+
+# ADOT 2.31.0 bundles these vulnerable Jackson versions. The upstream release
+# currently has no patched agent; remove these exceptions when one is available.
+CVE-2026-89407
+CVE-2026-89425
+CVE-2026-91776
+CVE-2026-91777
 
 CVE-2026-25681
 CVE-2026-27136
@@ -12,4 +20,3 @@ CVE-2026-39821
 CVE-2026-27145
 CVE-2026-39822
 CVE-2026-42504
-
