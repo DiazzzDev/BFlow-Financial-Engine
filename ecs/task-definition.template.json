@@ -83,6 +83,10 @@
           "value": "${OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED}"
         },
         {
+          "name": "OTEL_INSTRUMENTATION_SANITIZATION_URL_EXPERIMENTAL_SENSITIVE_QUERY_PARAMETERS",
+          "value": "${OTEL_INSTRUMENTATION_SANITIZATION_URL_EXPERIMENTAL_SENSITIVE_QUERY_PARAMETERS}"
+        },
+        {
           "name": "DB_SSL_MODE",
           "value": "require"
         },
