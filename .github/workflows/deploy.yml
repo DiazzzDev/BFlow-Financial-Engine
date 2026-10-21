@@ -314,6 +314,7 @@ jobs:
           OTEL_TRACES_SAMPLER: parentbased_traceidratio
           OTEL_TRACES_SAMPLER_ARG: ${{ vars.OTEL_SAMPLE_RATIO || '0.1' }}
           OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED: true
+          OTEL_INSTRUMENTATION_SANITIZATION_URL_EXPERIMENTAL_SENSITIVE_QUERY_PARAMETERS: token,access_token,refresh_token,id_token,code,secret,password,api_key,apikey,key,authorization,email,query
         run: |
           envsubst < ecs/task-definition.template.json > ecs/task-definition.json
 
