@@ -208,3 +208,19 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
     ]
   })
 }
+
+# Harmless while the agent is disabled; the only switch is the OTEL_ENABLED GitHub Actions variable.
+resource "aws_iam_role_policy" "ecs_task_otel" {
+  name = "bflow-otel-traces"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "PutTraceSegments"
+      Effect   = "Allow"
+      Action   = ["xray:PutTraceSegments"]
+      Resource = "*"
+    }]
+  })
+}

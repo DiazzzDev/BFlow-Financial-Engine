@@ -62,3 +62,5 @@ infra/terraform/imports.local.tf
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.*
 infra/terraform/.terraform/
+.env.local
+.bench/

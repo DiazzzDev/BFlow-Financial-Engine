@@ -300,6 +300,20 @@ jobs:
           RECEIPT_OCR_RESULTS_TOPIC_ARN: ${{ vars.RECEIPT_OCR_RESULTS_TOPIC_ARN }}
           TEXTRACT_SNS_ROLE_ARN: ${{ vars.TEXTRACT_SNS_ROLE_ARN }}
           FIREBASE_ENABLED: ${{ vars.FIREBASE_ENABLED || 'false' }}
+          OTEL_ENABLED: ${{ vars.OTEL_ENABLED || 'false' }}
+          OTEL_SAMPLE_RATIO: ${{ vars.OTEL_SAMPLE_RATIO || '0.1' }}
+          JAVA_TOOL_OPTIONS: ${{ vars.OTEL_ENABLED == 'true' && '-javaagent:/opt/otel/aws-opentelemetry-agent.jar' || '' }}
+          OTEL_SERVICE_NAME: bflow-backend
+          OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod
+          OTEL_TRACES_EXPORTER: otlp
+          OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+          OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: https://xray.us-east-1.amazonaws.com/v1/traces
+          OTEL_METRICS_EXPORTER: none
+          OTEL_LOGS_EXPORTER: none
+          OTEL_AWS_APPLICATION_SIGNALS_ENABLED: false
+          OTEL_TRACES_SAMPLER: parentbased_traceidratio
+          OTEL_TRACES_SAMPLER_ARG: ${{ vars.OTEL_SAMPLE_RATIO || '0.1' }}
+          OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED: true
         run: |
           envsubst < ecs/task-definition.template.json > ecs/task-definition.json
 
