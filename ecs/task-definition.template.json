@@ -35,6 +35,54 @@
           "value": "${AWS_REGION}"
         },
         {
+          "name": "JAVA_TOOL_OPTIONS",
+          "value": "${JAVA_TOOL_OPTIONS}"
+        },
+        {
+          "name": "OTEL_SERVICE_NAME",
+          "value": "${OTEL_SERVICE_NAME}"
+        },
+        {
+          "name": "OTEL_RESOURCE_ATTRIBUTES",
+          "value": "${OTEL_RESOURCE_ATTRIBUTES}"
+        },
+        {
+          "name": "OTEL_TRACES_EXPORTER",
+          "value": "${OTEL_TRACES_EXPORTER}"
+        },
+        {
+          "name": "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+          "value": "${OTEL_EXPORTER_OTLP_TRACES_PROTOCOL}"
+        },
+        {
+          "name": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+          "value": "${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}"
+        },
+        {
+          "name": "OTEL_METRICS_EXPORTER",
+          "value": "${OTEL_METRICS_EXPORTER}"
+        },
+        {
+          "name": "OTEL_LOGS_EXPORTER",
+          "value": "${OTEL_LOGS_EXPORTER}"
+        },
+        {
+          "name": "OTEL_AWS_APPLICATION_SIGNALS_ENABLED",
+          "value": "${OTEL_AWS_APPLICATION_SIGNALS_ENABLED}"
+        },
+        {
+          "name": "OTEL_TRACES_SAMPLER",
+          "value": "${OTEL_TRACES_SAMPLER}"
+        },
+        {
+          "name": "OTEL_TRACES_SAMPLER_ARG",
+          "value": "${OTEL_TRACES_SAMPLER_ARG}"
+        },
+        {
+          "name": "OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED",
+          "value": "${OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED}"
+        },
+        {
           "name": "DB_SSL_MODE",
           "value": "require"
         },
@@ -52,7 +100,7 @@
         },
         {
           "name": "LOGO_URL",
-          "value": "https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png"
+          "value": "https://res.cloudinary.com/dcvq5i0py/image/upload/v1785175658/Bflow-logo-v1_apjjqh.png"
         },
         {
           "name": "FRONTEND_URL",
