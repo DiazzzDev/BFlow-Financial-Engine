@@ -150,6 +150,14 @@ aws logs tail aws/spans --follow | head
 
 ## Notes
 
+- **Temporary Trivy exception:** ADOT agent `2.31.0` bundles vulnerable Jackson
+  libraries reported as `CVE-2026-89407`, `CVE-2026-89425`, `CVE-2026-91776`,
+  and `CVE-2026-91777`. These CVEs are temporarily listed in `.trivyignore` so
+  the image gate can pass while keeping the agent available. Trivy ignores CVE
+  IDs globally, so verify each scan still attributes these findings only to
+  `aws-opentelemetry-agent.jar`. Remove the exceptions and rescan when AWS
+  publishes a patched agent; this exception does not remediate the vulnerable
+  libraries in the current agent.
 - This runbook assumes the user is already operating within the AWS account and has permission to inspect X-Ray, ECS, and CloudWatch logs.
 - The CloudWatch `aws/spans` log group is the final place where traces are indexed for search and correlation.
 - The actual cost impact is only known after the rollout is complete and the data has been compared to the baseline week.
