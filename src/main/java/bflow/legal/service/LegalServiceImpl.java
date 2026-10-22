@@ -35,6 +35,12 @@ public final class LegalServiceImpl implements LegalService {
         LegalDocumentType type =
                 LegalDocumentType.fromValue(documentType);
 
+        if (type == null) {
+            throw new LegalDocumentNotFoundException(
+                    messageService.get("legal.document.notFound")
+            );
+        }
+
         String filename =
                 type.getValue() + "_" + lang + ".md";
 
