@@ -161,3 +161,16 @@ aws logs tail aws/spans --follow | head
 - This runbook assumes the user is already operating within the AWS account and has permission to inspect X-Ray, ECS, and CloudWatch logs.
 - The CloudWatch `aws/spans` log group is the final place where traces are indexed for search and correlation.
 - The actual cost impact is only known after the rollout is complete and the data has been compared to the baseline week.
+
+## Estado en producción y verificaciones (22/10/2026)
+
+- **Interruptor real:** la variable de GitHub Actions `OTEL_ENABLED` solo gobierna `JAVA_TOOL_OPTIONS` (en `deploy.yml`). El resto de las `OTEL_*` van siempre en la task definition y no hacen nada sin el agente.
+- **Revisiones:** `bflow-backend:30` = agente inerte (punto de rollback); `bflow-backend:31` = agente activo (ADOT 2.31.0-aws).
+- **Rollback rápido:** `aws ecs update-service --cluster bflow-cluster --service bflow-service --task-definition bflow-backend:30`, y poner `OTEL_ENABLED=false` en GitHub para que el siguiente deploy no lo reactive.
+- **Query strings:** se redactan con `OTEL_INSTRUMENTATION_SANITIZATION_URL_EXPERIMENTAL_SENSITIVE_QUERY_PARAMETERS` (definida en `deploy.yml`). Es una lista de bloqueo: al añadir un `@RequestParam` sensible hay que añadirlo ahí.
+- **Medido en producción con el agente:** arranque 246 s (antes 178 s); memoria ~58 % (antes ~48 % en una task recién iniciada); CPU en régimen ~0.8 % (antes ~0.5 %), con ~1 h de datos.
+- **Trazas:** Transaction Search activo con indexación al 1 %; `aws/spans` con retención de 7 días.
+- **Verificado:** spans SERVER y JDBC con SQL con `?`; `url.query` redactado; mismo `trace_id` en logs y spans; `xray:PutTraceSegments` basta para el endpoint OTLP; el filtro `Http5xx` cuenta 500 reales; p95 funciona sobre la métrica de filtro.
+- **Excepciones:** una excepción manejada por `GlobalExceptionHandler` no se registra en el span (queda con status ERROR y código 500, sin stacktrace); el detalle está en la línea de log con el mismo `trace_id`.
+- **Aviso del agente:** `otel.instrumentation.common.db-statement-sanitizer.enabled` está obsoleta y se eliminará en 3.0. La nueva es `otel.instrumentation.common.db.query-sanitization.enabled` (su variable de entorno equivalente no está verificada en 2.31.0).
+- **Pendiente de verificar:** enlace automático logs-trazas en la consola de CloudWatch; memoria y CPU a 24 h; costo de CloudWatch y X-Ray; disparo real de la regla de tasks detenidas.
