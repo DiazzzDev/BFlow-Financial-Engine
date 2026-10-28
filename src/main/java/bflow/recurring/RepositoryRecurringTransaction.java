@@ -3,7 +3,10 @@ package bflow.recurring;
 import bflow.recurring.entity.RecurringTransaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,6 +33,13 @@ public interface RepositoryRecurringTransaction
         AND (r.endDate IS NULL OR r.endDate >= :dueDate)
     """)
     List<RecurringTransaction> findDueTransactions(LocalDate dueDate);
+
+    /** Locks and reloads a recurrence inside its isolated execution transaction. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM RecurringTransaction r WHERE r.id = :id")
+    java.util.Optional<RecurringTransaction> findByIdForUpdate(
+            @Param("id") UUID id
+    );
 
     /**
      * Find all recurring transactions for a specific user.

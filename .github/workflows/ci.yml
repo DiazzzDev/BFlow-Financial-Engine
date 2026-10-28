@@ -2,12 +2,16 @@ name: BFlow Studio CI
 
 on:
   pull_request:
-    branches:
-      - "main"
-      - "develop"
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
-  test-and-build:
+  verify:
+    name: Unit, integration, style and coverage
     runs-on: ubuntu-latest
 
     services:
@@ -28,17 +32,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up JDK
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
+          distribution: temurin
           java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
+          cache: maven
 
-      - name: Run code quality
-        run: mvn -B checkstyle:check
-
-      - name: Run tests with coverage JaCoCo - 25% required
+      - name: Verify tests and coverage baseline
         env:
           TEST_DB_HOST: localhost
           AWS_REGION: us-east-1
@@ -55,4 +55,27 @@ jobs:
           WOMPI_CLIENT_SECRET: ci-placeholder
           WOMPI_APP_ID: ci-placeholder
           WOMPI_API_SECRET: ci-placeholder
-        run: mvn -B clean verify
+        run: ./mvnw -B verify
+
+      - name: Check style
+        run: ./mvnw -B checkstyle:check
+
+      - name: Publish coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: error
+
+  mcp-apps-qa:
+    name: MCP Apps browser harness
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright/java:v1.64.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run isolated Playwright QA profile
+        run: ./mvnw -B -P mcp-apps-qa test
+
+  security:
+    name: Secret and container scanning
+    uses: ./.github/workflows/security.yml

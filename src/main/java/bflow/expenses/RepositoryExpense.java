@@ -350,12 +350,10 @@ public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Expense e SET e.contributor = :toUser "
-            + "WHERE e.contributor.id = :fromUserId "
-            + "AND e.wallet.id IN :walletIds")
-    int reassignContributor(
+            + "WHERE e.contributor.id = :fromUserId")
+    int reassignAllContributions(
             @Param("fromUserId") UUID fromUserId,
-            @Param("toUser") User toUser,
-            @Param("walletIds") List<UUID> walletIds
+            @Param("toUser") User toUser
     );
 
     List<Expense> findByWalletIdIn(List<UUID> walletIds);

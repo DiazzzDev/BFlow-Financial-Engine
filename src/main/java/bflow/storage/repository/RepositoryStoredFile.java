@@ -92,20 +92,16 @@ public interface RepositoryStoredFile
 
     /**
      * Reassigns StoredFile ownership to the ghost user for every file
-     * still referenced as a receipt by a surviving (reassigned) expense
-     * in the given wallets.
+     * still referenced as a receipt by a surviving expense.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE StoredFile sf SET sf.user = :toUser "
             + "WHERE sf.user.id = :fromUserId "
-            + "AND sf.id IN ("
-            + "  SELECT e.receiptFile.id FROM Expense e "
-            + "  WHERE e.wallet.id IN :walletIds AND e.receiptFile IS NOT NULL"
-            + ")")
-    int reassignReceiptOwnersForWallets(
+            + "AND sf.id IN (SELECT e.receiptFile.id FROM Expense e "
+            + "WHERE e.receiptFile IS NOT NULL)")
+    int reassignAllReceiptOwners(
             @Param("fromUserId") UUID fromUserId,
-            @Param("toUser") User toUser,
-            @Param("walletIds") List<UUID> walletIds
+            @Param("toUser") User toUser
     );
 
     /**

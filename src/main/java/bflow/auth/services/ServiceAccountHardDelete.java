@@ -94,18 +94,19 @@ public class ServiceAccountHardDelete {
         repositoryBudget.deleteByUserId(userId);
         repositoryRecurring.deleteByUserId(userId);
 
-        if (!sharedWalletIds.isEmpty()) {
-            repositoryExpense.reassignContributor(userId, ghost, sharedWalletIds);
-            repositoryIncome.reassignContributor(userId, ghost, sharedWalletIds);
-            repositoryTransfers.reassignContributor(userId, ghost, sharedWalletIds);
-            repositoryReceiptUpload.reassignUser(userId, ghost, sharedWalletIds);
-            repositoryStoredFile.reassignReceiptOwnersForWallets(
-                    userId, ghost, sharedWalletIds);
-        }
-
         if (!personalWalletIds.isEmpty()) {
             deletePersonalWalletData(userId, personalWalletIds);
         }
+
+        // Reassign every surviving contribution, not merely contributions in
+        // current memberships. A member may leave a shared wallet before
+        // requesting account deletion; that history must remain attributable
+        // to the ghost user rather than block the account deletion.
+        repositoryExpense.reassignAllContributions(userId, ghost);
+        repositoryIncome.reassignAllContributions(userId, ghost);
+        repositoryTransfers.reassignAllContributions(userId, ghost);
+        repositoryReceiptUpload.reassignAllUsers(userId, ghost);
+        repositoryStoredFile.reassignAllReceiptOwners(userId, ghost);
 
         // memberships puede estar desacoplado tras los clears de arriba —
         // vuelve a resolverlo por id antes de borrar.

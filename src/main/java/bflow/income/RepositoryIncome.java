@@ -133,12 +133,10 @@ public interface RepositoryIncome extends JpaRepository<Income, UUID> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Income i SET i.contributor = :toUser "
-            + "WHERE i.contributor.id = :fromUserId "
-            + "AND i.wallet.id IN :walletIds")
-    int reassignContributor(
+            + "WHERE i.contributor.id = :fromUserId")
+    int reassignAllContributions(
             @Param("fromUserId") UUID fromUserId,
-            @Param("toUser") User toUser,
-            @Param("walletIds") List<UUID> walletIds
+            @Param("toUser") User toUser
     );
 
     List<Income> findByWalletIdIn(List<UUID> walletIds);

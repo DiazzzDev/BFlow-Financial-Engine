@@ -66,10 +66,9 @@ public interface RepositoryReceiptUpload
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE ReceiptUpload r SET r.user = :toUser "
-            + "WHERE r.user.id = :fromUserId AND r.wallet.id IN :walletIds")
-    int reassignUser(
+            + "WHERE r.user.id = :fromUserId")
+    int reassignAllUsers(
             @Param("fromUserId") UUID fromUserId,
-            @Param("toUser") User toUser,
-            @Param("walletIds") List<UUID> walletIds
+            @Param("toUser") User toUser
     );
 }

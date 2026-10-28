@@ -110,6 +110,25 @@ class ServiceAccountHardDeleteTest {
     }
 
     @Test
+    void hardDelete_reassignsHistoryAfterMemberAlreadyLeftSharedWallet() {
+        repositoryWalletUser.delete(repositoryWalletUser
+                .findByWalletIdAndUserId(sharedWallet.getId(), leaving.getId())
+                .orElseThrow());
+        repositoryWalletUser.flush();
+
+        serviceAccountHardDelete.hardDelete(leaving);
+
+        Expense historicalExpense = repositoryExpense
+                .findByWalletId(sharedWallet.getId(),
+                        org.springframework.data.domain.Pageable.unpaged())
+                .getContent().get(0);
+
+        assertEquals(SystemUsers.GHOST_USER_ID,
+                historicalExpense.getContributor().getId());
+        assertTrue(repositoryUser.findById(leaving.getId()).isEmpty());
+    }
+
+    @Test
     void hardDelete_deletesPersonalWalletEntirely() {
         UUID personalWalletId = personalWallet.getId();
 

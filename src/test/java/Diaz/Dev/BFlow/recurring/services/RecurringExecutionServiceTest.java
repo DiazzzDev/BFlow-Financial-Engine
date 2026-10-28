@@ -1,6 +1,7 @@
 package Diaz.Dev.BFlow.recurring.services;
 
 import bflow.auth.entities.User;
+import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.services.UserService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
@@ -27,6 +28,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +41,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 
 /** Tests initial scheduling for recurring transactions. */
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +60,68 @@ class RecurringExecutionServiceTest {
     @Mock private RepositoryWalletUser repositoryWalletUser;
     @Mock private PlanLimitService planLimitService;
     @Mock private MessageService messageService;
+
+    @Test
+    void executeDueTransactions_recordsFailureAndEmailsOwner() {
+        UUID id = UUID.randomUUID();
+        RecurringTransaction due = new RecurringTransaction();
+        due.setId(id);
+        Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = new RecurringExecutionService(
+                repository, executor, emailTemplateService, userService,
+                repositoryCategory, repositoryWalletUser, planLimitService,
+                messageService, clock);
+        RecurringTransactionExecutor.FailureNotification notification =
+                new RecurringTransactionExecutor.FailureNotification(
+                        "owner@example.com", "Owner", "Rent",
+                        BigDecimal.TEN, 2, false, "Insufficient balance",
+                        SupportedLanguage.ES);
+        when(repository.findDueTransactions(LocalDate.of(2026, 10, 5)))
+                .thenReturn(java.util.List.of(due));
+        doThrow(new IllegalArgumentException("Insufficient balance"))
+                .when(executor).executeSingle(id);
+        when(executor.recordFailure(eq(id), any(IllegalArgumentException.class)))
+                .thenReturn(notification);
+
+        service.executeDueTransactions();
+
+        verify(emailTemplateService).sendRecurringFailedEmail(
+                "owner@example.com", "Owner", "Rent", BigDecimal.TEN,
+                2, false, "Insufficient balance", SupportedLanguage.ES);
+    }
+
+    @Test
+    void executeDueTransactions_mailFailureDoesNotStopBatch() {
+        UUID firstId = UUID.randomUUID();
+        UUID secondId = UUID.randomUUID();
+        RecurringTransaction first = new RecurringTransaction();
+        first.setId(firstId);
+        RecurringTransaction second = new RecurringTransaction();
+        second.setId(secondId);
+        Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = new RecurringExecutionService(
+                repository, executor, emailTemplateService, userService,
+                repositoryCategory, repositoryWalletUser, planLimitService,
+                messageService, clock);
+        when(repository.findDueTransactions(LocalDate.of(2026, 10, 5)))
+                .thenReturn(java.util.List.of(first, second));
+        doThrow(new IllegalStateException("failed"))
+                .when(executor).executeSingle(firstId);
+        when(executor.recordFailure(eq(firstId), any(IllegalStateException.class)))
+                .thenReturn(new RecurringTransactionExecutor.FailureNotification(
+                        "owner@example.com", "Owner", "Rent", BigDecimal.TEN,
+                        1, false, "failed", SupportedLanguage.ES));
+        org.mockito.Mockito.doThrow(new RuntimeException("email down"))
+                .when(emailTemplateService).sendRecurringFailedEmail(
+                        any(), any(), any(), any(), anyInt(), anyBoolean(),
+                        any(), any());
+
+        service.executeDueTransactions();
+
+        verify(executor).executeSingle(secondId);
+    }
 
     @Test
     void createRecurring_withPastStartSchedulesNextFutureOccurrence() {

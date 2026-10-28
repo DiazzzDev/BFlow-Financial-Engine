@@ -21,21 +21,10 @@ BFlow focuses on intentional financial tracking without requiring bank integrati
 
 ## Architecture overview
 
-![Architecture](docs/diagram.png "Architecture")
+The architecture overview separates application services, the receipt OCR flow (S3 + SQS + Textract), and the GitHub Actions deployment / Cloudflare DNS update process. It distinguishes Terraform resources from optional or externally managed services and adapts to narrow screens.
 
-The BFlow infrastructure follows a containerized, serverless architecture running entirely on AWS managed services. The platform leverages the following components:
-
-* **Amazon VPC**, to isolate networking resources.
-* **Amazon ECS (AWS Fargate)**, to run the Spring Boot application.
-* **Amazon ECR**, as the private container registry.
-* **Amazon RDS for PostgreSQL**, as the primary persistent datastore.
-* **AWS Secrets Manager**, for centralized secret management.
-* **Amazon S3**, for object storage.
-* **Amazon SES**, for transactional email delivery.
-* **Amazon CloudWatch**, for centralized logging and monitoring.
-* **AWS IAM**, to securely control service permissions.
-* **GitHub Actions + AWS OIDC**, to implement a secure, keyless CI/CD deployment pipeline.
-* **AWS Budgets**, for proactive cloud cost monitoring.
+- [Open the interactive architecture diagram](docs/architecture/index.html) (self-contained HTML; English/Spanish, light/dark, and service tooltips).
+- [Read the service responsibilities and IaC inventory](docs/architecture/README.md).
 
 
 ## Vision
