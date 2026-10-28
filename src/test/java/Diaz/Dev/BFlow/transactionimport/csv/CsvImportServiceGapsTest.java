@@ -15,7 +15,6 @@ import bflow.transactionimport.service.InputSanitizer;
 import bflow.transactionimport.service.TransactionRowParser;
 import bflow.wallet.repository.RepositoryWalletUser;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -109,13 +108,6 @@ class CsvImportServiceGapsTest {
         assertThat(summary.getFailureCount()).isZero();
     }
 
-    // GAP: files encoded as Windows-1252/Latin-1 get accented
-    // headers/values corrupted because we force UTF-8 decoding
-    // unconditionally. Wrapped with assertThatCode so this shows as
-    // a clean assertion failure (not a stack-trace error) until
-    // encoding detection is implemented.
-    @Disabled("GAP: non-UTF-8 encodings (Windows-1252/Latin-1) corrupt "
-            + "accented headers/values — see edge cases discussion")
     @Test
     void resolvesHeadersEncodedAsWindows1252() {
         byte[] content = "título,monto,categoría\nAlmuerzo,5,Comida\n"

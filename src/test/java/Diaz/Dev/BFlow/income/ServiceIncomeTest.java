@@ -22,6 +22,7 @@ import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletUser;
 import bflow.wallet.service.ServiceWallet;
+import bflow.wallet.service.WalletLockService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,6 +71,9 @@ class ServiceIncomeTest {
 
     @Mock
     private RepositoryWallet repositoryWallet;
+
+    @Mock
+    private WalletLockService walletLockService;
 
     @Mock
     private RepositoryUser repositoryUser;
@@ -169,6 +177,59 @@ class ServiceIncomeTest {
     }
 
     @Test
+    void testCreateIncome_pendingDeletionUserIsRejectedBeforeWalletMutation() {
+        user.setStatus(UserStatus.PENDING_DELETION);
+        IncomeRequest request = new IncomeRequest();
+        request.setWalletId(walletId);
+        doThrow(new IllegalStateException("inactive"))
+                .when(userService).validateUserActive(userId);
+
+        assertThrows(IllegalStateException.class,
+                () -> serviceIncome.newIncome(request, userId));
+
+        verify(repositoryWalletUser, never())
+                .findByWalletIdAndUserId(any(), any());
+        verify(repositoryWallet, never()).findByIdForUpdate(any());
+        verify(serviceWallet, never()).addBalance(any(), any());
+        verify(repositoryIncome, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void testCreateIncome_withoutOptionalCategoryPersistsMinimalRequest() {
+        IncomeRequest request = new IncomeRequest();
+        request.setWalletId(walletId);
+        request.setTitle("Uncategorized income");
+        request.setAmount(new BigDecimal("45.67"));
+        request.setDate(LocalDate.of(2026, 10, 5));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryUser.findById(userId)).thenReturn(Optional.of(user));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+        when(repositoryIncome.saveAndFlush(any(Income.class)))
+                .thenAnswer(invocation -> {
+                    Income saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    saved.setCreatedAt(Instant.now());
+                    return saved;
+                });
+
+        IncomeResponse response = serviceIncome.newIncome(request, userId);
+
+        ArgumentCaptor<Income> savedIncome =
+                ArgumentCaptor.forClass(Income.class);
+        verify(repositoryIncome).saveAndFlush(savedIncome.capture());
+        assertNotNull(response);
+        assertNull(savedIncome.getValue().getCategory());
+        assertNull(savedIncome.getValue().getDescription());
+        verify(repositoryCategory, never()).findById(any());
+        verify(categoryValidator, never()).validateIncomeCategory(any());
+        verify(serviceWallet).addBalance(wallet, new BigDecimal("45.67"));
+    }
+
+    @Test
     void testCreateIncome_lastMomentOfMonth() {
         IncomeRequest request = new IncomeRequest();
         request.setWalletId(walletId);
@@ -259,8 +320,9 @@ class ServiceIncomeTest {
         IncomeRequest request = new IncomeRequest();
         request.setWalletId(walletId);
         request.setCategoryId(categoryId);
-        request.setTitle("Freelance retainer");
-        request.setAmount(BigDecimal.valueOf(500));
+        request.setTitle("  Freelance retainer  ");
+        request.setDescription("  Monthly consulting  ");
+        request.setAmount(new BigDecimal("500.25"));
         request.setDate(LocalDate.of(2026, 8, 17));
         request.setRecurring(true);
         request.setRecurrencePattern("MONTHLY");
@@ -273,7 +335,6 @@ class ServiceIncomeTest {
         income.setCategory(category);
         income.setContributor(user);
         income.setWallet(wallet);
-        income.setAmount(BigDecimal.valueOf(500));
         income.setCreatedAt(Instant.now());
 
         doNothing().when(userService).validateUserActive(userId);
@@ -289,7 +350,7 @@ class ServiceIncomeTest {
                 any(RecurringLinkService.RecurringCreateRequest.class)))
                 .thenReturn(recurring);
         when(repositoryIncome.saveAndFlush(any(Income.class)))
-                .thenReturn(income);
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         IncomeResponse result = serviceIncome.newIncome(request, userId);
 
@@ -306,6 +367,24 @@ class ServiceIncomeTest {
         assertEquals(wallet, captured.wallet());
         assertEquals(category, captured.category());
         assertEquals(user, captured.user());
+        assertEquals("Freelance retainer", captured.title());
+        assertEquals("  Monthly consulting  ", captured.description());
+        assertEquals(new BigDecimal("500.25"), captured.amount());
+        assertEquals(LocalDate.of(2026, 8, 17), captured.startDate());
+        ArgumentCaptor<Income> saved =
+                ArgumentCaptor.forClass(Income.class);
+        verify(repositoryIncome).saveAndFlush(saved.capture());
+        assertEquals("Freelance retainer", saved.getValue().getTitle());
+        assertEquals("  Monthly consulting  ", saved.getValue().getDescription());
+        assertEquals(new BigDecimal("500.25"), saved.getValue().getAmount());
+        assertEquals(LocalDate.of(2026, 8, 17), saved.getValue().getDate());
+        assertEquals(wallet, saved.getValue().getWallet());
+        assertEquals(category, saved.getValue().getCategory());
+        assertEquals(user, saved.getValue().getContributor());
+        assertTrue(saved.getValue().getRecurring());
+        assertEquals("MONTHLY", saved.getValue().getRecurrencePattern());
+        assertEquals(recurring.getId(),
+                saved.getValue().getRecurringTransactionId());
     }
 
     @Test
@@ -358,6 +437,7 @@ class ServiceIncomeTest {
         request.setRecurring(true);
         request.setRecurrencePattern("MONTHLY");
         request.setSource("recurring");
+        request.setDate(LocalDate.of(2026, 10, 5));
 
         Income income = new Income();
         income.setId(UUID.randomUUID());
@@ -377,11 +457,86 @@ class ServiceIncomeTest {
         when(repositoryCategory.findById(categoryId))
                 .thenReturn(Optional.of(category));
         when(repositoryIncome.saveAndFlush(any(Income.class)))
-                .thenReturn(income);
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         serviceIncome.newIncome(request, userId);
 
         verify(recurringLinkService, never()).linkRecurring(
                 any(RecurringLinkService.RecurringCreateRequest.class));
+        ArgumentCaptor<Income> saved =
+                ArgumentCaptor.forClass(Income.class);
+        verify(repositoryIncome).saveAndFlush(saved.capture());
+        assertTrue(saved.getValue().getAutoGenerated());
+        assertTrue(saved.getValue().getRecurring());
+        assertEquals("recurring", saved.getValue().getSource());
+        assertEquals("MONTHLY", saved.getValue().getRecurrencePattern());
+        assertEquals(LocalDate.of(2026, 10, 5), saved.getValue().getDate());
+    }
+
+    @Test
+    void testUpdateIncome_sameWalletAdjustsOnlyTheDifference() {
+        UUID incomeId = UUID.randomUUID();
+        Income existing = new Income();
+        existing.setId(incomeId);
+        existing.setWallet(wallet);
+        existing.setCategory(category);
+        existing.setContributor(user);
+        existing.setAmount(new BigDecimal("25.00"));
+        existing.setTitle("Old title");
+        existing.setDate(LocalDate.of(2026, 10, 1));
+        existing.setCreatedAt(Instant.now());
+
+        IncomeRequest request = new IncomeRequest();
+        request.setWalletId(walletId);
+        request.setCategoryId(categoryId);
+        request.setTitle("Updated title");
+        request.setAmount(new BigDecimal("30.00"));
+        request.setDate(LocalDate.of(2026, 10, 5));
+        request.setRecurring(true);
+        request.setRecurrencePattern("MONTHLY");
+        UUID recurringId = UUID.randomUUID();
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryIncome.findById(incomeId)).thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(walletLockService.lockWallets(walletId, walletId))
+                .thenReturn(new bflow.wallet.DTO.WalletPair(wallet, wallet));
+        when(repositoryCategory.findById(categoryId)).thenReturn(Optional.of(category));
+        when(recurringLinkService.syncOnUpdate(any())).thenReturn(recurringId);
+
+        IncomeResponse response =
+                serviceIncome.updateIncome(incomeId, request, userId);
+
+        assertNotNull(response);
+        assertEquals("Updated title", existing.getTitle());
+        assertEquals(new BigDecimal("30.00"), existing.getAmount());
+        assertEquals(category, existing.getCategory());
+        assertEquals(recurringId, existing.getRecurringTransactionId());
+        assertEquals(true, existing.getRecurring());
+        verify(serviceWallet).adjustBalanceForIncomeUpdate(
+                wallet, new BigDecimal("25.00"), new BigDecimal("30.00"));
+        verify(serviceWallet, never()).subtractBalance(any(), any());
+    }
+
+    @Test
+    void testDeleteIncome_subtractsAmountFromLockedWallet() {
+        UUID incomeId = UUID.randomUUID();
+        Income existing = new Income();
+        existing.setId(incomeId);
+        existing.setWallet(wallet);
+        existing.setAmount(new BigDecimal("12.34"));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryIncome.findById(incomeId)).thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+
+        serviceIncome.deleteIncome(incomeId, userId);
+
+        verify(serviceWallet).subtractBalance(wallet, new BigDecimal("12.34"));
+        verify(repositoryIncome).delete(existing);
     }
 }

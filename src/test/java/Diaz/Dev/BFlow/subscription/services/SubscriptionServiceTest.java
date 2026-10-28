@@ -18,6 +18,8 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -111,5 +113,114 @@ class SubscriptionServiceTest {
         service.cancel(userId, subscription.getId());
 
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+    }
+
+    @Test
+    void cancelaSuscripcionActivaDesactivandoElEnlaceYDeshabilitandoRenovacion() {
+        UUID userId = UUID.randomUUID();
+        Subscription active = subscriptionWith(
+                "PRO_MONTHLY", SubscriptionStatus.ACTIVE, userId, "link-2");
+        when(repositorySubscription.findById(active.getId()))
+                .thenReturn(Optional.of(active));
+
+        service.cancel(userId, active.getId());
+
+        assertThat(active.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        assertThat(active.isAutoRenew()).isFalse();
+        assertThat(active.getCanceledAt()).isNotNull();
+        assertThat(active.getEndsAt()).isNotNull();
+        assertThat(active.getNextBillingAt()).isNull();
+        verify(wompiApiClient).deactivateRecurringLink("link-2");
+        verify(repositorySubscription).save(active);
+    }
+
+    @Test
+    void creaSuscripcionFreeCuandoElUsuarioNoTieneNingunaActiva() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        Plan freePlan = new Plan();
+        freePlan.setCode("FREE");
+        freePlan.setPrice(BigDecimal.ZERO);
+        when(repositorySubscription.findByUserIdAndStatus(
+                userId, SubscriptionStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(planService.getFreePlan()).thenReturn(freePlan);
+
+        service.createFreeSubscription(user);
+
+        var saved = org.mockito.ArgumentCaptor.forClass(Subscription.class);
+        verify(repositorySubscription).save(saved.capture());
+        assertThat(saved.getValue().getUser()).isSameAs(user);
+        assertThat(saved.getValue().getPlan()).isSameAs(freePlan);
+        assertThat(saved.getValue().getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(saved.getValue().getBillingAmount()).isEqualByComparingTo("0");
+        assertThat(saved.getValue().getStartsAt()).isNotNull();
+        assertThat(saved.getValue().isAutoRenew()).isFalse();
+    }
+
+    @Test
+    void omiteCreacionFreeSiYaExisteUnaSuscripcionActiva() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        when(repositorySubscription.findByUserIdAndStatus(
+                userId, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(new Subscription()));
+
+        service.createFreeSubscription(user);
+
+        verifyNoInteractions(planService);
+        verify(repositorySubscription, never()).save(any());
+    }
+
+    @Test
+    void createFreeSubscription_ignoresConcurrentDuplicateCreation() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        Plan freePlan = new Plan();
+        freePlan.setCode("FREE");
+        freePlan.setPrice(BigDecimal.ZERO);
+        when(repositorySubscription.findByUserIdAndStatus(
+                userId, SubscriptionStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(planService.getFreePlan()).thenReturn(freePlan);
+        when(repositorySubscription.save(any(Subscription.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "duplicate subscription"));
+
+        org.assertj.core.api.Assertions.assertThatCode(
+                () -> service.createFreeSubscription(user))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void findMySubscriptions_returnsEmptyListWithoutFallbackData() {
+        UUID userId = UUID.randomUUID();
+        when(repositorySubscription.findAllByUserIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of());
+
+        assertThat(service.findMySubscriptions(userId)).isEmpty();
+    }
+
+    @Test
+    void findMySubscriptions_mapsOwnedSubscriptionsInRepositoryOrder() {
+        UUID userId = UUID.randomUUID();
+        Plan plan = new Plan();
+        plan.setName("Pro");
+        Subscription active = subscriptionWith(
+                "PRO_MONTHLY", SubscriptionStatus.ACTIVE, userId, null);
+        active.setPlan(plan);
+        active.setBillingAmount(new BigDecimal("9.99"));
+        active.setStartsAt(java.time.Instant.parse("2026-10-01T00:00:00Z"));
+        when(repositorySubscription.findAllByUserIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(active));
+
+        var responses = service.findMySubscriptions(userId);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().planName()).isEqualTo("Pro");
+        assertThat(responses.getFirst().status()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(responses.getFirst().billingAmount())
+                .isEqualByComparingTo("9.99");
     }
 }

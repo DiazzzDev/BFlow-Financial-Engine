@@ -137,8 +137,12 @@ class RecurringTransactionExecutorTest {
         ExpenseRequest sent = captor.getValue();
         assertEquals("recurring", sent.getSource());
         assertTrue(sent.getRecurring());
+        assertEquals("Netflix", sent.getTitle());
+        assertEquals("Subscription", sent.getDescription());
         assertEquals(recurring.getAmount(), sent.getAmount());
+        assertEquals(LocalDate.of(2026, 10, 4), sent.getDate());
         assertEquals(wallet.getId(), sent.getWalletId());
+        assertEquals(category.getId(), sent.getCategoryId());
         verify(serviceIncome, never()).newIncome(any(), any());
     }
 
@@ -152,7 +156,17 @@ class RecurringTransactionExecutorTest {
 
         executor.executeSingle(recurringId);
 
-        verify(serviceIncome).newIncome(any(IncomeRequest.class), any());
+        ArgumentCaptor<IncomeRequest> request =
+                ArgumentCaptor.forClass(IncomeRequest.class);
+        verify(serviceIncome).newIncome(request.capture(), any());
+        assertTrue(request.getValue().getRecurring());
+        assertEquals("Netflix", request.getValue().getTitle());
+        assertEquals("Subscription", request.getValue().getDescription());
+        assertEquals(recurring.getAmount(), request.getValue().getAmount());
+        assertEquals(LocalDate.of(2026, 10, 4), request.getValue().getDate());
+        assertEquals(wallet.getId(), request.getValue().getWalletId());
+        assertEquals(category.getId(), request.getValue().getCategoryId());
+        assertEquals("recurring", request.getValue().getSource());
         verify(serviceExpense, never()).newExpense(any(), any());
     }
 
@@ -316,6 +330,8 @@ class RecurringTransactionExecutorTest {
 
         assertEquals(2, recurring.getFailedAttempts());
         assertTrue(recurring.getActive());
+        assertEquals(Instant.parse("2026-10-05T03:00:00Z"),
+                recurring.getLastFailureAt());
         assertFalse(result.deactivated());
         assertEquals(2, result.attempts());
     }
@@ -335,6 +351,8 @@ class RecurringTransactionExecutorTest {
 
         assertEquals(3, recurring.getFailedAttempts());
         assertFalse(recurring.getActive());
+        assertEquals(Instant.parse("2026-10-05T03:00:00Z"),
+                recurring.getLastFailureAt());
         assertTrue(result.deactivated());
     }
 

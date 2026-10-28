@@ -119,7 +119,7 @@ public class RecurringTransactionExecutor {
 
         recurring.setFailedAttempts(attempts);
         recurring.setLastFailureReason(reason);
-        recurring.setLastFailureAt(Instant.now());
+        recurring.setLastFailureAt(Instant.now(clock));
 
         if (deactivated) {
             recurring.setActive(false);

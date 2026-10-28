@@ -106,17 +106,26 @@ class RecurringLinkServiceTest {
 
     @Test
     void linkRecurring_monthly_nextExecutionDateIsStartPlusOneMonth() {
-        RecurringTransaction result = recurringLinkService.linkRecurring(
+        BigDecimal amount = BigDecimal.valueOf(500);
+        RecurringLinkService.RecurringCreateRequest request =
                 new RecurringLinkService.RecurringCreateRequest(
                         RecurringType.EXPENSE, "MONTHLY", wallet, category,
-                        user, "Rent", "Apartment", BigDecimal.valueOf(500),
-                        startDate));
+                        user, "Rent", "Apartment", amount, startDate);
+        RecurringTransaction result = recurringLinkService.linkRecurring(
+                request);
 
+        assertEquals(RecurringType.EXPENSE, result.getType());
+        assertEquals("Rent", result.getTitle());
+        assertEquals("Apartment", result.getDescription());
+        assertEquals(amount, result.getAmount());
         assertEquals(RecurringFrequency.MONTHLY, result.getFrequency());
+        assertEquals(1, result.getIntervalValue());
         assertEquals(startDate, result.getStartDate());
         assertEquals(startDate.plusMonths(1), result.getNextExecutionDate());
+        assertEquals(wallet, result.getWallet());
+        assertEquals(category, result.getCategory());
+        assertEquals(user, result.getUser());
         assertTrue(result.getActive());
-        assertEquals(1, result.getIntervalValue());
     }
 
     @Test
@@ -234,14 +243,30 @@ class RecurringLinkServiceTest {
 
     @Test
     void syncOnUpdate_falseToTrue_createsNewTemplate() {
+        BigDecimal amount = BigDecimal.valueOf(40);
         UUID result = recurringLinkService.syncOnUpdate(
                 new RecurringLinkService.RecurringSyncRequest(
                         RecurringType.EXPENSE, false, null, true, "MONTHLY",
-                        wallet, category, user, "Gym membership", null,
-                        BigDecimal.valueOf(40), startDate));
+                        wallet, category, user, "Gym membership", "Annual plan",
+                        amount, startDate));
 
         assertNotNull(result);
-        verify(repository).save(any(RecurringTransaction.class));
+        org.mockito.ArgumentCaptor<RecurringTransaction> saved =
+                org.mockito.ArgumentCaptor.forClass(RecurringTransaction.class);
+        verify(repository).save(saved.capture());
+        assertEquals(RecurringType.EXPENSE, saved.getValue().getType());
+        assertEquals("Gym membership", saved.getValue().getTitle());
+        assertEquals("Annual plan", saved.getValue().getDescription());
+        assertEquals(amount, saved.getValue().getAmount());
+        assertEquals(RecurringFrequency.MONTHLY, saved.getValue().getFrequency());
+        assertEquals(1, saved.getValue().getIntervalValue());
+        assertEquals(startDate, saved.getValue().getStartDate());
+        assertEquals(startDate.plusMonths(1),
+                saved.getValue().getNextExecutionDate());
+        assertEquals(wallet, saved.getValue().getWallet());
+        assertEquals(category, saved.getValue().getCategory());
+        assertEquals(user, saved.getValue().getUser());
+        assertTrue(saved.getValue().getActive());
     }
 
     @Test
@@ -294,6 +319,9 @@ class RecurringLinkServiceTest {
         assertEquals(originalNext, existing.getNextExecutionDate());
         assertEquals(BigDecimal.valueOf(45), existing.getAmount());
         assertEquals("Gym membership (renamed)", existing.getTitle());
+        assertNull(existing.getDescription());
+        assertEquals(wallet, existing.getWallet());
+        assertEquals(category, existing.getCategory());
     }
 
     @Test

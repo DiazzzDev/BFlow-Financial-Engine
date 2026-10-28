@@ -37,6 +37,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -46,6 +47,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 
 /** Tests initial scheduling for recurring transactions. */
@@ -132,14 +134,19 @@ class RecurringExecutionServiceTest {
                 messageService, java.time.Clock.system(
                         java.time.ZoneId.of("America/El_Salvador")));
         RecurringRequest request = request(LocalDate.now().minusDays(10), null);
+        request.setDescription("Monthly apartment rent");
+        request.setAmount(new BigDecimal("1250.50"));
         WalletUser walletUser = walletUser(userId);
+        Category savedCategory = new Category();
+        savedCategory.setId(request.getCategoryId());
+        Wallet expectedWallet = walletUser.getWallet();
 
         doNothing().when(userService).validateUserActive(userId);
         when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
         when(repositoryWalletUser.findByWalletIdAndUserId(
                 request.getWalletId(), userId)).thenReturn(Optional.of(walletUser));
         when(repositoryCategory.findById(request.getCategoryId()))
-                .thenReturn(Optional.of(new Category()));
+                .thenReturn(Optional.of(savedCategory));
         when(repository.save(any(RecurringTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -150,9 +157,80 @@ class RecurringExecutionServiceTest {
         org.mockito.Mockito.verify(repository).save(captor.capture());
         assertFalse(captor.getValue().getNextExecutionDate()
                 .isBefore(LocalDate.now()));
+        assertEquals(request.getTitle(), captor.getValue().getTitle());
+        assertEquals(request.getDescription(), captor.getValue().getDescription());
+        assertEquals(request.getAmount(), captor.getValue().getAmount());
+        assertEquals(request.getType(), captor.getValue().getType());
+        assertEquals(request.getFrequency(), captor.getValue().getFrequency());
+        assertEquals(request.getIntervalValue(),
+                captor.getValue().getIntervalValue());
+        assertEquals(request.getStartDate(), captor.getValue().getStartDate());
+        assertEquals(request.getEndDate(), captor.getValue().getEndDate());
+        assertEquals(expectedWallet, captor.getValue().getWallet());
+        assertEquals(savedCategory, captor.getValue().getCategory());
+        assertEquals(userId, captor.getValue().getUser().getId());
         assertTrue(captor.getValue().getActive());
         assertEquals(request.getStartDate(), response.getStartDate());
         assertNull(response.getEndDate());
+        verify(planLimitService).assertCanCreate(
+                userId,
+                bflow.subscription.FeatureCodes.RECURRING_TRANSACTIONS,
+                0L);
+    }
+
+    @Test
+    void createRecurring_pastDailyStartAdvancesByWholeIntervals() {
+        UUID userId = UUID.randomUUID();
+        Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = new RecurringExecutionService(
+                repository, executor, emailTemplateService, userService,
+                repositoryCategory, repositoryWalletUser, planLimitService,
+                messageService, clock);
+        RecurringRequest request = request(LocalDate.of(2026, 9, 29), null);
+        request.setFrequency(RecurringFrequency.DAILY);
+        request.setIntervalValue(3);
+        WalletUser walletUser = walletUser(userId);
+        Category category = new Category();
+        doNothing().when(userService).validateUserActive(userId);
+        when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
+        when(repositoryWalletUser.findByWalletIdAndUserId(
+                request.getWalletId(), userId)).thenReturn(Optional.of(walletUser));
+        when(repositoryCategory.findById(request.getCategoryId()))
+                .thenReturn(Optional.of(category));
+        when(repository.save(any(RecurringTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createRecurring(request, userId);
+
+        ArgumentCaptor<RecurringTransaction> captor =
+                ArgumentCaptor.forClass(RecurringTransaction.class);
+        verify(repository).save(captor.capture());
+        assertEquals(LocalDate.of(2026, 10, 5),
+                captor.getValue().getNextExecutionDate());
+    }
+
+    @Test
+    void createRecurring_pendingDeletionUserIsRejectedBeforePlanChecks() {
+        UUID userId = UUID.randomUUID();
+        RecurringExecutionService service = new RecurringExecutionService(
+                repository, executor, emailTemplateService, userService,
+                repositoryCategory, repositoryWalletUser, planLimitService,
+                messageService, Clock.system(
+                        ZoneId.of("America/El_Salvador")));
+        RecurringRequest request = request(LocalDate.now(), null);
+        doThrow(new IllegalStateException("inactive"))
+                .when(userService).validateUserActive(userId);
+
+        assertThrows(IllegalStateException.class,
+                () -> service.createRecurring(request, userId));
+
+        verify(planLimitService, never()).assertCanCreate(
+                any(), any(), anyLong());
+        verify(repository, never()).countByUserIdAndActiveTrue(any());
+        verify(repositoryWalletUser, never())
+                .findByWalletIdAndUserId(any(), any());
+        verify(repository, never()).save(any(RecurringTransaction.class));
     }
 
     @Test

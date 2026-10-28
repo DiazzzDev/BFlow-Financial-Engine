@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.Disabled;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,9 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
- * Documents parsing edge cases that are NOT yet handled correctly.
- * These tests currently FAIL against the implementation — they
- * describe the desired behavior, not the current one.
+ * Covers common locale-specific amount and date formats in imports.
  */
 @ExtendWith(MockitoExtension.class)
 class TransactionRowParserGapsTest {
@@ -58,11 +55,6 @@ class TransactionRowParserGapsTest {
         return values::get;
     }
 
-    // GAP: amounts with thousands separators (very common in LatAm
-    // exports, e.g. "1,500.00" or "1.500,00") are not parsed — they
-    // throw NumberFormatException today instead of being normalized.
-    @Disabled("GAP: amounts with thousands separators (e.g. '1,500.00') "
-            + "are not normalized yet — see edge cases discussion")
     @Test
     void parsesAmountWithThousandsSeparator() {
         Category comida = new Category();
@@ -78,10 +70,6 @@ class TransactionRowParserGapsTest {
         assertThat(result.amount()).isEqualByComparingTo("1500.00");
     }
 
-    // GAP: only ISO (yyyy-MM-dd) dates are accepted. Common
-    // LatAm/Excel formats like dd/MM/yyyy are rejected outright today.
-    @Disabled("GAP: non-ISO date formats (e.g. dd/MM/yyyy) are rejected "
-            + "instead of parsed — see edge cases discussion")
     @Test
     void parsesCommonLatAmDateFormat() {
         Category comida = new Category();

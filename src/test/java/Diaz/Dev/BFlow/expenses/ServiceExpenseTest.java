@@ -30,6 +30,7 @@ import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletUser;
 import bflow.wallet.service.ServiceWallet;
+import bflow.wallet.service.WalletLockService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -73,6 +76,9 @@ class ServiceExpenseTest {
 
     @Mock
     private RepositoryWallet repositoryWallet;
+
+    @Mock
+    private WalletLockService walletLockService;
 
     @Mock
     private RepositoryCategory repositoryCategory;
@@ -176,6 +182,62 @@ class ServiceExpenseTest {
         assertNotNull(result);
         verify(userService).validateUserActive(userId);
         verify(repositoryExpense).saveAndFlush(any(Expense.class));
+    }
+
+    @Test
+    void testCreateExpense_pendingDeletionUserIsRejectedBeforeWalletMutation() {
+        user.setStatus(UserStatus.PENDING_DELETION);
+        ExpenseRequest request = new ExpenseRequest();
+        request.setWalletId(walletId);
+        org.mockito.Mockito.doThrow(new IllegalStateException("inactive"))
+                .when(userService).validateUserActive(userId);
+
+        assertThrows(IllegalStateException.class,
+                () -> serviceExpense.newExpense(request, userId));
+
+        verify(repositoryWalletUser, never())
+                .findByWalletIdAndUserId(any(), any());
+        verify(repositoryWallet, never()).findByIdForUpdate(any());
+        verify(serviceWallet, never()).subtractBalance(any(), any());
+        verify(repositoryExpense, never()).saveAndFlush(any());
+        verify(serviceBudget, never()).evaluateBudgetsForExpenseEvent(
+                any(), any());
+    }
+
+    @Test
+    void testCreateExpense_withoutOptionalCategoryPersistsAndEvaluatesWalletBudget() {
+        ExpenseRequest request = new ExpenseRequest();
+        request.setWalletId(walletId);
+        request.setTitle("Uncategorized expense");
+        request.setAmount(new BigDecimal("12.34"));
+        request.setDate(LocalDate.of(2026, 10, 5));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryUser.findById(userId)).thenReturn(Optional.of(user));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+        when(repositoryExpense.saveAndFlush(any(Expense.class)))
+                .thenAnswer(invocation -> {
+                    Expense saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    saved.setCreatedAt(Instant.now());
+                    return saved;
+                });
+
+        ExpenseResponse response = serviceExpense.newExpense(request, userId);
+
+        ArgumentCaptor<Expense> savedExpense =
+                ArgumentCaptor.forClass(Expense.class);
+        verify(repositoryExpense).saveAndFlush(savedExpense.capture());
+        assertNotNull(response);
+        assertEquals("Uncategorized expense", savedExpense.getValue().getTitle());
+        assertNull(savedExpense.getValue().getCategory());
+        assertNull(savedExpense.getValue().getDescription());
+        verify(repositoryCategory, never()).findById(any());
+        verify(categoryValidator, never()).validateExpenseCategory(any());
+        verify(serviceBudget).evaluateBudgetsForExpenseEvent(walletId, null);
     }
 
     /**
@@ -376,12 +438,86 @@ class ServiceExpenseTest {
     }
 
     @Test
+    void testUpdateExpense_sameWalletAdjustsOnlyTheDifference() {
+        UUID expenseId = UUID.randomUUID();
+        Expense existing = new Expense();
+        existing.setId(expenseId);
+        existing.setWallet(wallet);
+        existing.setCategory(category);
+        existing.setContributor(user);
+        existing.setAmount(new BigDecimal("25.00"));
+        existing.setTitle("Old title");
+        existing.setDate(LocalDate.of(2026, 10, 1));
+        existing.setCreatedAt(Instant.now());
+
+        ExpenseRequest request = new ExpenseRequest();
+        request.setWalletId(walletId);
+        request.setCategoryId(categoryId);
+        request.setTitle("Updated title");
+        request.setAmount(new BigDecimal("30.00"));
+        request.setDate(LocalDate.of(2026, 10, 5));
+        request.setRecurring(true);
+        request.setRecurrencePattern("MONTHLY");
+        UUID recurringId = UUID.randomUUID();
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryExpense.findById(expenseId)).thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(walletLockService.lockWallets(walletId, walletId))
+                .thenReturn(new bflow.wallet.DTO.WalletPair(wallet, wallet));
+        when(repositoryCategory.findById(categoryId)).thenReturn(Optional.of(category));
+        when(recurringLinkService.syncOnUpdate(any())).thenReturn(recurringId);
+        when(repositoryExpense.save(any(Expense.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ExpenseResponse response =
+                serviceExpense.updateExpense(expenseId, request, userId);
+
+        assertNotNull(response);
+        assertEquals("Updated title", existing.getTitle());
+        assertEquals(new BigDecimal("30.00"), existing.getAmount());
+        assertEquals(recurringId, existing.getRecurringTransactionId());
+        assertTrue(existing.getRecurring());
+        verify(serviceWallet).adjustBalanceForExpenseUpdate(
+                wallet, new BigDecimal("25.00"), new BigDecimal("30.00"));
+        verify(serviceWallet, never()).reverseTransactionImpact(any(), any());
+        verify(serviceWallet, never()).subtractBalance(any(), any());
+        verify(serviceBudget).evaluateBudgetsForExpenseEvent(walletId, categoryId);
+        verify(repositoryExpense).save(existing);
+    }
+
+    @Test
+    void testDeleteExpense_uncategorizedRestoresBalanceAndReevaluatesWalletBudget() {
+        UUID expenseId = UUID.randomUUID();
+        Expense existing = new Expense();
+        existing.setId(expenseId);
+        existing.setWallet(wallet);
+        existing.setContributor(user);
+        existing.setAmount(new BigDecimal("12.34"));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryExpense.findById(expenseId)).thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+
+        serviceExpense.deleteExpense(expenseId, userId);
+
+        verify(serviceWallet).addBalance(wallet, new BigDecimal("12.34"));
+        verify(repositoryExpense).delete(existing);
+        verify(serviceBudget).evaluateBudgetsForExpenseEvent(walletId, null);
+    }
+
+    @Test
     void testCreateExpense_recurring_createsRecurringLinkAndStoresId() {
         ExpenseRequest request = new ExpenseRequest();
         request.setWalletId(walletId);
         request.setCategoryId(categoryId);
-        request.setTitle("Netflix subscription");
-        request.setAmount(BigDecimal.valueOf(15));
+        request.setTitle("  Netflix subscription  ");
+        request.setDescription("  Family plan  ");
+        request.setAmount(new BigDecimal("15.25"));
         request.setDate(LocalDate.of(2026, 8, 17));
         request.setRecurring(true);
         request.setRecurrencePattern("MONTHLY");
@@ -394,7 +530,6 @@ class ServiceExpenseTest {
         expense.setCategory(category);
         expense.setContributor(user);
         expense.setWallet(wallet);
-        expense.setAmount(BigDecimal.valueOf(15));
         expense.setCreatedAt(Instant.now());
 
         doNothing().when(userService).validateUserActive(userId);
@@ -410,7 +545,7 @@ class ServiceExpenseTest {
                 any(RecurringLinkService.RecurringCreateRequest.class)))
                 .thenReturn(recurring);
         when(repositoryExpense.saveAndFlush(any(Expense.class)))
-                .thenReturn(expense);
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         ExpenseResponse result = serviceExpense.newExpense(request, userId);
 
@@ -427,6 +562,24 @@ class ServiceExpenseTest {
         assertEquals(wallet, captured.wallet());
         assertEquals(category, captured.category());
         assertEquals(user, captured.user());
+        assertEquals("Netflix subscription", captured.title());
+        assertEquals("  Family plan  ", captured.description());
+        assertEquals(new BigDecimal("15.25"), captured.amount());
+        assertEquals(LocalDate.of(2026, 8, 17), captured.startDate());
+        ArgumentCaptor<Expense> saved =
+                ArgumentCaptor.forClass(Expense.class);
+        verify(repositoryExpense).saveAndFlush(saved.capture());
+        assertEquals("Netflix subscription", saved.getValue().getTitle());
+        assertEquals("  Family plan  ", saved.getValue().getDescription());
+        assertEquals(new BigDecimal("15.25"), saved.getValue().getAmount());
+        assertEquals(LocalDate.of(2026, 8, 17), saved.getValue().getDate());
+        assertEquals(wallet, saved.getValue().getWallet());
+        assertEquals(category, saved.getValue().getCategory());
+        assertEquals(user, saved.getValue().getContributor());
+        assertTrue(saved.getValue().getRecurring());
+        assertEquals("MONTHLY", saved.getValue().getRecurrencePattern());
+        assertEquals(recurring.getId(),
+                saved.getValue().getRecurringTransactionId());
     }
 
     @Test
@@ -479,6 +632,7 @@ class ServiceExpenseTest {
         request.setRecurring(true);
         request.setRecurrencePattern("MONTHLY");
         request.setSource("recurring");
+        request.setDate(LocalDate.of(2026, 10, 5));
 
         Expense expense = new Expense();
         expense.setId(UUID.randomUUID());
@@ -498,12 +652,20 @@ class ServiceExpenseTest {
         when(repositoryCategory.findById(categoryId))
                 .thenReturn(Optional.of(category));
         when(repositoryExpense.saveAndFlush(any(Expense.class)))
-                .thenReturn(expense);
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         serviceExpense.newExpense(request, userId);
 
         verify(recurringLinkService, never()).linkRecurring(
                 any(RecurringLinkService.RecurringCreateRequest.class));
+        ArgumentCaptor<Expense> saved =
+                ArgumentCaptor.forClass(Expense.class);
+        verify(repositoryExpense).saveAndFlush(saved.capture());
+        assertTrue(saved.getValue().getAutoGenerated());
+        assertTrue(saved.getValue().getRecurring());
+        assertEquals("recurring", saved.getValue().getSource());
+        assertEquals("MONTHLY", saved.getValue().getRecurrencePattern());
+        assertEquals(LocalDate.of(2026, 10, 5), saved.getValue().getDate());
     }
 
     @Test

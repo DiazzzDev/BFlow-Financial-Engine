@@ -14,7 +14,9 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Clock;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 
 /**
  * Parses and validates a single {@link ImportRow} into a
@@ -120,9 +122,9 @@ public class TransactionRowParser {
 
     private BigDecimal parseAmount(final String rawAmount) {
         try {
-            BigDecimal amount = new BigDecimal(
+            BigDecimal amount = new BigDecimal(normalizeAmount(
                     required(rawAmount, "amount").trim()
-            );
+            ));
             if (amount.signum() == 0) {
                 throw new IllegalArgumentException("amount must not be zero");
             }
@@ -132,6 +134,42 @@ public class TransactionRowParser {
                     "Invalid amount '" + rawAmount + "'"
             );
         }
+    }
+
+    private String normalizeAmount(final String rawAmount) {
+        String amount = rawAmount.replace(" ", "");
+        int comma = amount.lastIndexOf(',');
+        int dot = amount.lastIndexOf('.');
+
+        if (comma >= 0 && dot >= 0) {
+            if (comma > dot) {
+                return amount.replace(".", "").replace(',', '.');
+            }
+            return amount.replace(",", "");
+        }
+
+        char separator = comma >= 0 ? ',' : '.';
+        int lastSeparator = Math.max(comma, dot);
+        if (lastSeparator < 0) {
+            return amount;
+        }
+
+        int separatorCount = 0;
+        for (int i = 0; i < amount.length(); i++) {
+            if (amount.charAt(i) == separator) {
+                separatorCount++;
+            }
+        }
+        int digitsAfterSeparator = amount.length() - lastSeparator - 1;
+        if (digitsAfterSeparator == 3) {
+            return amount.replace(String.valueOf(separator), "");
+        }
+        if (separatorCount > 1) {
+            return amount.substring(0, lastSeparator).replace(
+                    String.valueOf(separator), ""
+            ) + "." + amount.substring(lastSeparator + 1);
+        }
+        return separator == ',' ? amount.replace(',', '.') : amount;
     }
 
     /**
@@ -146,9 +184,17 @@ public class TransactionRowParser {
         try {
             return LocalDate.parse(rawDate.trim());
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException(
-                    "Invalid date '" + rawDate + "'. Expected yyyy-MM-dd"
-            );
+            for (String pattern : new String[] {"d/M/uuuu", "d-M-uuuu"}) {
+                try {
+                    return LocalDate.parse(rawDate.trim(),
+                            DateTimeFormatter.ofPattern(pattern)
+                                    .withResolverStyle(ResolverStyle.STRICT));
+                } catch (DateTimeParseException ignored) {
+                    // Try the next supported export format.
+                }
+            }
+            throw new IllegalArgumentException("Invalid date '" + rawDate
+                    + "'. Expected yyyy-MM-dd or dd/MM/yyyy", e);
         }
     }
 
