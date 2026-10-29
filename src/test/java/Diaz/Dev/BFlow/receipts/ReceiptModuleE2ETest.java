@@ -599,7 +599,7 @@ class ReceiptModuleE2ETest {
     }
 
     @Test
-    void textractWithNoExpenseDocumentsExtractsWithNullSuggestions()
+    void textractWithNoExpenseDocumentsMarksNotReceiptAsFailed()
             throws Exception {
         UUID receiptId = registerReceipt();
         driveToProcessing(receiptId, "job-123");
@@ -613,13 +613,8 @@ class ReceiptModuleE2ETest {
         invokeHandle(resultListener,
                 resultMessage(snsCompletionBody("job-123", "SUCCEEDED")));
 
-        ReceiptUpload extracted = store.get(receiptId);
-        assertThat(extracted.getStatus()).isEqualTo(ReceiptStatus.EXTRACTED);
-        assertThat(extracted.getSuggestedTitle()).isNull();
-        assertThat(extracted.getSuggestedAmount()).isNull();
-        assertThat(extracted.getSuggestedDate()).isNull();
-        assertThat(extracted.getSuggestedType())
-                .isEqualTo(ReceiptTransactionType.EXPENSE);
+        ReceiptUpload rejected = store.get(receiptId);
+        assertThat(rejected.getStatus()).isEqualTo(ReceiptStatus.FAILED);
     }
 
     @Test

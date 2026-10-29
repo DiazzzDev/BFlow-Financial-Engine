@@ -186,6 +186,20 @@ resource "aws_iam_role_policy" "ecs_task_ocr" {
   })
 }
 
+resource "aws_iam_role_policy" "ecs_task_image_moderation" {
+  name = "user-image-content-moderation"
+  role = aws_iam_role.ecs_task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "DetectUnsafeUserImages"
+      Effect   = "Allow"
+      Action   = ["rekognition:DetectModerationLabels"]
+      Resource = "*"
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "ecs_task_s3" {
   name = "s3-access-policy"
   role = aws_iam_role.ecs_task.id

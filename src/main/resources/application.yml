@@ -77,7 +77,7 @@ app:
   security:
     auth-error-log-throttle-seconds: ${AUTH_ERROR_LOG_THROTTLE_SECONDS:60}
   storage:
-    allowed-content-types: ${STORAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp,application/pdf}
+    allowed-content-types: ${STORAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,application/pdf}
     presign-duration-minutes: ${STORAGE_PRESIGN_DURATION_MINUTES:15}
     download-presign-duration-minutes: ${STORAGE_DOWNLOAD_PRESIGN_DURATION_MINUTES:15}
     avatar-max-file-size-bytes: ${AVATAR_MAX_FILE_SIZE_BYTES:2097152}

@@ -71,10 +71,40 @@ jobs:
     name: MCP Apps browser harness
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright/java:v1.64.0-noble
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bflow
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DB_HOST: postgres
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ci-placeholder
+      AWS_SECRET_ACCESS_KEY: ci-placeholder
+      AWS_SES_FROM_EMAIL: noreply@bflow-studio.com
+      S3_BUCKET: bflow-ci-placeholder
+      RECEIPT_OCR_REQUESTS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/ci-placeholder
+      RECEIPT_OCR_RESULTS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/ci-placeholder
+      RECEIPT_OCR_RESULTS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:ci-placeholder
+      TEXTRACT_SNS_ROLE_ARN: arn:aws:iam::000000000000:role/ci-placeholder
+      COGNITO_ISSUER_URI: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ciplaceholder
+      COGNITO_USER_POOL_ID: us-east-1_ciplaceholder
+      LOGO_URL: https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png
+      WOMPI_CLIENT_ID: ci-placeholder
+      WOMPI_CLIENT_SECRET: ci-placeholder
+      WOMPI_APP_ID: ci-placeholder
+      WOMPI_API_SECRET: ci-placeholder
     steps:
       - uses: actions/checkout@v7
-      - name: Run isolated Playwright QA profile
-        run: ./mvnw -B -P mcp-apps-qa test
+      - name: Run browser-level legal document journey
+        run: ./mvnw -B -P mcp-apps-qa test-compile failsafe:integration-test failsafe:verify
 
   security:
     name: Secret and container scanning

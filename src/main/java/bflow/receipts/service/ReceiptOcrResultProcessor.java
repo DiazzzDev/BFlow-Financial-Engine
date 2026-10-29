@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.textract.TextractClient;
 import software.amazon.awssdk.services.textract.model.GetExpenseAnalysisRequest;
 import software.amazon.awssdk.services.textract.model.GetExpenseAnalysisResponse;
+import software.amazon.awssdk.services.textract.model.ExpenseField;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Handles a Textract job-completion notification: fetches the full
@@ -24,6 +26,12 @@ public class ReceiptOcrResultProcessor {
 
     /** Status value Textract sends when the job failed outright. */
     private static final String STATUS_FAILED = "FAILED";
+
+    /** Textract summary signals that distinguish a receipt from arbitrary media. */
+    private static final Set<String> RECEIPT_FIELD_TYPES = Set.of(
+            "VENDOR_NAME", "TOTAL", "INVOICE_RECEIPT_DATE",
+            "SUBTOTAL", "TAX", "RECEIPT_ID"
+    );
 
     /** Repository for receipt upload records. */
     private final RepositoryReceiptUpload repositoryReceiptUpload;
@@ -95,6 +103,20 @@ public class ReceiptOcrResultProcessor {
                 .getExpenseAnalysis(GetExpenseAnalysisRequest.builder()
                         .jobId(jobId)
                         .build());
+
+        boolean hasReceiptSignals = response.expenseDocuments().stream()
+                .flatMap(document -> document.summaryFields().stream())
+                .map(ExpenseField::type)
+                .filter(java.util.Objects::nonNull)
+                .map(type -> type.text())
+                .anyMatch(RECEIPT_FIELD_TYPES::contains);
+
+        if (!hasReceiptSignals) {
+            statusTransitionService.markFailed(
+                    receipt.getId(), "No receipt fields detected");
+            log.info("Textract job {} did not contain receipt fields", jobId);
+            return;
+        }
 
         statusTransitionService.markExtracted(
                 receipt.getId(), textractExpenseMapper.map(response));

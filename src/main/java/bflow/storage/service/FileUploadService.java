@@ -3,6 +3,7 @@ package bflow.storage.service;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.common.aws.service.StorageService;
+import bflow.common.aws.service.ImageModerationService;
 import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.ResourceNotFoundException;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -78,6 +80,9 @@ public class FileUploadService {
 
     /** Storage abstraction used to verify object existence in S3. */
     private final StorageService storageService;
+
+    /** Moderates image uploads before they become available to users. */
+    private final ImageModerationService imageModerationService;
 
     /** Presigner used to issue the upload URL. */
     private final S3Presigner s3Presigner;
@@ -127,6 +132,8 @@ public class FileUploadService {
 
         userService.validateUserActive(userId);
         validateContentType(request.getContentType());
+        imageModerationService.validateFilename(
+                request.getOriginalFilename(), request.getContentType());
         validateSize(request.getSizeBytes());
 
         String objectKey = generateKey(
@@ -203,17 +210,28 @@ public class FileUploadService {
         ) ? multipartFile.getOriginalFilename() : "receipt";
         String objectKey = generateKey(userId, originalFilename);
 
-        try (InputStream content = multipartFile.getInputStream()) {
+        try {
+            byte[] bytes = multipartFile.getBytes();
+            imageModerationService.validateFileSignature(
+                    bytes, multipartFile.getContentType());
             storageService.upload(
                     objectKey,
-                    content,
+                    new ByteArrayInputStream(bytes),
                     multipartFile.getSize(),
                     multipartFile.getContentType()
+            );
+            imageModerationService.assertSafeObject(
+                    objectKey,
+                    multipartFile.getContentType(),
+                    java.util.Arrays.copyOf(bytes, Math.min(bytes.length, 12))
             );
         } catch (IOException ex) {
             throw new InvalidFileException(
                     messageService.get("file.readError")
             );
+        } catch (RuntimeException ex) {
+            deleteObjectAfterFailedPersistence(objectKey, ex);
+            throw ex;
         }
 
         StoredFile file = new StoredFile();
@@ -275,6 +293,30 @@ public class FileUploadService {
         }
 
         boolean uploaded = storageService.exists(file.getObjectKey());
+
+        if (uploaded) {
+            try {
+                byte[] signature;
+                try (InputStream content = storageService
+                        .download(file.getObjectKey()).content()) {
+                    signature = content.readNBytes(12);
+                } catch (IOException ex) {
+                    throw new InvalidFileException(
+                            messageService.get("file.readError"));
+                }
+                imageModerationService.assertSafeObject(
+                        file.getObjectKey(), file.getContentType(), signature);
+            } catch (RuntimeException moderationFailure) {
+                fileStatusTransitionService.transition(
+                        file.getId(), FileStatus.FAILED);
+                try {
+                    storageService.delete(file.getObjectKey());
+                } catch (RuntimeException cleanupFailure) {
+                    moderationFailure.addSuppressed(cleanupFailure);
+                }
+                throw moderationFailure;
+            }
+        }
 
         StoredFile updated = fileStatusTransitionService.transition(
                 file.getId(),
@@ -397,6 +439,9 @@ public class FileUploadService {
         }
 
         validateContentType(multipartFile.getContentType());
+        imageModerationService.validateFilename(
+                multipartFile.getOriginalFilename(),
+                multipartFile.getContentType());
         validateSize(multipartFile.getSize());
     }
 

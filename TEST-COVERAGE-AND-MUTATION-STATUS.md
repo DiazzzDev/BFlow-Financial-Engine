@@ -3,6 +3,15 @@
 **Corte:** 2026-10-28  
 **Base:** estado actual del árbol de trabajo; resultados Surefire/JaCoCo de la última ejecución completa de `verify` y reporte PIT de los nueve servicios configurados.
 
+> **Seguimiento local (pendiente de CI):** después del corte se agregaron 3
+> unit tests para tokens de notificación, 9 para cargas de archivos, 7 para
+> moderación de imágenes, 3 para fotos de perfil y 3 E2E Playwright de gastos,
+> presupuesto y saldo de wallet, más 5 pruebas de integración del ciclo
+> de vida del usuario sobre PostgreSQL. El total esperado es 367 casos Surefire
+> y 8 casos Failsafe, pero estos cambios aún no se han
+> ejecutado juntos ni tienen un resultado JaCoCo nuevo. No se considera
+> satisfecho el mínimo global de 80% hasta que `verify` lo confirme.
+
 ## Resumen ejecutivo
 
 - La ejecución completa contó **345 pruebas**, con **0 fallos, 0 errores y 1 omitida**. Las 344 restantes pasaron.
@@ -50,11 +59,24 @@ Los conteos de pruebas son los casos reportados por Surefire (incluyen el único
 | tranfers (paquete actual) | 1 | 4 | 0 | 0 | 4 |
 | transactionimport | 6 | 21 | 0 | 0 | 21 |
 | wallet | 3 | 44 | 0 | 0 | 44 |
-| **Subtotal de módulos** | **45** | **314** | **15** | **15** | **344** |
+| **Subtotal de módulos, corte** | **45** | **314** | **15** | **15** | **344** |
 | Aplicación (clase raíz) | 1 | 0 | 0 | 0 | 1 omitida |
 | **Total Surefire** | **46** | **314** | **15** | **15** | **345** |
 
 `ServiceAccountHardDeleteTest` (7) y `UserServiceDeletionEmailTest` (3) son pruebas de integración Spring en `auth`; `LocaleEndToEndTest` (5) es la prueba MockMvc de `common`; las 15 de `receipts` son el flujo E2E simulado.
+
+El trabajo posterior al corte conserva los 345 casos Surefire de referencia y
+añade 22 unit tests (3 de `notifications`, 9 de `storage`, 7 de `common` y 3 de
+`auth`) más 5 casos de integración PostgreSQL y 3 E2E Playwright en Failsafe.
+`ServiceAccountHardDeleteTest` mantiene sus 7 casos, ahora con un
+PostgreSQL Testcontainer en lugar de depender de la base externa del devcontainer.
+Playwright recorre el gasto rápido, la creación de presupuesto y la consulta del
+saldo de la wallet mediante Chromium, verificando los resultados persistidos.
+La moderación de imágenes añade Rekognition al rol ECS y revisa JPEG/PNG antes
+de habilitar cargas; recibos y fotos requieren extensiones compatibles con MIME
+y firma. Textract rechaza documentos sin señales de recibo. PDF tiene validación
+de firma y señales OCR, pero no moderación visual. Estos resultados están
+pendientes de ejecución en CI/devcontainer.
 
 ## Paquetes con mayor trabajo pendiente según JaCoCo
 
