@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
@@ -298,7 +299,8 @@ class FileUploadServiceTest {
         assertThatThrownBy(() -> service.createDownloadUrl(userId, fileId))
                 .isInstanceOf(IllegalStateException.class);
 
-        verify(s3Presigner, never()).presignGetObject(any());
+        verify(s3Presigner, never()).presignGetObject(
+                any(GetObjectPresignRequest.class));
     }
 
     @Test
