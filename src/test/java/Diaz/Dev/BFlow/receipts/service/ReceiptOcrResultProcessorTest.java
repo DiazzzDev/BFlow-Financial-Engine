@@ -51,8 +51,6 @@ class ReceiptOcrResultProcessorTest {
         receipt = new ReceiptUpload();
         receipt.setId(receiptId);
         receipt.setStatus(ReceiptStatus.PROCESSING);
-        when(receiptRepository.findByTextractJobId(jobId))
-                .thenReturn(Optional.of(receipt));
     }
 
     @Test
@@ -69,6 +67,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void alreadyCompletedReceiptIgnoresRedeliveredNotification() {
+        stubProcessingReceipt();
         receipt.setStatus(ReceiptStatus.EXTRACTED);
 
         processor.processCompletion(jobId, "SUCCEEDED");
@@ -79,6 +78,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void failedTextractJobTransitionsReceiptToFailedWithoutPollingResult() {
+        stubProcessingReceipt();
         processor.processCompletion(jobId, "FAILED");
 
         verify(transitionService).markFailed(
@@ -88,6 +88,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void succeededReceiptMapsAndPersistsOcrSuggestion() {
+        stubProcessingReceipt();
         GetExpenseAnalysisResponse response = receiptResponse("VENDOR_NAME");
         var extraction = new ReceiptStatusTransitionService.ReceiptOcrExtraction(
                 bflow.receipts.enums.ReceiptTransactionType.EXPENSE,
@@ -104,6 +105,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void partialSuccessStillProcessesReceiptFields() {
+        stubProcessingReceipt();
         GetExpenseAnalysisResponse response = receiptResponse("TOTAL");
         var extraction = new ReceiptStatusTransitionService.ReceiptOcrExtraction(
                 bflow.receipts.enums.ReceiptTransactionType.EXPENSE,
@@ -119,6 +121,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void emptyTextractResponseUsesFailedFallbackForManualReupload() {
+        stubProcessingReceipt();
         when(textractClient.getExpenseAnalysis(any(GetExpenseAnalysisRequest.class)))
                 .thenReturn(GetExpenseAnalysisResponse.builder()
                         .expenseDocuments(List.of()).build());
@@ -131,6 +134,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void arbitraryDocumentWithoutReceiptSignalsIsRejected() {
+        stubProcessingReceipt();
         GetExpenseAnalysisResponse response = receiptResponse("ITEM_NAME");
         when(textractClient.getExpenseAnalysis(any(GetExpenseAnalysisRequest.class)))
                 .thenReturn(response);
@@ -143,6 +147,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void transientTextractFailurePropagatesForQueueRedelivery() {
+        stubProcessingReceipt();
         AwsServiceException outage = TextractException.builder()
                 .message("temporarily unavailable").build();
         when(textractClient.getExpenseAnalysis(any(GetExpenseAnalysisRequest.class)))
@@ -153,6 +158,11 @@ class ReceiptOcrResultProcessorTest {
 
         verify(transitionService, never()).markFailed(any(), any());
         verify(transitionService, never()).markExtracted(any(), any());
+    }
+
+    private void stubProcessingReceipt() {
+        when(receiptRepository.findByTextractJobId(jobId))
+                .thenReturn(Optional.of(receipt));
     }
 
     private GetExpenseAnalysisResponse receiptResponse(String fieldType) {
