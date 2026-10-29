@@ -319,4 +319,27 @@ class FileUploadServiceTest {
                 anyString(), any(InputStream.class), anyLong(), anyString());
         verify(repositoryStoredFile, never()).save(any());
     }
+
+    @Test
+    void unsafeUploadKeepsModerationFailureWhenStorageCleanupAlsoFails() {
+        MockMultipartFile image = new MockMultipartFile(
+                "file", "receipt.jpg", "image/jpeg",
+                new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 1});
+        InvalidFileException moderationFailure =
+                new InvalidFileException("unsafe image");
+        org.mockito.Mockito.doThrow(moderationFailure)
+                .when(imageModerationService)
+                .assertSafeObject(anyString(), eq("image/jpeg"), any());
+        org.mockito.Mockito.doThrow(new IllegalStateException("S3 delete failed"))
+                .when(storageService).delete(anyString());
+
+        assertThatThrownBy(() -> service.uploadDirect(userId, image))
+                .isSameAs(moderationFailure)
+                .satisfies(error -> assertThat(error.getSuppressed())
+                        .hasSize(1)
+                        .anySatisfy(suppressed -> assertThat(suppressed)
+                                .hasMessage("S3 delete failed")));
+
+        verify(repositoryStoredFile, never()).save(any());
+    }
 }

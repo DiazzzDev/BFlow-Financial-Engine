@@ -6,6 +6,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.exception.EmailDeliveryException;
 import bflow.common.i18n.MessageService;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
@@ -163,5 +164,38 @@ class NotificationServiceTest {
         assertEquals("Wallet invitation", saved.getTitle());
         assertEquals("Alice invited you to collaborate in \"Shared\".",
                 saved.getMessage());
+    }
+
+    @Test
+    void sendBudgetSuccessKeepsInAppNotificationWhenSesIsUnavailable() {
+        User owner = user("owner@example.com", "Owner");
+        when(repositoryUser.findById(owner.getId())).thenReturn(java.util.Optional.of(owner));
+        org.mockito.Mockito.doThrow(new EmailDeliveryException("SES unavailable"))
+                .when(emailService).sendEmail(any(), any(), any());
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
+                notificationService.sendBudgetSuccess(owner.getId(), new BudgetResponse()));
+
+        verify(notificationRepository).save(any(Notification.class));
+        verify(emailService).sendEmail(owner.getEmail(), "Budget Completed",
+                "You successfully stayed within your budget");
+    }
+
+    @Test
+    void groupEmailFailureDoesNotStopNotificationsForOtherMembers() {
+        User alice = user("alice@example.com", "Alice");
+        User bob = user("bob@example.com", "Bob");
+        org.mockito.Mockito.doThrow(new EmailDeliveryException("SES unavailable"))
+                .when(emailTemplateService).sendBudgetGroupSuccessEmail(
+                        eq(alice.getEmail()), eq(alice.getName()),
+                        eq("Household"), any(BudgetResponse.class), any());
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
+                notificationService.sendBudgetGroupSuccess(
+                        List.of(alice, bob), "Household", new BudgetResponse()));
+
+        verify(notificationRepository, times(2)).save(any(Notification.class));
+        verify(emailTemplateService, times(2)).sendBudgetGroupSuccessEmail(
+                any(), any(), eq("Household"), any(), any());
     }
 }

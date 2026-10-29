@@ -123,4 +123,29 @@ class ImageModerationServiceTest {
         verify(rekognitionClient, never()).detectModerationLabels(
                 any(DetectModerationLabelsRequest.class));
     }
+
+    @Test
+    void rejectsTruncatedImageSignatureBeforeCallingRekognition() {
+        assertThrows(InvalidFileException.class, () ->
+                moderationService.assertSafeBytes(
+                        new byte[] {(byte) 0xff, (byte) 0xd8}, "image/jpeg"));
+
+        verifyNoInteractions(rekognitionClient);
+    }
+
+    @Test
+    void rejectsViolenceDetectedAsParentCategory() {
+        when(rekognitionClient.detectModerationLabels(
+                any(DetectModerationLabelsRequest.class)))
+                .thenReturn(DetectModerationLabelsResponse.builder()
+                        .moderationLabels(ModerationLabel.builder()
+                                .name("Graphic Content")
+                                .parentName("Violence")
+                                .confidence(99.0f)
+                                .build())
+                        .build());
+
+        assertThrows(InvalidFileException.class, () ->
+                moderationService.assertSafeBytes(JPEG_SIGNATURE, "image/jpeg"));
+    }
 }

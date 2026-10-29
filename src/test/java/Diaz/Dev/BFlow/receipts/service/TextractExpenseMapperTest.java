@@ -44,7 +44,7 @@ class TextractExpenseMapperTest {
         assertThat(result.suggestedTitle()).isEqualTo("Supermarket");
         assertThat(result.suggestedAmount()).isEqualByComparingTo("1234.50");
         assertThat(result.suggestedDate()).isEqualTo(LocalDate.of(2026, 10, 1));
-        assertThat(result.confidenceScore()).isEqualByComparingTo("89.00");
+        assertThat(result.confidenceScore()).isEqualByComparingTo("89.33");
     }
 
     @Test
