@@ -205,7 +205,8 @@ class QuickExpenseBrowserIT {
                             method: 'POST',
                             headers: {
                               'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json'
+                              'Content-Type': 'application/json',
+                              'Idempotency-Key': crypto.randomUUID()
                             },
                             body: JSON.stringify({
                               walletId,
@@ -295,7 +296,8 @@ class QuickExpenseBrowserIT {
                             method: 'POST',
                             headers: {
                               'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json'
+                              'Content-Type': 'application/json',
+                              'Idempotency-Key': crypto.randomUUID()
                             },
                             body: JSON.stringify({
                               walletId,
@@ -351,7 +353,8 @@ class QuickExpenseBrowserIT {
                             method: 'POST',
                             headers: {
                               'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json'
+                              'Content-Type': 'application/json',
+                              'Idempotency-Key': crypto.randomUUID()
                             },
                             body: JSON.stringify({
                               walletId,

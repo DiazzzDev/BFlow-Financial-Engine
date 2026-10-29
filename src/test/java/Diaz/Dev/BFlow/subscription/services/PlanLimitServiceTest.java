@@ -69,6 +69,66 @@ class PlanLimitServiceTest {
     }
 
     @Test
+    void assertCanCreate_allowsZeroResourcesWhenLimitIsOne() {
+        UUID userId = UUID.randomUUID();
+        stubActiveSubscription(userId, feature(1, true));
+
+        assertDoesNotThrow(() -> service.assertCanCreate(userId, "WALLETS", 0));
+    }
+
+    @Test
+    void assertCanCreate_rejectsCountExactlyAtLimit() {
+        UUID userId = UUID.randomUUID();
+        stubActiveSubscription(userId, feature(3, true));
+        when(messageService.get(any(), any(), any())).thenReturn("limit reached");
+
+        assertThrows(PlanLimitExceededException.class,
+                () -> service.assertCanCreate(userId, "WALLETS", 3));
+    }
+
+    @Test
+    void assertCanCreate_rejectsCountAboveConfiguredLimit() {
+        UUID userId = UUID.randomUUID();
+        stubActiveSubscription(userId, feature(2, true));
+        when(messageService.get(any(), any(), any())).thenReturn("limit reached");
+
+        assertThrows(PlanLimitExceededException.class,
+                () -> service.assertCanCreate(userId, "WALLETS", 3));
+    }
+
+    @Test
+    void assertFeatureEnabled_allowsEnabledFeatureForPastDueSubscription() {
+        UUID userId = UUID.randomUUID();
+        Subscription subscription = subscription();
+        subscription.setStatus(SubscriptionStatus.PAST_DUE);
+        PlanFeature enabled = feature(null, true);
+        when(repositorySubscription.findByUserIdAndStatus(
+                userId, SubscriptionStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(repositorySubscription.findByUserIdAndStatus(
+                userId, SubscriptionStatus.PAST_DUE)).thenReturn(Optional.of(subscription));
+        when(repositoryPlanFeature.findByPlanIdAndFeatureCode(
+                subscription.getPlan().getId(), "WALLETS"))
+                .thenReturn(Optional.of(enabled));
+
+        assertDoesNotThrow(() -> service.assertFeatureEnabled(userId, "WALLETS"));
+    }
+
+    @Test
+    void assertCanCreateReportsMissingFeatureConfiguration() {
+        UUID userId = UUID.randomUUID();
+        Subscription subscription = subscription();
+        when(repositorySubscription.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(subscription));
+        when(repositoryPlanFeature.findByPlanIdAndFeatureCode(
+                subscription.getPlan().getId(), "WALLETS"))
+                .thenReturn(Optional.empty());
+        when(messageService.get(any(), any(), any())).thenReturn("configuration missing");
+
+        assertThrows(IllegalStateException.class,
+                () -> service.assertCanCreate(userId, "WALLETS", 0));
+    }
+
+    @Test
     void assertCanCreate_rejectsDisabledFeature() {
         UUID userId = UUID.randomUUID();
         PlanFeature feature = feature(null, false);

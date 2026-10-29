@@ -269,4 +269,52 @@ class FileUploadServiceTest {
         verify(storageService, never()).exists(anyString());
         verify(fileStatusTransitionService, never()).transition(any(), any());
     }
+
+    @Test
+    void completeUploadDoesNotMarkFileUploadedWhenStorageCheckFails() {
+        StoredFile pending = new StoredFile();
+        pending.setId(fileId);
+        pending.setObjectKey("users/" + userId + "/receipt.jpg");
+        pending.setStatus(FileStatus.PENDING);
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(pending));
+        RuntimeException storageFailure = new RuntimeException("S3 unavailable");
+        when(storageService.exists(pending.getObjectKey())).thenThrow(storageFailure);
+
+        assertThatThrownBy(() -> service.completeUpload(userId, fileId))
+                .isSameAs(storageFailure);
+
+        verify(fileStatusTransitionService, never()).transition(any(), any());
+    }
+
+    @Test
+    void downloadUrlIsRejectedWhileUploadIsPending() {
+        StoredFile pending = new StoredFile();
+        pending.setId(fileId);
+        pending.setStatus(FileStatus.PENDING);
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.createDownloadUrl(userId, fileId))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(s3Presigner, never()).presignGetObject(any());
+    }
+
+    @Test
+    void uploadDirectRejectsMimeAndSignatureMismatchBeforeStorage() {
+        MockMultipartFile spoofed = new MockMultipartFile(
+                "file", "receipt.jpg", "image/jpeg",
+                "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        org.mockito.Mockito.doThrow(new InvalidFileException("signature mismatch"))
+                .when(imageModerationService)
+                .validateFileSignature(any(byte[].class), eq("image/jpeg"));
+
+        assertThatThrownBy(() -> service.uploadDirect(userId, spoofed))
+                .isInstanceOf(InvalidFileException.class);
+
+        verify(storageService, never()).upload(
+                anyString(), any(InputStream.class), anyLong(), anyString());
+        verify(repositoryStoredFile, never()).save(any());
+    }
 }
