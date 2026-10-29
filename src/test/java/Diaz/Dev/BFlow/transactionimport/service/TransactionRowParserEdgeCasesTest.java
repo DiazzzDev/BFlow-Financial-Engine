@@ -81,8 +81,6 @@ class TransactionRowParserEdgeCasesTest {
 
     @Test
     void rejectsImpossibleStrictDateInsteadOfNormalizingIt() {
-        stubCategory("Comida", CategoryType.EXPENSE);
-
         assertThatThrownBy(() -> parse(Map.of("title", "Compra semanal",
                 "amount", "10", "category", "Comida", "date", "31/02/2026")))
                 .isInstanceOf(IllegalArgumentException.class)
