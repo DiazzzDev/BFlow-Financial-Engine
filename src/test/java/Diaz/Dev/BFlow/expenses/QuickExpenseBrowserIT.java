@@ -5,7 +5,14 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.repository.RepositoryUser;
 import bflow.budget.repository.RepositoryBudget;
+import bflow.category.RepositoryCategory;
+import bflow.category.entity.Category;
+import bflow.category.enums.CategoryType;
 import bflow.expenses.RepositoryExpense;
+import bflow.expenses.entity.Expense;
+import bflow.income.RepositoryIncome;
+import bflow.income.entity.Income;
+import bflow.subscription.services.SubscriptionService;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
 import bflow.wallet.enums.Currency;
@@ -22,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -29,6 +37,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,7 +63,10 @@ class QuickExpenseBrowserIT {
     @Autowired private RepositoryWallet wallets;
     @Autowired private RepositoryWalletUser memberships;
     @Autowired private RepositoryExpense expenses;
+    @Autowired private RepositoryIncome incomes;
+    @Autowired private RepositoryCategory categories;
     @Autowired private RepositoryBudget budgets;
+    @Autowired private SubscriptionService subscriptionService;
     @Autowired private EntityManager entityManager;
 
     @MockitoBean
@@ -62,6 +74,8 @@ class QuickExpenseBrowserIT {
 
     private UUID userId;
     private UUID walletId;
+    private UUID expenseCategoryId;
+    private UUID incomeCategoryId;
     private String token;
     private String subject;
 
@@ -86,6 +100,19 @@ class QuickExpenseBrowserIT {
         user.setStatus(UserStatus.ACTIVE);
         user.setLanguage(SupportedLanguage.EN);
         userId = users.saveAndFlush(user).getId();
+        subscriptionService.createFreeSubscription(user);
+
+        Category expenseCategory = new Category();
+        expenseCategory.setName("E2E Groceries " + UUID.randomUUID());
+        expenseCategory.setType(CategoryType.EXPENSE);
+        expenseCategory.setSystemDefined(true);
+        expenseCategoryId = categories.saveAndFlush(expenseCategory).getId();
+
+        Category incomeCategory = new Category();
+        incomeCategory.setName("E2E Salary " + UUID.randomUUID());
+        incomeCategory.setType(CategoryType.INCOME);
+        incomeCategory.setSystemDefined(true);
+        incomeCategoryId = categories.saveAndFlush(incomeCategory).getId();
 
         Wallet wallet = new Wallet();
         wallet.setName("E2E wallet");
@@ -133,7 +160,7 @@ class QuickExpenseBrowserIT {
 
                 assertTrue(response.contains("\"status\":200"), response);
                 assertTrue(response.contains("Quick expense"), response);
-                assertTrue(response.contains("25.00"), response);
+                assertTrue(response.contains("\"amount\":25"), response);
 
                 int rejectedStatus = (int) page.evaluate("""
                         async (token) => {
@@ -250,6 +277,118 @@ class QuickExpenseBrowserIT {
         entityManager.clear();
         assertEquals(1, expenses.countByWalletId(walletId));
         assertEquals(0, new BigDecimal("87.50").compareTo(
+                wallets.findById(walletId).orElseThrow().getBalance()));
+    }
+
+    @Test
+    void customerCreatesNormalExpenseAndPersistsCategoryAndDebitedBalance() {
+        String transactionDate = LocalDate.now().minusDays(1).toString();
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium().launch(
+                    new BrowserType.LaunchOptions().setHeadless(true));
+            try {
+                Page page = browser.newPage();
+                page.navigate("http://localhost:" + port + "/swagger-ui/");
+                String response = (String) page.evaluate("""
+                        async ({token, walletId, categoryId, date}) => {
+                          const response = await fetch('/api/v1/expenses', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              walletId,
+                              categoryId,
+                              title: 'Groceries at Market',
+                              description: 'Weekly food shopping',
+                              amount: 30.00,
+                              date,
+                              source: 'manual',
+                              recurring: false
+                            })
+                          });
+                          return JSON.stringify({
+                            status: response.status,
+                            body: await response.json()
+                          });
+                        }
+                        """, java.util.Map.of(
+                        "token", token,
+                        "walletId", walletId.toString(),
+                        "categoryId", expenseCategoryId.toString(),
+                        "date", transactionDate));
+                assertTrue(response.contains("\"status\":201"), response);
+                assertTrue(response.contains("Groceries at Market"), response);
+                assertTrue(response.contains("\"amount\":30"), response);
+            } finally {
+                browser.close();
+            }
+        }
+
+        entityManager.clear();
+        Expense persisted = expenses.findByWalletId(
+                walletId, PageRequest.of(0, 5)).getContent().get(0);
+        assertEquals("Groceries at Market", persisted.getTitle());
+        assertEquals(expenseCategoryId, persisted.getCategory().getId());
+        assertEquals(new BigDecimal("30.00"), persisted.getAmount());
+        assertEquals(0, new BigDecimal("70.00").compareTo(
+                wallets.findById(walletId).orElseThrow().getBalance()));
+    }
+
+    @Test
+    void customerCreatesIncomeAndPersistsCategoryAndCreditedBalance() {
+        String transactionDate = LocalDate.now().minusDays(1).toString();
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium().launch(
+                    new BrowserType.LaunchOptions().setHeadless(true));
+            try {
+                Page page = browser.newPage();
+                page.navigate("http://localhost:" + port + "/swagger-ui/");
+                String response = (String) page.evaluate("""
+                        async ({token, walletId, categoryId, date}) => {
+                          const response = await fetch('/api/v1/incomes', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              walletId,
+                              categoryId,
+                              title: 'Salary deposit',
+                              description: 'Monthly payroll',
+                              amount: 250.00,
+                              date,
+                              source: 'manual',
+                              recurring: false
+                            })
+                          });
+                          return JSON.stringify({
+                            status: response.status,
+                            body: await response.json()
+                          });
+                        }
+                        """, java.util.Map.of(
+                        "token", token,
+                        "walletId", walletId.toString(),
+                        "categoryId", incomeCategoryId.toString(),
+                        "date", transactionDate));
+                assertTrue(response.contains("\"status\":201"), response);
+                assertTrue(response.contains("Salary deposit"), response);
+                assertTrue(response.contains("\"amount\":250"), response);
+            } finally {
+                browser.close();
+            }
+        }
+
+        entityManager.clear();
+        Income persisted = incomes.findByWalletId(
+                walletId, PageRequest.of(0, 5)).getContent().get(0);
+        assertEquals("Salary deposit", persisted.getTitle());
+        assertEquals(incomeCategoryId, persisted.getCategory().getId());
+        assertEquals(new BigDecimal("250.00"), persisted.getAmount());
+        assertEquals(0, new BigDecimal("350.00").compareTo(
                 wallets.findById(walletId).orElseThrow().getBalance()));
     }
 }

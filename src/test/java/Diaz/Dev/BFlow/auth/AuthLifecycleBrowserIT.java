@@ -129,7 +129,7 @@ class AuthLifecycleBrowserIT {
                 assertTrue(result.contains("\"status\":200"), result);
                 assertTrue(result.contains("\"isNewUser\":true"), result);
                 assertTrue(result.contains("\"isNewUser\":false"), result);
-                assertTrue(result.contains("\"mismatch\":{\"status\":400"),
+                assertTrue(result.contains("\"mismatch\":{\"status\":404"),
                         result);
             } finally {
                 browser.close();
