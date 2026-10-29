@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.textract.model.ExpenseDetection;
 import software.amazon.awssdk.services.textract.model.ExpenseDocument;
 import software.amazon.awssdk.services.textract.model.ExpenseField;
-import software.amazon.awssdk.services.textract.model.ExpenseFieldType;
+import software.amazon.awssdk.services.textract.model.ExpenseType;
 import software.amazon.awssdk.services.textract.model.GetExpenseAnalysisResponse;
 
 import java.time.LocalDate;
@@ -102,7 +102,7 @@ class TextractExpenseMapperTest {
 
     private ExpenseField field(String type, String value, float confidence) {
         return ExpenseField.builder()
-                .type(ExpenseFieldType.builder().text(type).build())
+                .type(ExpenseType.builder().text(type).build())
                 .valueDetection(ExpenseDetection.builder()
                         .text(value).confidence(confidence).build())
                 .build();
