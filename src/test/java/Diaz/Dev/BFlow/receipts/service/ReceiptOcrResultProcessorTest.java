@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.textract.TextractClient;
 import software.amazon.awssdk.services.textract.model.ExpenseDetection;
 import software.amazon.awssdk.services.textract.model.ExpenseDocument;
 import software.amazon.awssdk.services.textract.model.ExpenseField;
-import software.amazon.awssdk.services.textract.model.ExpenseFieldType;
+import software.amazon.awssdk.services.textract.model.ExpenseType;
 import software.amazon.awssdk.services.textract.model.GetExpenseAnalysisRequest;
 import software.amazon.awssdk.services.textract.model.GetExpenseAnalysisResponse;
 import software.amazon.awssdk.services.textract.model.TextractException;
@@ -156,7 +156,7 @@ class ReceiptOcrResultProcessorTest {
 
     private GetExpenseAnalysisResponse receiptResponse(String fieldType) {
         ExpenseField field = ExpenseField.builder()
-                .type(ExpenseFieldType.builder().text(fieldType).build())
+                .type(ExpenseType.builder().text(fieldType).build())
                 .valueDetection(ExpenseDetection.builder()
                         .text("Market").confidence(90f).build())
                 .build();
