@@ -20,6 +20,7 @@ import bflow.dashboard.dto.StatisticsResponse;
 import bflow.dashboard.enums.StatisticsPeriod;
 import bflow.dashboard.projection.CategorySpendingProjection;
 import bflow.dashboard.projection.DailyTotalProjection;
+import bflow.dashboard.projection.MonthlyTotalProjection;
 import bflow.dashboard.service.ServiceDashboard;
 import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
@@ -285,6 +286,298 @@ class ServiceDashboardTest {
         ActivityBreakdownResponse empty = service.getActivityBreakdown(emptyUser);
         assertEquals(0L, empty.totalTransactions());
         assertEquals(0.0, empty.activityChangePercentage());
+    }
+
+    @Test
+    void balanceSummaryWithoutWalletsReturnsZeroesWithoutAggregateQueries() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(List.of());
+
+        BalanceSummaryResponse result = service.getBalanceSummary(userId, null);
+
+        assertEquals(BigDecimal.ZERO, result.total());
+        assertEquals(BigDecimal.ZERO, result.monthIncome());
+        assertEquals(BigDecimal.ZERO, result.monthExpenses());
+        assertEquals(0.0, result.percentageChangeLastMonth());
+        org.mockito.Mockito.verifyNoInteractions(repositoryWallet,
+                repositoryIncome, repositoryExpense);
+    }
+
+    @Test
+    void balanceSummaryAllWalletsCalculatesChangeFromOpeningMonthBalance() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId, secondWalletId));
+        when(repositoryWallet.sumBalanceByWalletIds(
+                List.of(firstWalletId, secondWalletId)))
+                .thenReturn(new BigDecimal("100.00"));
+        when(repositoryIncome.sumByWalletsAndDateRange(
+                List.of(firstWalletId, secondWalletId),
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(new BigDecimal("30.00"));
+        when(repositoryExpense.sumByWalletsAndDateRange(
+                List.of(firstWalletId, secondWalletId),
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(new BigDecimal("20.00"));
+
+        BalanceSummaryResponse result = service.getBalanceSummary(userId, null);
+
+        assertEquals(11.1, result.percentageChangeLastMonth());
+        assertEquals(new BigDecimal("100.00"), result.total());
+    }
+
+    @Test
+    void balanceSummaryWalletScopeOmitsAggregatePercentage() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId, secondWalletId));
+        when(repositoryWallet.sumBalanceByWalletIds(List.of(secondWalletId)))
+                .thenReturn(new BigDecimal("50.00"));
+        when(repositoryIncome.sumByWalletsAndDateRange(
+                eq(List.of(secondWalletId)), any(), any()))
+                .thenReturn(BigDecimal.TEN);
+        when(repositoryExpense.sumByWalletsAndDateRange(
+                eq(List.of(secondWalletId)), any(), any()))
+                .thenReturn(BigDecimal.ONE);
+
+        BalanceSummaryResponse result =
+                service.getBalanceSummary(userId, secondWalletId);
+
+        assertEquals(null, result.percentageChangeLastMonth());
+        verify(repositoryWallet).sumBalanceByWalletIds(List.of(secondWalletId));
+    }
+
+    @Test
+    void statisticsMonthBuildsCompleteLeapMonthAndMapsDailyResults() {
+        List<UUID> walletIds = List.of(firstWalletId);
+        LocalDate start = LocalDate.of(2024, 2, 1);
+        LocalDate end = LocalDate.of(2024, 2, 29);
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(walletIds);
+        DailyTotalProjection income = daily(start.plusDays(28), "42.00");
+        when(repositoryIncome.sumGroupedByDate(walletIds, start, end))
+                .thenReturn(List.of(income));
+        when(repositoryExpense.sumGroupedByDate(walletIds, start, end))
+                .thenReturn(List.of());
+
+        StatisticsResponse result = service.getStatistics(
+                userId, StatisticsPeriod.MONTH, 2024, 2, null, null, null);
+
+        assertEquals(start, result.startDate());
+        assertEquals(end, result.endDate());
+        assertEquals(29, result.points().size());
+        assertEquals("29", result.points().getLast().month());
+        assertEquals(new BigDecimal("42.00"), result.points().getLast().income());
+    }
+
+    @Test
+    void statisticsWeekUsesIsoMondayThroughSundayAcrossYearBoundary() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId));
+        LocalDate monday = LocalDate.of(2026, 12, 28);
+        LocalDate sunday = LocalDate.of(2027, 1, 3);
+        when(repositoryIncome.sumGroupedByDate(
+                List.of(firstWalletId), monday, sunday)).thenReturn(List.of());
+        when(repositoryExpense.sumGroupedByDate(
+                List.of(firstWalletId), monday, sunday)).thenReturn(List.of());
+
+        StatisticsResponse result = service.getStatistics(
+                userId, StatisticsPeriod.WEEK, 2026, 53, null, null, null);
+
+        assertEquals(monday, result.startDate());
+        assertEquals(sunday, result.endDate());
+        assertEquals(7, result.points().size());
+        assertEquals(BigDecimal.ZERO, result.points().getFirst().income());
+    }
+
+    @Test
+    void statisticsCustomRequiresBothRangeBounds() {
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.CUSTOM,
+                        null, null, null, LocalDate.of(2026, 1, 1), null));
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.CUSTOM,
+                        null, null, null, null, LocalDate.of(2026, 1, 1)));
+    }
+
+    @Test
+    void statisticsRejectsDateBoundsUnlessPeriodIsCustom() {
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.MONTH,
+                        2026, 10, null, LocalDate.of(2026, 10, 1),
+                        LocalDate.of(2026, 10, 5)));
+    }
+
+    @Test
+    void statisticsRejectsCustomPeriodWithoutExplicitRange() {
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.CUSTOM,
+                        null, null, null, null, null));
+    }
+
+    @Test
+    void statisticsRejectsIsoWeekBeyondWeeksInSelectedYear() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(List.of());
+
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.WEEK,
+                        2025, 53, null, null, null));
+    }
+
+    @Test
+    void statisticsYearAggregatesMonthTotalsAndFillsMissingMonths() {
+        List<UUID> walletIds = List.of(firstWalletId);
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(walletIds);
+        MonthlyTotalProjection income = monthly(10, "80.00");
+        MonthlyTotalProjection expense = monthly(10, "25.00");
+        when(repositoryIncome.sumGroupedByMonth(
+                walletIds, LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)))
+                .thenReturn(List.of(income));
+        when(repositoryExpense.sumGroupedByMonth(
+                walletIds, LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)))
+                .thenReturn(List.of(expense));
+
+        StatisticsResponse result = service.getStatistics(
+                userId, StatisticsPeriod.YEAR, 2025, null, null, null, null);
+
+        assertEquals(12, result.points().size());
+        assertEquals(BigDecimal.ZERO, result.points().getFirst().income());
+        assertEquals(new BigDecimal("80.00"), result.points().get(9).income());
+        assertEquals(new BigDecimal("25.00"), result.points().get(9).expense());
+    }
+
+    @Test
+    void averagesWithoutWalletMembershipReturnZeroFallback() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(List.of());
+
+        AveragesResponse result = service.getAverages(userId);
+
+        assertEquals(BigDecimal.ZERO, result.averageIncome());
+        assertEquals(0.0, result.incomePercentageChangeLastMonth());
+        assertEquals(BigDecimal.ZERO, result.averageExpenses());
+        assertEquals(0.0, result.expensesPercentageChangeLastMonth());
+        org.mockito.Mockito.verifyNoInteractions(repositoryIncome, repositoryExpense);
+    }
+
+    @Test
+    void averagesTreatNewActivityFromZeroAsOneHundredPercent() {
+        List<UUID> walletIds = List.of(firstWalletId);
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(walletIds);
+        when(repositoryIncome.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(BigDecimal.TEN);
+        when(repositoryIncome.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(BigDecimal.ZERO);
+        when(repositoryIncome.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(new BigDecimal("100.00"));
+        when(repositoryExpense.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(BigDecimal.ZERO);
+        when(repositoryExpense.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(BigDecimal.ZERO);
+        when(repositoryExpense.sumByWalletsAndDateRange(
+                walletIds, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 10, 5)))
+                .thenReturn(BigDecimal.ZERO);
+
+        AveragesResponse result = service.getAverages(userId);
+
+        assertEquals(100.0, result.incomePercentageChangeLastMonth());
+        assertEquals(0.0, result.expensesPercentageChangeLastMonth());
+        assertEquals(new BigDecimal("10.00"), result.averageIncome());
+    }
+
+    @Test
+    void recentActivityIncomeFilterReturnsPositiveIncomeAndClampsLimit() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId));
+        Income salary = income("Salary", LocalDate.of(2026, 10, 4),
+                Instant.parse("2026-10-04T15:00:00Z"));
+        when(repositoryIncome.searchRecent(
+                eq(List.of(firstWalletId)), eq("%salary%"), any(Pageable.class)))
+                .thenReturn(List.of(salary));
+
+        List<RecentActivityItem> result = service.getRecentActivity(
+                userId, ActivityTypeFilter.INCOME, " salary ", 0);
+
+        assertEquals(1, result.size());
+        assertEquals("INCOME", result.getFirst().type());
+        assertEquals(new BigDecimal("20.00"), result.getFirst().amount());
+        verify(repositoryExpense, org.mockito.Mockito.never())
+                .searchRecent(any(), any(), any());
+    }
+
+    @Test
+    void recentActivityAllCombinesKindsSortsAndLimitsAcrossRepositories() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId));
+        Expense expense = expense("Dinner", LocalDate.of(2026, 10, 4),
+                Instant.parse("2026-10-04T18:00:00Z"));
+        Income income = income("Refund", LocalDate.of(2026, 10, 4),
+                Instant.parse("2026-10-04T19:00:00Z"));
+        when(repositoryExpense.searchRecent(
+                eq(List.of(firstWalletId)), eq("%"), any(Pageable.class)))
+                .thenReturn(List.of(expense));
+        when(repositoryIncome.searchRecent(
+                eq(List.of(firstWalletId)), eq("%"), any(Pageable.class)))
+                .thenReturn(List.of(income));
+
+        List<RecentActivityItem> result = service.getRecentActivity(
+                userId, ActivityTypeFilter.ALL, null, 1);
+
+        assertEquals(1, result.size());
+        assertEquals("INCOME", result.getFirst().type());
+    }
+
+    @Test
+    void spendingSummaryWithNoAmountsReturnsZeroPercentages() {
+        List<UUID> walletIds = List.of(firstWalletId);
+        LocalDate start = LocalDate.of(2026, 10, 1);
+        LocalDate today = LocalDate.of(2026, 10, 5);
+        when(repositoryWalletUser.findWalletIdsByUserId(userId)).thenReturn(walletIds);
+        when(repositoryExpense.sumByWalletsAndDateRange(walletIds, start, today))
+                .thenReturn(BigDecimal.ZERO);
+        when(repositoryIncome.sumByWalletsAndDateRange(walletIds, start, today))
+                .thenReturn(BigDecimal.ZERO);
+        when(repositoryExpense.sumGroupedByCategory(
+                eq(walletIds), eq(start), eq(today), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        SpendingSummaryResponse result = service.getSpendingSummary(userId);
+
+        assertEquals(BigDecimal.ZERO, result.totalSpent());
+        assertEquals(0.0, result.totalActivityPercentage());
+        assertEquals(List.of(), result.topCategories());
+    }
+
+    private DailyTotalProjection daily(final LocalDate date, final String total) {
+        DailyTotalProjection projection = org.mockito.Mockito.mock(
+                DailyTotalProjection.class);
+        when(projection.getDate()).thenReturn(date);
+        when(projection.getTotal()).thenReturn(new BigDecimal(total));
+        return projection;
+    }
+
+    private MonthlyTotalProjection monthly(final int month, final String total) {
+        MonthlyTotalProjection projection = org.mockito.Mockito.mock(
+                MonthlyTotalProjection.class);
+        when(projection.getMonth()).thenReturn(month);
+        when(projection.getTotal()).thenReturn(new BigDecimal(total));
+        return projection;
+    }
+
+    private Income income(final String title, final LocalDate date,
+            final Instant createdAt) {
+        Wallet wallet = new Wallet();
+        wallet.setName("Cash");
+        wallet.setCurrency(Currency.USD);
+        Income income = new Income();
+        income.setId(UUID.randomUUID());
+        income.setTitle(title);
+        income.setDate(date);
+        income.setCreatedAt(createdAt);
+        income.setAmount(new BigDecimal("20.00"));
+        income.setWallet(wallet);
+        income.setSource("manual");
+        return income;
     }
 
     private Expense expense(

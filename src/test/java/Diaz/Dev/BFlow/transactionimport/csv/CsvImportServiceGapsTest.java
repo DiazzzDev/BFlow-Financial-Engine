@@ -31,8 +31,12 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * Uses a real {@link TransactionRowParser} (with a stubbed
@@ -170,5 +174,114 @@ class CsvImportServiceGapsTest {
         ImportSummary summary = service.importTransactions(file, walletId, userId);
 
         assertThat(summary.getTotalRows()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsEmptyUploadBeforeParsingOrPersisting() {
+        MockMultipartFile empty = new MockMultipartFile(
+                "file", "empty.csv", "text/csv", new byte[0]);
+
+        assertThatThrownBy(() -> service.importTransactions(empty, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("CSV file is required");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void rejectsUploadsAboveTwoMegabytesBeforeParsing() {
+        MockMultipartFile oversized = new MockMultipartFile(
+                "file", "large.csv", "text/csv", new byte[2 * 1024 * 1024 + 1]);
+
+        assertThatThrownBy(() -> service.importTransactions(
+                oversized, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maximum allowed size of 2MB");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void deniesImportWhenRequesterDoesNotBelongToWallet() {
+        when(repositoryWalletUser.existsByWalletIdAndUserId(walletId, userId))
+                .thenReturn(false);
+        MockMultipartFile file = csv("title,amount,category\nLunch,5,Food\n");
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(bflow.common.exception.WalletAccessDeniedException.class);
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void importsSemicolonDelimitedRegionalSpreadsheet() {
+        ImportSummary summary = service.importTransactions(
+                csv("title;amount;category\nAlmuerzo;12,50;Comida\n"),
+                walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(1);
+        assertThat(summary.getFailureCount()).isZero();
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), anyList());
+    }
+
+    @Test
+    void rejectsXlsxSignatureInsteadOfDecodingItAsText() {
+        byte[] zipHeader = {0x50, 0x4b, 0x03, 0x04, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "renamed.csv", "text/csv", zipHeader);
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(".xlsx");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void missingRequiredHeadersRejectWholeFileWithoutBatchCalls() {
+        MockMultipartFile file = csv("description,date\nLunch,2026-10-01\n");
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Could not detect required column");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void failedPersistenceBatchReturnsPerRowFailuresInsteadOfLosingRows() {
+        doThrow(new IllegalStateException("database unavailable"))
+                .when(batchExecutor).executeBatch(any(), any(), anyList());
+        MockMultipartFile file = csv("title,amount,category\n"
+                + "Lunch,5,Food\nDinner,8,Food\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2);
+        assertThat(summary.getSuccessCount()).isZero();
+        assertThat(summary.getFailureCount()).isEqualTo(2);
+        assertThat(summary.getResults()).allSatisfy(row ->
+                assertThat(row.getMessage()).contains("Batch failed: database unavailable"));
+    }
+
+    @Test
+    void transferTypeRowFailsIndependentlyWhileValidExpensePersists() {
+        MockMultipartFile file = csv("title,amount,category,type\n"
+                + "Lunch,5,Food,EXPENSE\n"
+                + "Move money,10,Food,TRANSFER\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2);
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().get(0).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(1).getMessage())
+                .contains("Transfers are not supported");
+    }
+
+    private MockMultipartFile csv(String content) {
+        return new MockMultipartFile("file", "import.csv", "text/csv",
+                content.getBytes(StandardCharsets.UTF_8));
     }
 }

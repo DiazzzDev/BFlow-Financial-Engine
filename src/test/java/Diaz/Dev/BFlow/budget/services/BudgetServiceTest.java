@@ -3,6 +3,7 @@ package Diaz.Dev.BFlow.budget.services;
 import bflow.auth.entities.User;
 import bflow.auth.services.UserService;
 import bflow.budget.DTO.BudgetPatchRequest;
+import bflow.budget.DTO.BudgetDetailResponse;
 import bflow.budget.DTO.BudgetRequest;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.budget.entity.Budget;
@@ -351,6 +352,289 @@ class BudgetServiceTest {
 
         assertThrows(BudgetNotFoundException.class,
                 () -> budgetService.patchBudget(missingId, userId, patch));
+    }
+
+    @Test
+    void getBudgetStatusCalculatesOnlyTheOwnedBudget() {
+        Budget budget = walletBudget(Currency.USD);
+        BudgetResponse expected = new BudgetResponse();
+        when(repositoryBudget.findByIdAndUserId(budget.getId(), userId))
+                .thenReturn(Optional.of(budget));
+        when(calculationService.calculate(budget)).thenReturn(expected);
+
+        assertEquals(expected, budgetService.getBudgetStatus(budget.getId(), userId));
+        verify(calculationService).calculate(budget);
+    }
+
+    @Test
+    void getBudgetStatusRejectsBudgetOwnedByAnotherUser() {
+        UUID missingId = UUID.randomUUID();
+        when(repositoryBudget.findByIdAndUserId(missingId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(BudgetNotFoundException.class,
+                () -> budgetService.getBudgetStatus(missingId, userId));
+        verify(calculationService, never()).calculate(any(Budget.class));
+    }
+
+    @Test
+    void getBudgetsAppliesPageAndMapsResults() {
+        Budget budget = walletBudget(Currency.USD);
+        when(repositoryBudget.findAll(any(), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                        java.util.List.of(budget)));
+        var pageable = org.springframework.data.domain.PageRequest.of(1, 5);
+
+        var result = budgetService.getBudgets(userId, null, pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(budget.getId(), result.getContent().getFirst().getId());
+        verify(repositoryBudget).findAll(any(), org.mockito.ArgumentMatchers.eq(pageable));
+    }
+
+    @Test
+    void getBudgetsByWalletCalculatesEveryBudgetForAccessibleWallet() {
+        Budget first = walletBudget(Currency.USD);
+        Budget second = walletBudget(Currency.USD);
+        BudgetResponse firstResponse = new BudgetResponse();
+        BudgetResponse secondResponse = new BudgetResponse();
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser(Currency.USD)));
+        when(repositoryBudget.findByWalletId(walletId))
+                .thenReturn(java.util.List.of(first, second));
+        when(calculationService.calculate(first)).thenReturn(firstResponse);
+        when(calculationService.calculate(second)).thenReturn(secondResponse);
+
+        assertEquals(java.util.List.of(firstResponse, secondResponse),
+                budgetService.getBudgetsByWallet(walletId, userId));
+    }
+
+    @Test
+    void getBudgetsByWalletRejectsWalletBeforeRepositoryQuery() {
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(WalletAccessDeniedException.class,
+                () -> budgetService.getBudgetsByWallet(walletId, userId));
+        verify(repositoryBudget, never()).findByWalletId(walletId);
+    }
+
+    @Test
+    void budgetSummaryAggregatesStatusesAndHighestUsage() {
+        BudgetResponse ok = budgetResponse(BudgetStatus.OK, "100", "10", 10);
+        BudgetResponse warning = budgetResponse(BudgetStatus.WARNING, "200", "100", 50);
+        BudgetResponse critical = budgetResponse(BudgetStatus.CRITICAL, "300", "240", 80);
+        BudgetResponse exceeded = budgetResponse(BudgetStatus.EXCEEDED, "400", "500", 125);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser(Currency.USD)));
+        when(repositoryBudget.findByWalletId(walletId)).thenReturn(java.util.List.of(
+                walletBudget(Currency.USD), walletBudget(Currency.USD),
+                walletBudget(Currency.USD), walletBudget(Currency.USD)));
+        org.mockito.Mockito.when(calculationService.calculate(any(Budget.class)))
+                .thenReturn(ok, warning, critical, exceeded);
+
+        var result = budgetService.getBudgetSummary(walletId, userId);
+
+        assertEquals(4, result.getTotal());
+        assertEquals(1, result.getOk());
+        assertEquals(1, result.getWarning());
+        assertEquals(1, result.getCritical());
+        assertEquals(1, result.getExceeded());
+        assertEquals(new BigDecimal("1000"), result.getTotalBudget());
+        assertEquals(new BigDecimal("850"), result.getTotalSpent());
+        assertEquals(new BigDecimal("150"), result.getTotalRemaining());
+        assertEquals(exceeded, result.getHighestUsage());
+    }
+
+    @Test
+    void emptyBudgetSummaryHasZeroTotalsAndNoHighestUsage() {
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser(Currency.USD)));
+        when(repositoryBudget.findByWalletId(walletId)).thenReturn(java.util.List.of());
+
+        var result = budgetService.getBudgetSummary(walletId, userId);
+
+        assertEquals(0, result.getTotal());
+        assertEquals(BigDecimal.ZERO, result.getTotalBudget());
+        assertEquals(BigDecimal.ZERO, result.getTotalSpent());
+        assertEquals(BigDecimal.ZERO, result.getTotalRemaining());
+        assertEquals(null, result.getHighestUsage());
+    }
+
+    @Test
+    void patchThresholdOnlyChangesThresholdsWithoutResettingAlerts() {
+        Budget existing = walletBudget(Currency.USD);
+        existing.setThresholdWarning(70);
+        existing.setThresholdCritical(90);
+        when(repositoryBudget.findByIdAndUserId(existing.getId(), userId))
+                .thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser(Currency.USD)));
+        BudgetPatchRequest patch = new BudgetPatchRequest();
+        patch.setThresholdWarning(75);
+        patch.setThresholdCritical(95);
+
+        budgetService.patchBudget(existing.getId(), userId, patch);
+
+        assertEquals(75, existing.getThresholdWarning());
+        assertEquals(95, existing.getThresholdCritical());
+        verify(lifecycleService, never()).resetAlerts(existing);
+    }
+
+    @Test
+    void patchWalletScopeClearsCategoryAndPreservesAmount() {
+        Budget existing = walletBudget(Currency.USD);
+        existing.setAmount(new BigDecimal("450.00"));
+        existing.setCategory(category(categoryId));
+        when(repositoryBudget.findByIdAndUserId(existing.getId(), userId))
+                .thenReturn(Optional.of(existing));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser(Currency.USD)));
+        BudgetPatchRequest patch = new BudgetPatchRequest();
+        patch.setScope(BudgetScope.WALLET);
+
+        budgetService.patchBudget(existing.getId(), userId, patch);
+
+        assertEquals(null, existing.getCategory());
+        assertEquals(new BigDecimal("450.00"), existing.getAmount());
+        verify(lifecycleService).resetAlerts(existing);
+    }
+
+    @Test
+    void patchThresholdOnlyDoesNotResetAlertsOrChangeWalletCurrency() {
+        Budget existing = categoryGlobalBudget(Currency.EUR);
+        when(repositoryBudget.findByIdAndUserId(existing.getId(), userId))
+                .thenReturn(Optional.of(existing));
+        BudgetPatchRequest patch = new BudgetPatchRequest();
+        patch.setThresholdWarning(72);
+
+        budgetService.patchBudget(existing.getId(), userId, patch);
+
+        assertEquals(Currency.EUR, existing.getCurrency());
+        verify(lifecycleService, never()).resetAlerts(existing);
+    }
+
+    @Test
+    void deleteBudgetRemovesOnlyTheOwnedEntity() {
+        Budget budget = walletBudget(Currency.USD);
+        when(repositoryBudget.findByIdAndUserId(budget.getId(), userId))
+                .thenReturn(Optional.of(budget));
+
+        budgetService.deleteBudget(budget.getId(), userId);
+
+        verify(repositoryBudget).delete(budget);
+    }
+
+    @Test
+    void detailWalletBudgetBuildsCumulativeDailyTrendAndRecentActivity() {
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.minusDays(2);
+        LocalDate end = today.plusDays(2);
+        Budget budget = walletBudget(Currency.USD);
+        budget.setStartDate(start);
+        when(repositoryBudget.findByIdAndUserId(budget.getId(), userId))
+                .thenReturn(Optional.of(budget));
+        when(lifecycleService.calculateEndDate(budget)).thenReturn(end);
+        when(calculationService.calculate(budget)).thenReturn(
+                budgetResponse(BudgetStatus.WARNING, "100", "25", 25));
+        var first = expense(start, "10.00");
+        var last = expense(today, "15.00");
+        when(repositoryExpense.findByWalletIdAndDateBetweenOrderByDateAsc(
+                walletId, start, today)).thenReturn(java.util.List.of(first, last));
+        when(repositoryExpense.findByWalletIdAndDateBetweenOrderByDateDescCreatedAtDesc(
+                eq(walletId), eq(start), eq(today), any()))
+                .thenReturn(java.util.List.of(last, first));
+
+        BudgetDetailResponse result = budgetService.getBudgetDetail(
+                budget.getId(), userId);
+
+        assertEquals(3, result.getDaysElapsed());
+        assertEquals(2, result.getTransactionCount());
+        assertEquals(3, result.getSpendingTrend().size());
+        assertEquals(new BigDecimal("10.00"),
+                result.getSpendingTrend().get(0).getCumulativeAmount());
+        assertEquals(new BigDecimal("25.00"),
+                result.getSpendingTrend().get(2).getCumulativeAmount());
+        assertEquals(2, result.getRecentActivity().size());
+    }
+
+    @Test
+    void detailCategoryGlobalBudgetQueriesAcrossUserWalletsAndBoundsFutureStart() {
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.plusDays(3);
+        LocalDate end = today.plusDays(10);
+        Budget budget = categoryGlobalBudget(Currency.USD);
+        User budgetOwner = new User();
+        budgetOwner.setId(userId);
+        budget.setUser(budgetOwner);
+        budget.setCategory(category(categoryId));
+        budget.setStartDate(start);
+        when(repositoryBudget.findByIdAndUserId(budget.getId(), userId))
+                .thenReturn(Optional.of(budget));
+        when(lifecycleService.calculateEndDate(budget)).thenReturn(end);
+        when(calculationService.calculate(budget)).thenReturn(
+                budgetResponse(BudgetStatus.OK, "100", "0", 0));
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(java.util.List.of(walletId));
+        when(repositoryExpense.findByWalletIdInAndCategoryIdAndDateBetweenOrderByDateAsc(
+                java.util.List.of(walletId), categoryId, start, start))
+                .thenReturn(java.util.List.of());
+        when(repositoryExpense
+                .findByWalletIdInAndCategoryIdAndDateBetweenOrderByDateDescCreatedAtDesc(
+                eq(java.util.List.of(walletId)), eq(categoryId),
+                eq(start), eq(start), any()))
+                .thenReturn(java.util.List.of());
+
+        BudgetDetailResponse result = budgetService.getBudgetDetail(
+                budget.getId(), userId);
+
+        assertEquals(1, result.getDaysElapsed());
+        assertEquals(10, result.getDaysLeft());
+        assertEquals(1, result.getSpendingTrend().size());
+        verify(repositoryExpense).findByWalletIdInAndCategoryIdAndDateBetweenOrderByDateAsc(
+                java.util.List.of(walletId), categoryId, start, start);
+    }
+
+    @Test
+    void expenseEventWithoutCategoryDoesNotQueryGlobalBudgets() {
+        when(repositoryBudget.findByWalletId(walletId)).thenReturn(java.util.List.of());
+
+        budgetService.evaluateBudgetsForExpenseEvent(walletId, null);
+
+        verify(walletUserRepository, never()).findByWalletId(walletId);
+    }
+
+    private BudgetResponse budgetResponse(
+            final BudgetStatus status, final String limit,
+            final String spent, final int percentage
+    ) {
+        BudgetResponse response = new BudgetResponse();
+        response.setStatus(status);
+        response.setBudgetLimit(new BigDecimal(limit));
+        response.setSpent(new BigDecimal(spent));
+        response.setRemaining(response.getBudgetLimit().subtract(response.getSpent()));
+        response.setPercentage(percentage);
+        return response;
+    }
+
+    private bflow.category.entity.Category category(final UUID id) {
+        bflow.category.entity.Category category =
+                new bflow.category.entity.Category();
+        category.setId(id);
+        category.setName("Food");
+        return category;
+    }
+
+    private bflow.expenses.entity.Expense expense(
+            final LocalDate date, final String amount
+    ) {
+        bflow.expenses.entity.Expense expense =
+                new bflow.expenses.entity.Expense();
+        expense.setId(UUID.randomUUID());
+        expense.setTitle("Groceries");
+        expense.setDate(date);
+        expense.setAmount(new BigDecimal(amount));
+        return expense;
     }
 
     // ---------------------------------------------------------------
