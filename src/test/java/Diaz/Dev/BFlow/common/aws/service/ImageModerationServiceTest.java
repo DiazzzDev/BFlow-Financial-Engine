@@ -1,5 +1,6 @@
 package Diaz.Dev.BFlow.common.aws.service;
 
+import bflow.common.aws.service.ImageModerationService;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.i18n.MessageService;
 import org.junit.jupiter.api.BeforeEach;

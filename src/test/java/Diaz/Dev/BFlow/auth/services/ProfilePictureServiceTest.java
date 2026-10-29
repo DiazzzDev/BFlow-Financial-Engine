@@ -3,6 +3,8 @@ package Diaz.Dev.BFlow.auth.services;
 import bflow.auth.entities.User;
 import bflow.auth.enums.PictureSource;
 import bflow.auth.repository.RepositoryUser;
+import bflow.auth.services.ProfilePictureService;
+import bflow.auth.services.UserService;
 import bflow.common.aws.service.ImageModerationService;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.InvalidFileException;
