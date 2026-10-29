@@ -28,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.Instant;
@@ -88,7 +89,9 @@ class ServiceWalletSharingLifecycleTest {
 
         assertThat(service.searchCollaborators(walletId, ownerId, "  "))
                 .isEmpty();
-        verify(userRepository, never()).findAll(any(), any(PageRequest.class));
+        verify(userRepository, never()).findAll(
+                org.mockito.ArgumentMatchers.<Specification<User>>any(),
+                any(PageRequest.class));
     }
 
     @Test
@@ -98,7 +101,9 @@ class ServiceWalletSharingLifecycleTest {
         User member = user("member@example.com", "Member");
         User pending = user("pending@example.com", "Pending");
         User newUser = user("new@example.com", "New");
-        when(userRepository.findAll(any(), any(PageRequest.class)))
+        when(userRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<User>>any(),
+                any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(member, pending, newUser)));
         when(walletUserRepository.findMemberEmailsByWalletId(walletId))
                 .thenReturn(List.of(member.getEmail()));
@@ -112,14 +117,18 @@ class ServiceWalletSharingLifecycleTest {
                 CollaboratorStatus.ALREADY_MEMBER,
                 CollaboratorStatus.INVITATION_PENDING,
                 CollaboratorStatus.INVITABLE);
-        verify(userRepository).findAll(any(), eq(PageRequest.of(0, 8)));
+        verify(userRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<User>>any(),
+                eq(PageRequest.of(0, 8)));
     }
 
     @Test
     void collaboratorSearchWithNoMatchesSkipsMembershipLookups() {
         when(walletUserRepository.findByWalletIdAndUserId(walletId, ownerId))
                 .thenReturn(Optional.of(ownerLink()));
-        when(userRepository.findAll(any(), any(PageRequest.class)))
+        when(userRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<User>>any(),
+                any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         assertThat(service.searchCollaborators(walletId, ownerId, "nobody"))

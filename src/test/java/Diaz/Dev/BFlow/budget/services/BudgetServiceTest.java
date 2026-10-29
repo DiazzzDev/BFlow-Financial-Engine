@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -44,6 +45,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -380,7 +382,9 @@ class BudgetServiceTest {
     @Test
     void getBudgetsAppliesPageAndMapsResults() {
         Budget budget = walletBudget(Currency.USD);
-        when(repositoryBudget.findAll(any(), any()))
+        when(repositoryBudget.findAll(
+                org.mockito.ArgumentMatchers.<Specification<Budget>>any(),
+                any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(
                         java.util.List.of(budget)));
         var pageable = org.springframework.data.domain.PageRequest.of(1, 5);
@@ -389,7 +393,9 @@ class BudgetServiceTest {
 
         assertEquals(1, result.getTotalElements());
         assertEquals(budget.getId(), result.getContent().getFirst().getId());
-        verify(repositoryBudget).findAll(any(), org.mockito.ArgumentMatchers.eq(pageable));
+        verify(repositoryBudget).findAll(
+                org.mockito.ArgumentMatchers.<Specification<Budget>>any(),
+                eq(pageable));
     }
 
     @Test
@@ -601,7 +607,7 @@ class BudgetServiceTest {
 
         budgetService.evaluateBudgetsForExpenseEvent(walletId, null);
 
-        verify(walletUserRepository, never()).findByWalletId(walletId);
+        verify(repositoryWalletUser, never()).findByWalletId(walletId);
     }
 
     private BudgetResponse budgetResponse(
