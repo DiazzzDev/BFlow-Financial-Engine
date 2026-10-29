@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.rekognition.RekognitionClient;
+import software.amazon.awssdk.services.rekognition.model.DetectModerationLabelsRequest;
 import software.amazon.awssdk.services.rekognition.model.DetectModerationLabelsResponse;
 import software.amazon.awssdk.services.rekognition.model.ModerationLabel;
 
@@ -45,21 +46,20 @@ class ImageModerationServiceTest {
     @Test
     void allowsImageWhenModerationReturnsNoUnsafeLabels() {
         when(rekognitionClient.detectModerationLabels(
-                any(software.amazon.awssdk.services.rekognition.model
-                        .DetectModerationLabelsRequest.class)))
+                any(DetectModerationLabelsRequest.class)))
                 .thenReturn(DetectModerationLabelsResponse.builder()
                         .moderationLabels(List.of()).build());
 
         moderationService.assertSafeBytes(JPEG_SIGNATURE, "image/jpeg");
 
-        verify(rekognitionClient).detectModerationLabels(any());
+        verify(rekognitionClient).detectModerationLabels(
+                any(DetectModerationLabelsRequest.class));
     }
 
     @Test
     void rejectsExplicitNudityAndViolenceLabels() {
-        when(rekognitionClient.detectModerationLabels(any(
-                software.amazon.awssdk.services.rekognition.model
-                        .DetectModerationLabelsRequest.class)))
+        when(rekognitionClient.detectModerationLabels(
+                any(DetectModerationLabelsRequest.class)))
                 .thenReturn(DetectModerationLabelsResponse.builder()
                         .moderationLabels(ModerationLabel.builder()
                                 .name("Violence")
@@ -78,9 +78,8 @@ class ImageModerationServiceTest {
                 moderationService.assertSafeBytes(
                         JPEG_SIGNATURE, "image/png"));
 
-        verify(rekognitionClient, never()).detectModerationLabels(any(
-                software.amazon.awssdk.services.rekognition.model
-                        .DetectModerationLabelsRequest.class));
+        verify(rekognitionClient, never()).detectModerationLabels(
+                any(DetectModerationLabelsRequest.class));
     }
 
     @Test
@@ -103,16 +102,16 @@ class ImageModerationServiceTest {
 
     @Test
     void scansPrivateS3ObjectUsingConfiguredBucketAndObjectKey() {
-        when(rekognitionClient.detectModerationLabels(any(
-                software.amazon.awssdk.services.rekognition.model
-                        .DetectModerationLabelsRequest.class)))
+        when(rekognitionClient.detectModerationLabels(
+                any(DetectModerationLabelsRequest.class)))
                 .thenReturn(DetectModerationLabelsResponse.builder()
                         .moderationLabels(List.of()).build());
 
         moderationService.assertSafeObject(
                 "users/user-id/receipt.png", "image/jpeg", JPEG_SIGNATURE);
 
-        verify(rekognitionClient).detectModerationLabels(any());
+        verify(rekognitionClient).detectModerationLabels(
+                any(DetectModerationLabelsRequest.class));
     }
 
     @Test
@@ -121,8 +120,7 @@ class ImageModerationServiceTest {
                 new byte[] {0x25, 0x50, 0x44, 0x46, 0x2d},
                 "application/pdf");
 
-        verify(rekognitionClient, never()).detectModerationLabels(any(
-                software.amazon.awssdk.services.rekognition.model
-                        .DetectModerationLabelsRequest.class));
+        verify(rekognitionClient, never()).detectModerationLabels(
+                any(DetectModerationLabelsRequest.class));
     }
 }
