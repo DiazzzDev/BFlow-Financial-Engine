@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.SendEmailRequest;
 import software.amazon.awssdk.services.ses.model.SesException;
@@ -48,7 +49,9 @@ class SesEmailServiceFallbackTest {
 
     @Test
     void wrapsSesOutageInDomainEmailDeliveryException() {
-        SesException outage = SesException.builder().message("SES unavailable").build();
+        AwsServiceException outage = SesException.builder()
+                .message("SES unavailable")
+                .build();
         when(sesClient.sendEmail(any(SendEmailRequest.class))).thenThrow(outage);
         when(messageService.get("email.delivery.unavailable"))
                 .thenReturn("Email unavailable");

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.textract.TextractClient;
 import software.amazon.awssdk.services.textract.model.ExpenseDetection;
 import software.amazon.awssdk.services.textract.model.ExpenseDocument;
@@ -142,7 +143,7 @@ class ReceiptOcrResultProcessorTest {
 
     @Test
     void transientTextractFailurePropagatesForQueueRedelivery() {
-        TextractException outage = TextractException.builder()
+        AwsServiceException outage = TextractException.builder()
                 .message("temporarily unavailable").build();
         when(textractClient.getExpenseAnalysis(any(GetExpenseAnalysisRequest.class)))
                 .thenThrow(outage);
