@@ -119,7 +119,8 @@ class QuickExpenseBrowserIT {
                               method: 'POST',
                               headers: {
                                 'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'Idempotency-Key': crypto.randomUUID()
                               },
                               body: JSON.stringify({ amount: 25.00 })
                             });
@@ -141,7 +142,8 @@ class QuickExpenseBrowserIT {
                               method: 'POST',
                               headers: {
                                 'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'Idempotency-Key': crypto.randomUUID()
                               },
                               body: JSON.stringify({ amount: 0 })
                             });
@@ -182,7 +184,8 @@ class QuickExpenseBrowserIT {
                               walletId,
                               amount: 200.00,
                               period: 'MONTHLY',
-                              startDate: new Date().toISOString().slice(0, 10),
+                              startDate: new Date(Date.now() - 2 * 86400000)
+                                .toISOString().slice(0, 10),
                               scope: 'WALLET',
                               currency: 'USD'
                             })
@@ -218,7 +221,8 @@ class QuickExpenseBrowserIT {
                         async ({token, walletId}) => {
                           const headers = {
                             'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Idempotency-Key': crypto.randomUUID()
                           };
                           const expense = await fetch('/api/v1/expenses/quick', {
                             method: 'POST', headers,

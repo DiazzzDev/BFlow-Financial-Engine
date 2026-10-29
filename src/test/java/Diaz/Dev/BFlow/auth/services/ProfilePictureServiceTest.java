@@ -55,7 +55,6 @@ class ProfilePictureServiceTest {
         userId = UUID.randomUUID();
         user = new User();
         user.setId(userId);
-        when(userService.findById(userId)).thenReturn(user);
     }
 
     @Test
@@ -76,6 +75,7 @@ class ProfilePictureServiceTest {
     @Test
     void safeAvatarIsModeratedBeforeReplacingStoredPicture() {
         MockMultipartFile image = jpeg();
+        when(userService.findById(userId)).thenReturn(user);
 
         String url = profilePictureService.updatePicture(userId, image);
 

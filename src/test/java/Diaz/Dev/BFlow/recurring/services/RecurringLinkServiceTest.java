@@ -169,9 +169,10 @@ class RecurringLinkServiceTest {
                 new RecurringLinkService.RecurringCreateRequest(
                         RecurringType.EXPENSE, "MONTHLY", wallet, category,
                         user, "Historic subscription", null,
-                        BigDecimal.TEN, LocalDate.now().minusMonths(8)));
+                        BigDecimal.TEN, LocalDate.now(clock).minusMonths(8)));
 
-        assertFalse(result.getNextExecutionDate().isBefore(LocalDate.now()));
+        assertFalse(result.getNextExecutionDate()
+                .isBefore(LocalDate.now(clock)));
     }
 
     @Test
