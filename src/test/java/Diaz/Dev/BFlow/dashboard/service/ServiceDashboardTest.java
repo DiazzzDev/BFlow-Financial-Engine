@@ -378,7 +378,7 @@ class ServiceDashboardTest {
                 List.of(firstWalletId), monday, sunday)).thenReturn(List.of());
 
         StatisticsResponse result = service.getStatistics(
-                userId, StatisticsPeriod.WEEK, 2026, 53, null, null, null);
+                userId, StatisticsPeriod.WEEK, 2026, null, 53, null, null);
 
         assertEquals(monday, result.startDate());
         assertEquals(sunday, result.endDate());
@@ -417,7 +417,7 @@ class ServiceDashboardTest {
 
         assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
                 () -> service.getStatistics(userId, StatisticsPeriod.WEEK,
-                        2025, 53, null, null, null));
+                        2025, null, 53, null, null));
     }
 
     @Test

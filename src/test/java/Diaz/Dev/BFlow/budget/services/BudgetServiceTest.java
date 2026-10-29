@@ -6,6 +6,7 @@ import bflow.budget.DTO.BudgetPatchRequest;
 import bflow.budget.DTO.BudgetDetailResponse;
 import bflow.budget.DTO.BudgetRequest;
 import bflow.budget.DTO.BudgetResponse;
+import bflow.budget.DTO.BudgetSearchRequest;
 import bflow.budget.entity.Budget;
 import bflow.budget.enums.BudgetScope;
 import bflow.budget.enums.BudgetStatus;
@@ -389,7 +390,8 @@ class BudgetServiceTest {
                         java.util.List.of(budget)));
         var pageable = org.springframework.data.domain.PageRequest.of(1, 5);
 
-        var result = budgetService.getBudgets(userId, null, pageable);
+        var result = budgetService.getBudgets(
+                userId, new BudgetSearchRequest(), pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(budget.getId(), result.getContent().getFirst().getId());
