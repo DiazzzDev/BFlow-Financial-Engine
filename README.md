@@ -23,9 +23,10 @@ BFlow focuses on intentional financial tracking without requiring bank integrati
 
 The architecture overview separates application services, the receipt OCR flow (S3 + SQS + Textract), and the GitHub Actions deployment / Cloudflare DNS update process. It distinguishes Terraform resources from optional or externally managed services and adapts to narrow screens.
 
-- [Open the interactive architecture diagram](docs/architecture/index.html).
+- [Open the interactive architecture diagram](https://architecture.bflow-studio.com/).
 - [Read the service responsibilities and IaC inventory](docs/architecture/README.md).
 
+Check https://architecture.bflow-studio.com/
 
 ## Vision
 
