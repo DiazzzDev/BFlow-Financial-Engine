@@ -448,6 +448,39 @@ class WompiWebhookServiceTest {
         verify(repositoryPayment).save(any(Payment.class));
     }
 
+    @Test
+    void activeEnrollmentGrantsPlanWithoutCreatingAFalsePayment() {
+        Subscription subscription = monthlySubscription(new BigDecimal("9.99"));
+
+        service.activateEnrollment(subscription, "subscriber-123");
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(subscription.getProviderSubscriberId())
+                .isEqualTo("subscriber-123");
+        assertThat(subscription.getNextBillingAt()).isNotNull();
+        verify(repositorySubscription).save(subscription);
+        verifyNoInteractions(repositoryPayment);
+    }
+
+    @Test
+    void enrollmentCancelsAnOlderActivePlanForTheSameUser() {
+        Subscription pro = monthlySubscription(new BigDecimal("9.99"));
+        Subscription free = monthlySubscription(BigDecimal.ZERO);
+        free.setStatus(SubscriptionStatus.ACTIVE);
+        free.setUser(pro.getUser());
+        when(repositorySubscription.findByUserIdAndStatus(
+                pro.getUser().getId(), SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(free));
+
+        service.activateEnrollment(pro, "subscriber-123");
+
+        assertThat(free.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        assertThat(free.getCanceledAt()).isNotNull();
+        verify(repositorySubscription).save(free);
+        verify(repositorySubscription).save(pro);
+        verifyNoInteractions(repositoryPayment);
+    }
+
     /*
     @Test
     void suscripcionNoEncontradaLanzaExcepcion() throws Exception {

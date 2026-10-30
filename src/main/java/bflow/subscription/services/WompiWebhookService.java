@@ -162,15 +162,7 @@ public class WompiWebhookService {
             );
         }
 
-        repositorySubscription.findByUserIdAndStatus(
-                subscription.getUser().getId(),
-                        SubscriptionStatus.ACTIVE)
-                .filter(other -> !other.getId().equals(subscription.getId()))
-                .ifPresent(other -> {
-                    other.setStatus(SubscriptionStatus.CANCELED);
-                    other.setCanceledAt(Instant.now());
-                    repositorySubscription.save(other);
-                });
+        cancelOtherActiveSubscription(subscription);
 
         Payment payment = new Payment();
         payment.setUser(subscription.getUser());
@@ -198,6 +190,41 @@ public class WompiWebhookService {
                 subscription.getId(),
                 providerPaymentId
         );
+    }
+
+    /**
+     * Activates a recurring subscription after Wompi confirms that the
+     * customer enrolled their card. Enrollment is not a payment: the first
+     * payment record is created only when Wompi later sends an approved
+     * transaction webhook.
+     *
+     * @param subscription local subscription matched to the Wompi enrolment
+     * @param providerSubscriberId Wompi subscriber identifier
+     */
+    public void activateEnrollment(
+            final Subscription subscription,
+            final String providerSubscriberId
+    ) {
+        cancelOtherActiveSubscription(subscription);
+        subscription.setProviderSubscriberId(providerSubscriberId);
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setNextBillingAt(computeNextBillingAt(subscription));
+        repositorySubscription.save(subscription);
+
+        log.info("Subscription {} activated from Wompi enrollment {}",
+                subscription.getId(), providerSubscriberId);
+    }
+
+    /** Cancels another plan currently active for the same user. */
+    private void cancelOtherActiveSubscription(final Subscription subscription) {
+        repositorySubscription.findByUserIdAndStatus(
+                subscription.getUser().getId(), SubscriptionStatus.ACTIVE)
+                .filter(other -> !other.getId().equals(subscription.getId()))
+                .ifPresent(other -> {
+                    other.setStatus(SubscriptionStatus.CANCELED);
+                    other.setCanceledAt(Instant.now());
+                    repositorySubscription.save(other);
+                });
     }
 
     /**

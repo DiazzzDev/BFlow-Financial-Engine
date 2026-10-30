@@ -120,6 +120,7 @@ security:
 wompi:
   token-url: https://id.wompi.sv/connect/token
   base-url: https://api.wompi.sv
+  product-image-url: ${WOMPI_PRODUCT_IMAGE_URL:${LOGO_URL:}}
   client-id: ${WOMPI_CLIENT_ID}
   client-secret: ${WOMPI_CLIENT_SECRET}
   app-id: ${WOMPI_APP_ID}

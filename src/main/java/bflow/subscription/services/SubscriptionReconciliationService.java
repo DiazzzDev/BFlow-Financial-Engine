@@ -3,7 +3,6 @@ package bflow.subscription.services;
 import bflow.subscription.WompiApiClient;
 import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.SubscriptionStatus;
-import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,12 +18,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SubscriptionReconciliationService {
 
-    /** Grace period before considering a checkout abandoned. */
-    private static final int PENDING_GRACE_HOURS = 6;
+    /** Time allowed for Wompi to expose a just-completed enrolment. */
+    private static final int PENDING_GRACE_MINUTES = 5;
 
-    /** Maximum number of days to allow a pending activation before
-     * expiration. */
-    private static final int MAX_PENDING_DAYS = 3;
+    /** Maximum number of days for a customer to complete enrolment. */
+    private static final int MAX_PENDING_ENROLLMENT_DAYS = 30;
 
     /** Repository used to access subscription data. */
     private final RepositorySubscription repositorySubscription;
@@ -35,18 +33,13 @@ public class SubscriptionReconciliationService {
     /** Service used to activate subscriptions from trusted events. */
     private final WompiWebhookService wompiWebhookService;
 
-    /** Repository used to access payment data. */
-    private final RepositoryPayment repositoryPayment;
-
     /**
      * Reconcile pending activations that were not confirmed in time.
      */
     @Transactional
     public void reconcilePendingActivations() {
         Instant threshold = Instant.now().minus(
-                PENDING_GRACE_HOURS,
-                ChronoUnit.HOURS
-        );
+                PENDING_GRACE_MINUTES, ChronoUnit.MINUTES);
 
         List<Subscription> stale = repositorySubscription
                 .findAllByStatusAndCreatedAtBefore(
@@ -115,10 +108,9 @@ public class SubscriptionReconciliationService {
             final Subscription subscription,
             final WompiApiClient.SubscriberInfo match
     ) {
-        if (!"Activa".equalsIgnoreCase(match.estado())
-                || match.pagosRealizados() < 1) {
+        if (!"Activa".equalsIgnoreCase(match.estado())) {
             Instant hardCutoff = subscription.getCreatedAt()
-                    .plus(MAX_PENDING_DAYS, ChronoUnit.DAYS);
+                    .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
             if (Instant.now().isAfter(hardCutoff)) {
                 subscription.setStatus(SubscriptionStatus.EXPIRED);
                 repositorySubscription.save(subscription);
@@ -126,39 +118,25 @@ public class SubscriptionReconciliationService {
                         "Subscription {} expirada tras {} días sin "
                                 + "confirmación (estado Wompi={})",
                         subscription.getId(),
-                        MAX_PENDING_DAYS,
+                        MAX_PENDING_ENROLLMENT_DAYS,
                         match.estado()
                 );
             } else {
                 log.info(
-                        "Subscription {} sin pago confirmado aún "
-                                + "(estado={}, pagos={})",
+                        "Subscription {} sin afiliación activa aún "
+                                + "(estado Wompi={})",
                         subscription.getId(),
-                        match.estado(),
-                        match.pagosRealizados()
+                        match.estado()
                 );
             }
             return;
         }
 
-        String syntheticPaymentId = "RECON-" + match.id();
-        if (repositoryPayment.existsByProviderPaymentId(syntheticPaymentId)) {
-            return;
-        }
-
-        if (subscription.getProviderSubscriberId() == null) {
-            subscription.setProviderSubscriberId(match.id());
-        }
-
-        wompiWebhookService.activate(
-                subscription,
-                syntheticPaymentId,
-                match.monto()
-        );
+        wompiWebhookService.activateEnrollment(subscription, match.id());
 
         log.warn(
-                "Subscription {} activada vía reconciliación "
-                        + "(webhook perdido). idSuscriptor={}",
+                "Subscription {} activada vía reconciliación de afiliación "
+                        + "Wompi. idSuscriptor={}",
                 subscription.getId(),
                 match.idSuscriptor()
         );
@@ -170,12 +148,20 @@ public class SubscriptionReconciliationService {
      * @param subscription the pending subscription
      */
     private void handleNoMatch(final Subscription subscription) {
-        subscription.setStatus(SubscriptionStatus.EXPIRED);
-        repositorySubscription.save(subscription);
-        log.info(
-                "Subscription {} marcada EXPIRED: sin suscriptor en Wompi tras "
-                        + "el grace period",
-                subscription.getId()
-        );
+        Instant hardCutoff = subscription.getCreatedAt()
+                .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
+        if (Instant.now().isAfter(hardCutoff)) {
+            subscription.setStatus(SubscriptionStatus.EXPIRED);
+            repositorySubscription.save(subscription);
+            log.info(
+                    "Subscription {} marcada EXPIRED: no se completó la "
+                            + "afiliación Wompi en {} días",
+                    subscription.getId(), MAX_PENDING_ENROLLMENT_DAYS
+            );
+            return;
+        }
+
+        log.info("Subscription {} sigue pendiente: afiliación Wompi aún "
+                        + "no encontrada", subscription.getId());
     }
 }

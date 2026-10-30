@@ -12,6 +12,9 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.MultipartBodyBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,6 +49,10 @@ public class WompiApiClient {
     /** Wompi application identifier. */
     @Value("${wompi.app-id}")
     private String idAplicativo;
+
+    /** Image displayed for newly-created recurring payment links. */
+    @Value("${wompi.product-image-url:}")
+    private String productImageUrl;
 
     /** REST client configured against the Wompi API. */
     private RestClient restClient;
@@ -202,6 +209,51 @@ public class WompiApiClient {
                 .header("Authorization", "Bearer " + getAccessToken())
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    /**
+     * Attaches the configured product image to a recurring payment link.
+     * The checkout remains usable when the optional image cannot be loaded
+     * or Wompi temporarily rejects the image upload.
+     *
+     * @param idEnlace Wompi recurring link identifier
+     */
+    public void attachRecurringLinkImage(final String idEnlace) {
+        if (productImageUrl == null || productImageUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            byte[] image = RestClient.create()
+                    .get()
+                    .uri(productImageUrl)
+                    .retrieve()
+                    .body(byte[].class);
+            if (image == null || image.length == 0) {
+                log.warn("No se pudo descargar la imagen de Wompi link {}",
+                        idEnlace);
+                return;
+            }
+
+            MultipartBodyBuilder form = new MultipartBodyBuilder();
+            form.part("imagen", new ByteArrayResource(image) {
+                @Override
+                public String getFilename() {
+                    return "bflow-logo.png";
+                }
+            }).header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE);
+
+            restClient.post()
+                    .uri("/EnlacePagoRecurrente/{id}/imagen", idEnlace)
+                    .header("Authorization", "Bearer " + getAccessToken())
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(form.build())
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("No se pudo adjuntar imagen al enlace recurrente {}: {}",
+                    idEnlace, e.getMessage());
+        }
     }
 
     /**

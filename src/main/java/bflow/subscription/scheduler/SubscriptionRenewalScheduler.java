@@ -118,9 +118,9 @@ public class SubscriptionRenewalScheduler {
     }
 
     /**
-     * Reconcile pending activations every six hours.
+     * Reconcile pending enrolments shortly after Wompi confirms the card.
      */
-    @Scheduled(cron = "0 0 */6 * * *")
+    @Scheduled(cron = "0 */15 * * * *")
     @Transactional
     public void reconcilePending() {
         subscriptionReconciliationService.reconcilePendingActivations();

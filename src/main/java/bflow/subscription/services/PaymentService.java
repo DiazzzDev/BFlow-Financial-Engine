@@ -48,6 +48,9 @@ public class PaymentService {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    /** Builds the customer-facing plan details shown by Wompi. */
+    private final PlanCheckoutPresentation planCheckoutPresentation;
+
     /**
      * Time zone used by Wompi for billing date calculations.
      */
@@ -103,7 +106,7 @@ public class PaymentService {
             var link = wompiApiClient.createPaymentLink(
                     checkoutReference,
                     plan.getPrice(),
-                    plan.getName()
+                    planCheckoutPresentation.serviceName(plan)
             );
 
             subscription.setAutoRenew(false);
@@ -116,10 +119,11 @@ public class PaymentService {
             );
             var link = wompiApiClient.createRecurringLink(
                     diaDePago,
-                    plan.getName(),
+                    planCheckoutPresentation.serviceName(plan),
                     plan.getPrice(),
-                    plan.getName()
+                    planCheckoutPresentation.description(plan)
             );
+            wompiApiClient.attachRecurringLinkImage(link.id());
 
             subscription.setAutoRenew(true);
             subscription.setBillingDay(diaDePago);
