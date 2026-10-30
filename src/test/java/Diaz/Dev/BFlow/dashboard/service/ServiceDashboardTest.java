@@ -548,6 +548,53 @@ class ServiceDashboardTest {
         assertEquals(List.of(), result.topCategories());
     }
 
+    @Test
+    void recentActivityTruncatesLongSearchAndReturnsExpenseAsNegativeAmount() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of(firstWalletId));
+        String query = "A".repeat(120);
+        Expense expense = expense("Market purchase",
+                LocalDate.of(2026, 10, 4),
+                Instant.parse("2026-10-04T18:00:00Z"));
+        when(repositoryExpense.searchRecent(
+                eq(List.of(firstWalletId)),
+                eq("%" + "a".repeat(100) + "%"),
+                any(Pageable.class)))
+                .thenReturn(List.of(expense));
+
+        List<RecentActivityItem> result = service.getRecentActivity(
+                userId, ActivityTypeFilter.EXPENSE, query, 100);
+
+        assertEquals(1, result.size());
+        assertEquals("EXPENSE", result.getFirst().type());
+        assertEquals("Market purchase", result.getFirst().name());
+        assertEquals(BigDecimal.TEN.negate(), result.getFirst().amount());
+        ArgumentCaptor<Pageable> pageable =
+                ArgumentCaptor.forClass(Pageable.class);
+        verify(repositoryExpense).searchRecent(
+                eq(List.of(firstWalletId)),
+                eq("%" + "a".repeat(100) + "%"), pageable.capture());
+        assertEquals(50, pageable.getValue().getPageSize());
+    }
+
+    @Test
+    void customStatisticsAcceptsMaximumRangeAndRejectsReversedDates() {
+        when(repositoryWalletUser.findWalletIdsByUserId(userId))
+                .thenReturn(List.of());
+        LocalDate start = LocalDate.of(2025, 1, 1);
+        LocalDate end = start.plusDays(365);
+
+        StatisticsResponse response = service.getStatistics(
+                userId, StatisticsPeriod.CUSTOM, null, null, null, start, end);
+
+        assertEquals(start, response.startDate());
+        assertEquals(end, response.endDate());
+        assertEquals(366, response.points().size());
+        assertThrows(bflow.dashboard.exception.InvalidStatisticsFilterException.class,
+                () -> service.getStatistics(userId, StatisticsPeriod.CUSTOM,
+                        null, null, null, end, start));
+    }
+
     private DailyTotalProjection daily(final LocalDate date, final String total) {
         DailyTotalProjection projection = org.mockito.Mockito.mock(
                 DailyTotalProjection.class);
