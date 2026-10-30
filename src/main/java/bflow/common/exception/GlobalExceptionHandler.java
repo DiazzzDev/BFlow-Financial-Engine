@@ -1,5 +1,6 @@
 package bflow.common.exception;
 
+import bflow.common.financial.InvalidTransactionDateException;
 import bflow.common.idempotency.exception.IdempotencyConflictException;
 import bflow.common.response.ApiResponse;
 import bflow.common.response.ErrorCode;
@@ -671,8 +672,8 @@ public final class GlobalExceptionHandler {
                     .map(Object::toString)
                     .collect(java.util.stream.Collectors.joining(", "));
 
-            message = "Invalid value '%s' for "
-                    + "parameter '%s'. Allowed values: %s.".formatted(
+            message = ("Invalid value '%s' for parameter '%s'. "
+                    + "Allowed values: %s.").formatted(
                     ex.getValue(),
                     ex.getName(),
                     allowedValues
@@ -969,6 +970,23 @@ public final class GlobalExceptionHandler {
                 .body(ApiResponse.error(
                         ex.getMessage(), request.getRequestURI(),
                         ErrorCode.INVALID_BUDGET_DATE
+                ));
+    }
+
+    /** Handles transaction dates outside the supported business window. */
+    @ExceptionHandler(InvalidTransactionDateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidTransactionDate(
+            final InvalidTransactionDateException ex,
+            final HttpServletRequest request
+    ) {
+        FieldErrorResponse fieldError = new FieldErrorResponse(
+                "date", "INVALID_TRANSACTION_DATE", ex.getMessage()
+        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.validationError(
+                        "date: " + ex.getMessage(), request.getRequestURI(),
+                        List.of(fieldError)
                 ));
     }
 

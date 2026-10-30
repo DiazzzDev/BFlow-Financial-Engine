@@ -32,7 +32,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -45,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link ServiceAccountHardDelete} against the real
- * devcontainer Postgres (see application-test.properties), rolled
+ * isolated PostgreSQL Testcontainer, rolled
  * back automatically by {@code @Transactional}.
  *
  * <p>Requires V33__ghost_user_and_billing_snapshot.sql to have been
@@ -55,7 +60,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = bflow.BFlowApplication.class)
 @ActiveProfiles("test")
 @Transactional
+@Testcontainers
 class ServiceAccountHardDeleteTest {
+
+    @Container
+    private static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>("postgres:16-alpine")
+                    .withDatabaseName("bflow")
+                    .withUsername("postgres")
+                    .withPassword("postgres");
+
+    @DynamicPropertySource
+    static void configurePostgres(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+    }
 
     @Autowired private RepositoryUser repositoryUser;
     @Autowired private RepositoryWallet repositoryWallet;
@@ -107,6 +127,25 @@ class ServiceAccountHardDeleteTest {
 
         assertEquals(ghostBefore.getId(),
                 sharedExpense.getContributor().getId());
+    }
+
+    @Test
+    void hardDelete_reassignsHistoryAfterMemberAlreadyLeftSharedWallet() {
+        repositoryWalletUser.delete(repositoryWalletUser
+                .findByWalletIdAndUserId(sharedWallet.getId(), leaving.getId())
+                .orElseThrow());
+        repositoryWalletUser.flush();
+
+        serviceAccountHardDelete.hardDelete(leaving);
+
+        Expense historicalExpense = repositoryExpense
+                .findByWalletId(sharedWallet.getId(),
+                        org.springframework.data.domain.Pageable.unpaged())
+                .getContent().get(0);
+
+        assertEquals(SystemUsers.GHOST_USER_ID,
+                historicalExpense.getContributor().getId());
+        assertTrue(repositoryUser.findById(leaving.getId()).isEmpty());
     }
 
     @Test

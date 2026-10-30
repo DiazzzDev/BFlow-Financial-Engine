@@ -5,6 +5,7 @@ import bflow.auth.enums.PictureSource;
 import bflow.auth.repository.RepositoryUser;
 import bflow.common.aws.service.StorageObject;
 import bflow.common.aws.service.StorageService;
+import bflow.common.aws.service.ImageModerationService;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.i18n.MessageService;
@@ -16,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,7 +46,7 @@ public class ProfilePictureService {
 
     /** Content types accepted for a profile picture upload. */
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp"
+            "image/jpeg", "image/png"
     );
 
     /** Repository for user core data. */
@@ -55,6 +57,9 @@ public class ProfilePictureService {
 
     /** Storage abstraction used to persist and retrieve the avatar. */
     private final StorageService storageService;
+
+    /** Rejects unsafe images before the avatar object is replaced. */
+    private final ImageModerationService imageModerationService;
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
@@ -86,9 +91,12 @@ public class ProfilePictureService {
         String key = avatarKey(userId);
 
         try {
+            byte[] bytes = file.getBytes();
+            imageModerationService.assertSafeBytes(
+                    bytes, file.getContentType());
             storageService.upload(
                     key,
-                    file.getInputStream(),
+                    new ByteArrayInputStream(bytes),
                     file.getSize(),
                     file.getContentType()
             );
@@ -169,5 +177,8 @@ public class ProfilePictureService {
                     )
             );
         }
+
+        imageModerationService.validateFilename(
+                file.getOriginalFilename(), contentType);
     }
 }

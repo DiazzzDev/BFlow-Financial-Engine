@@ -98,7 +98,8 @@ public class SubscriptionService {
             );
         }
 
-        if (subscription.getProviderLinkId() != null) {
+        if (subscription.isAutoRenew()
+                && subscription.getProviderLinkId() != null) {
             try {
                 wompiApiClient.deactivateRecurringLink(
                         subscription.getProviderLinkId()

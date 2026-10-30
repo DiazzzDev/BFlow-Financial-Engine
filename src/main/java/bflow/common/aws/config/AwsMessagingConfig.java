@@ -7,6 +7,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.textract.TextractClient;
+import software.amazon.awssdk.services.rekognition.RekognitionClient;
 
 /**
  * AWS configuration for the messaging clients used by the async
@@ -62,6 +63,14 @@ public class AwsMessagingConfig {
     @Bean
     public TextractClient textractClient() {
         return TextractClient.builder()
+                .region(Region.of(region))
+                .build();
+    }
+
+    /** Creates the image moderation client used before user media is served. */
+    @Bean
+    public RekognitionClient rekognitionClient() {
+        return RekognitionClient.builder()
                 .region(Region.of(region))
                 .build();
     }

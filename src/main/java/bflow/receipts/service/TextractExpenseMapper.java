@@ -99,7 +99,7 @@ public class TextractExpenseMapper {
                 textOf(vendorField),
                 amountOf(totalField),
                 dateOf(dateField),
-                averageConfidence(vendorField, totalField),
+                averageConfidence(vendorField, totalField, dateField),
                 toJson(document.summaryFields())
         );
     }

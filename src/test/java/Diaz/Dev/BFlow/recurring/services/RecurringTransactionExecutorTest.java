@@ -112,7 +112,7 @@ class RecurringTransactionExecutorTest {
 
     @Test
     void executeSingle_notFound_throwsIllegalStateException() {
-        when(repository.findById(recurringId)).thenReturn(Optional.empty());
+        when(repository.findByIdForUpdate(recurringId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
                 () -> executor.executeSingle(recurringId));
@@ -123,7 +123,7 @@ class RecurringTransactionExecutorTest {
 
     @Test
     void executeSingle_expenseType_callsServiceExpenseWithRecurringSource() {
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
@@ -137,22 +137,36 @@ class RecurringTransactionExecutorTest {
         ExpenseRequest sent = captor.getValue();
         assertEquals("recurring", sent.getSource());
         assertTrue(sent.getRecurring());
+        assertEquals("Netflix", sent.getTitle());
+        assertEquals("Subscription", sent.getDescription());
         assertEquals(recurring.getAmount(), sent.getAmount());
+        assertEquals(LocalDate.of(2026, 10, 4), sent.getDate());
         assertEquals(wallet.getId(), sent.getWalletId());
+        assertEquals(category.getId(), sent.getCategoryId());
         verify(serviceIncome, never()).newIncome(any(), any());
     }
 
     @Test
     void executeSingle_incomeType_callsServiceIncomeNotExpense() {
         recurring.setType(RecurringType.INCOME);
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceIncome.newIncome(any(IncomeRequest.class), any()))
                 .thenReturn(new IncomeResponse());
 
         executor.executeSingle(recurringId);
 
-        verify(serviceIncome).newIncome(any(IncomeRequest.class), any());
+        ArgumentCaptor<IncomeRequest> request =
+                ArgumentCaptor.forClass(IncomeRequest.class);
+        verify(serviceIncome).newIncome(request.capture(), any());
+        assertTrue(request.getValue().getRecurring());
+        assertEquals("Netflix", request.getValue().getTitle());
+        assertEquals("Subscription", request.getValue().getDescription());
+        assertEquals(recurring.getAmount(), request.getValue().getAmount());
+        assertEquals(LocalDate.of(2026, 10, 4), request.getValue().getDate());
+        assertEquals(wallet.getId(), request.getValue().getWalletId());
+        assertEquals(category.getId(), request.getValue().getCategoryId());
+        assertEquals("recurring", request.getValue().getSource());
         verify(serviceExpense, never()).newExpense(any(), any());
     }
 
@@ -165,7 +179,7 @@ class RecurringTransactionExecutorTest {
         recurring.setFailedAttempts(2);
         recurring.setLastFailureReason("Insufficient balance");
 
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
@@ -178,15 +192,58 @@ class RecurringTransactionExecutorTest {
 
     @Test
     void executeSingle_monthlyFrequency_advancesNextExecutionByOneMonth() {
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
 
         executor.executeSingle(recurringId);
 
-        assertEquals(LocalDate.of(2026, 9, 17),
+        assertEquals(LocalDate.of(2026, 10, 17),
                 recurring.getNextExecutionDate());
+    }
+
+    @Test
+    void executeSingle_delayedRunCreatesOneCatchUpAndSkipsMissedIntervals() {
+        // Scheduler is running on Oct 5 while this monthly recurrence has
+        // been due since Aug 17. One recovery transaction is created; the
+        // next five-minute cron tick must not replay September as well.
+        recurring.setNextExecutionDate(LocalDate.of(2026, 8, 17));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertEquals(LocalDate.of(2026, 10, 17),
+                recurring.getNextExecutionDate());
+        verify(serviceExpense).newExpense(any(ExpenseRequest.class), any());
+    }
+
+    @Test
+    void executeSingle_sameDueItemSecondTimeIsNoOp() {
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+        executor.executeSingle(recurringId);
+
+        verify(serviceExpense, org.mockito.Mockito.times(1))
+                .newExpense(any(ExpenseRequest.class), any());
+    }
+
+    @Test
+    void executeSingle_dueDateAfterEndDateDoesNotCreateTransaction() {
+        recurring.setEndDate(LocalDate.of(2026, 10, 3));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+
+        executor.executeSingle(recurringId);
+
+        verify(serviceExpense, never()).newExpense(any(), any());
     }
 
     @Test
@@ -195,7 +252,7 @@ class RecurringTransactionExecutorTest {
         recurring.setIntervalValue(2);
         recurring.setNextExecutionDate(LocalDate.of(2026, 8, 3));
 
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
@@ -203,7 +260,7 @@ class RecurringTransactionExecutorTest {
         executor.executeSingle(recurringId);
 
         // 2-week interval, not the default 1.
-        assertEquals(LocalDate.of(2026, 8, 17),
+        assertEquals(LocalDate.of(2026, 10, 12),
                 recurring.getNextExecutionDate());
     }
 
@@ -212,14 +269,14 @@ class RecurringTransactionExecutorTest {
         recurring.setFrequency(RecurringFrequency.DAILY);
         recurring.setNextExecutionDate(LocalDate.of(2026, 8, 17));
 
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
 
         executor.executeSingle(recurringId);
 
-        assertEquals(LocalDate.of(2026, 8, 18),
+        assertEquals(LocalDate.of(2026, 10, 5),
                 recurring.getNextExecutionDate());
     }
 
@@ -229,7 +286,7 @@ class RecurringTransactionExecutorTest {
         recurring.setIntervalValue(2);
         recurring.setNextExecutionDate(LocalDate.of(2026, 8, 17));
 
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
@@ -248,15 +305,128 @@ class RecurringTransactionExecutorTest {
         // billing-date calculation.
         recurring.setNextExecutionDate(LocalDate.of(2026, 1, 31));
 
-        when(repository.findById(recurringId))
+        when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
                 .thenReturn(new ExpenseResponse());
 
         executor.executeSingle(recurringId);
 
-        assertEquals(LocalDate.of(2026, 2, 28),
+        assertEquals(LocalDate.of(2026, 10, 28),
                 recurring.getNextExecutionDate());
+    }
+
+    @Test
+    void executeSingle_annualLeapDayCatchUpAdvancesToNextValidOccurrence() {
+        recurring.setFrequency(RecurringFrequency.YEARLY);
+        recurring.setNextExecutionDate(LocalDate.of(2024, 2, 29));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertEquals(LocalDate.of(2027, 2, 28),
+                recurring.getNextExecutionDate());
+        assertTrue(recurring.getActive());
+    }
+
+    @Test
+    void executeSingle_endDateTodayExecutesDueOccurrenceThenDeactivates() {
+        LocalDate today = LocalDate.now(clock);
+        recurring.setFrequency(RecurringFrequency.DAILY);
+        recurring.setNextExecutionDate(today);
+        recurring.setEndDate(today);
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        verify(serviceExpense).newExpense(any(ExpenseRequest.class), any());
+        assertEquals(today.plusDays(1), recurring.getNextExecutionDate());
+        assertFalse(recurring.getActive());
+    }
+
+    @Test
+    void executeSingle_endDateOnNextOccurrenceKeepsTemplateActive() {
+        LocalDate today = LocalDate.now(clock);
+        recurring.setFrequency(RecurringFrequency.DAILY);
+        recurring.setNextExecutionDate(today);
+        recurring.setEndDate(today.plusDays(1));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertEquals(recurring.getEndDate(), recurring.getNextExecutionDate());
+        assertTrue(recurring.getActive());
+    }
+
+    @Test
+    void executeSingle_indefiniteTemplateStaysActiveAfterSuccessfulRun() {
+        recurring.setFrequency(RecurringFrequency.WEEKLY);
+        recurring.setNextExecutionDate(LocalDate.now(clock));
+        recurring.setEndDate(null);
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(new ExpenseResponse());
+
+        executor.executeSingle(recurringId);
+
+        assertTrue(recurring.getActive());
+        assertTrue(recurring.getNextExecutionDate()
+                .isAfter(LocalDate.now(clock)));
+    }
+
+    @Test
+    void executeSingle_inactiveTemplateDoesNotCreateTransaction() {
+        recurring.setActive(false);
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+
+        executor.executeSingle(recurringId);
+
+        verify(serviceExpense, never()).newExpense(any(), any());
+        verify(serviceIncome, never()).newIncome(any(), any());
+    }
+
+    @Test
+    void executeSingle_notDueTemplateDoesNotCreateTransaction() {
+        recurring.setNextExecutionDate(LocalDate.now(clock).plusDays(1));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+
+        executor.executeSingle(recurringId);
+
+        verify(serviceExpense, never()).newExpense(any(), any());
+        verify(serviceIncome, never()).newIncome(any(), any());
+        assertEquals(LocalDate.now(clock).plusDays(1),
+                recurring.getNextExecutionDate());
+    }
+
+    @Test
+    void executeSingle_incomeTemplateCreatesIncomeAndAdvancesByInterval() {
+        recurring.setType(RecurringType.INCOME);
+        recurring.setFrequency(RecurringFrequency.WEEKLY);
+        recurring.setIntervalValue(2);
+        recurring.setNextExecutionDate(LocalDate.now(clock));
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceIncome.newIncome(any(IncomeRequest.class), any()))
+                .thenReturn(new IncomeResponse());
+
+        executor.executeSingle(recurringId);
+
+        verify(serviceIncome).newIncome(any(IncomeRequest.class), any());
+        verify(serviceExpense, never()).newExpense(any(), any());
+        assertTrue(recurring.getNextExecutionDate()
+                .isAfter(LocalDate.now(clock)));
     }
 
     // ---- recordFailure ----
@@ -273,6 +443,8 @@ class RecurringTransactionExecutorTest {
 
         assertEquals(2, recurring.getFailedAttempts());
         assertTrue(recurring.getActive());
+        assertEquals(Instant.parse("2026-10-05T03:00:00Z"),
+                recurring.getLastFailureAt());
         assertFalse(result.deactivated());
         assertEquals(2, result.attempts());
     }
@@ -292,6 +464,8 @@ class RecurringTransactionExecutorTest {
 
         assertEquals(3, recurring.getFailedAttempts());
         assertFalse(recurring.getActive());
+        assertEquals(Instant.parse("2026-10-05T03:00:00Z"),
+                recurring.getLastFailureAt());
         assertTrue(result.deactivated());
     }
 

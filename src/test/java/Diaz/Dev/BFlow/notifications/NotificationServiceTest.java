@@ -6,10 +6,13 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.exception.EmailDeliveryException;
 import bflow.common.i18n.MessageService;
+import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
+import bflow.notifications.service.NotificationCreatedEvent;
 import bflow.notifications.service.NotificationService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,11 +22,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -124,6 +133,42 @@ class NotificationServiceTest {
     }
 
     @Test
+    void subscriptionRenewalReminderCreatesLocalizedInAppNotification() {
+        User user = user("member@example.com", "Member");
+        user.setLanguage(SupportedLanguage.ES);
+        when(messageService.getForLanguage(
+                "notification.subscriptionRenewal.title",
+                SupportedLanguage.ES)).thenReturn("Próximo cobro");
+        when(messageService.getForLanguage(
+                "notification.subscriptionRenewal.message",
+                SupportedLanguage.ES, "Pro", "2026-11-28"))
+                .thenReturn("El plan Pro se renueva el 2026-11-28");
+
+        notificationService.sendSubscriptionRenewalReminder(
+                user, "Pro", "2026-11-28");
+
+        ArgumentCaptor<Notification> notification =
+                ArgumentCaptor.forClass(Notification.class);
+        ArgumentCaptor<Object> publishedEvent =
+                ArgumentCaptor.forClass(Object.class);
+        verify(notificationRepository).save(notification.capture());
+        assertEquals(NotificationType.SUBSCRIPTION_RENEWAL,
+                notification.getValue().getType());
+        assertEquals(user.getId(), notification.getValue().getUserId());
+        assertEquals("Próximo cobro", notification.getValue().getTitle());
+        assertEquals("El plan Pro se renueva el 2026-11-28",
+                notification.getValue().getMessage());
+        verify(eventPublisher).publishEvent(publishedEvent.capture());
+        assertEquals(new NotificationCreatedEvent(
+                null,
+                user.getId(),
+                NotificationType.SUBSCRIPTION_RENEWAL,
+                "Próximo cobro",
+                "El plan Pro se renueva el 2026-11-28"),
+                publishedEvent.getValue());
+    }
+
+    @Test
     void sendBudgetGroupSuccess_emptyMemberList_sendsNothing() {
         BudgetResponse response = new BudgetResponse();
 
@@ -163,5 +208,171 @@ class NotificationServiceTest {
         assertEquals("Wallet invitation", saved.getTitle());
         assertEquals("Alice invited you to collaborate in \"Shared\".",
                 saved.getMessage());
+    }
+
+    @Test
+    void sendBudgetSuccessKeepsInAppNotificationWhenSesIsUnavailable() {
+        User owner = user("owner@example.com", "Owner");
+        when(repositoryUser.findById(owner.getId())).thenReturn(java.util.Optional.of(owner));
+        org.mockito.Mockito.doThrow(new EmailDeliveryException("SES unavailable"))
+                .when(emailService).sendEmail(any(), any(), any());
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
+                notificationService.sendBudgetSuccess(owner.getId(), new BudgetResponse()));
+
+        verify(notificationRepository).save(any(Notification.class));
+        verify(emailService).sendEmail(owner.getEmail(), "Budget Completed",
+                "You successfully stayed within your budget");
+    }
+
+    @Test
+    void groupEmailFailureDoesNotStopNotificationsForOtherMembers() {
+        User alice = user("alice@example.com", "Alice");
+        User bob = user("bob@example.com", "Bob");
+        org.mockito.Mockito.doThrow(new EmailDeliveryException("SES unavailable"))
+                .when(emailTemplateService).sendBudgetGroupSuccessEmail(
+                        eq(alice.getEmail()), eq(alice.getName()),
+                        eq("Household"), any(BudgetResponse.class), any());
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
+                notificationService.sendBudgetGroupSuccess(
+                        List.of(alice, bob), "Household", new BudgetResponse()));
+
+        verify(notificationRepository, times(2)).save(any(Notification.class));
+        verify(emailTemplateService, times(2)).sendBudgetGroupSuccessEmail(
+                any(), any(), eq("Household"), any(), any());
+    }
+
+    @Test
+    void budgetThresholdNotificationsShowAccurateUsageAndEmailSubjects() {
+        User owner = user("owner@example.com", "Owner");
+        when(repositoryUser.findById(owner.getId()))
+                .thenReturn(Optional.of(owner));
+        BudgetResponse budget = new BudgetResponse();
+        budget.setPercentage(75);
+
+        notificationService.sendBudgetWarning(owner.getId(), budget);
+        notificationService.sendBudgetCritical(owner.getId(), budget);
+        notificationService.sendBudgetExceeded(owner.getId(), budget);
+
+        ArgumentCaptor<Notification> notifications =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository, times(3)).save(notifications.capture());
+        assertEquals(List.of(
+                        NotificationType.BUDGET_WARNING,
+                        NotificationType.BUDGET_CRITICAL,
+                        NotificationType.BUDGET_EXCEEDED),
+                notifications.getAllValues().stream()
+                        .map(Notification::getType).toList());
+        assertEquals(List.of(
+                        "Budget warning",
+                        "Budget critical",
+                        "Budget exceeded"),
+                notifications.getAllValues().stream()
+                        .map(Notification::getTitle).toList());
+        assertEquals(List.of(
+                        "You have used 75% of your budget",
+                        "You have used 75% of your budget",
+                        "You exceeded your budget"),
+                notifications.getAllValues().stream()
+                        .map(Notification::getMessage).toList());
+
+        verify(emailService).sendEmail(owner.getEmail(), "Budget Warning",
+                "You have used 75% of your budget");
+        verify(emailService).sendEmail(owner.getEmail(), "Budget Critical",
+                "You have used 75% of your budget");
+        verify(emailService).sendEmail(owner.getEmail(), "Budget Exceeded",
+                "You exceeded your budget");
+    }
+
+    @Test
+    void budgetNotificationStillAppearsWhenRecipientHasNoEmailAccount() {
+        UUID userId = UUID.randomUUID();
+        when(repositoryUser.findById(userId)).thenReturn(Optional.empty());
+        BudgetResponse budget = new BudgetResponse();
+        budget.setPercentage(50);
+
+        notificationService.sendBudgetWarning(userId, budget);
+
+        ArgumentCaptor<Notification> notification =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notification.capture());
+        assertEquals(userId, notification.getValue().getUserId());
+        assertEquals(NotificationType.BUDGET_WARNING,
+                notification.getValue().getType());
+        verify(emailService, never()).sendEmail(any(), any(), any());
+    }
+
+    @Test
+    void notificationInboxMapsSavedFieldsAndUnreadCount() {
+        UUID userId = UUID.randomUUID();
+        UUID notificationId = UUID.randomUUID();
+        UUID referenceId = UUID.randomUUID();
+        Notification notification = new Notification();
+        notification.setId(notificationId);
+        notification.setUserId(userId);
+        notification.setType(NotificationType.WALLET_INVITATION);
+        notification.setTitle("Wallet invitation");
+        notification.setMessage("Alice invited you");
+        notification.setRead(false);
+        notification.setCreatedAt(Instant.parse("2026-10-29T12:00:00Z"));
+        notification.setReferenceId(referenceId);
+        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(notification));
+        when(notificationRepository.countByUserIdAndReadFalse(userId))
+                .thenReturn(1L);
+
+        List<NotificationResponse> inbox =
+                notificationService.getUserNotifications(userId);
+
+        assertEquals(1, inbox.size());
+        NotificationResponse item = inbox.getFirst();
+        assertEquals(notificationId, item.getId());
+        assertEquals("Wallet invitation", item.getTitle());
+        assertEquals("Alice invited you", item.getMessage());
+        assertEquals("WALLET_INVITATION", item.getType());
+        assertFalse(item.getRead());
+        assertEquals(notification.getCreatedAt(), item.getCreatedAt());
+        assertEquals(referenceId, item.getReferenceId());
+        assertEquals(1L, notificationService.getUnreadCount(userId));
+    }
+
+    @Test
+    void markingOwnNotificationAsReadPersistsTheInboxState() {
+        UUID userId = UUID.randomUUID();
+        Notification notification = new Notification();
+        notification.setId(UUID.randomUUID());
+        notification.setUserId(userId);
+        notification.setRead(false);
+        when(notificationRepository.findById(notification.getId()))
+                .thenReturn(Optional.of(notification));
+
+        notificationService.markAsRead(notification.getId(), userId);
+
+        assertTrue(notification.getRead());
+        verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    void markingAnotherUsersNotificationAsReadIsDeniedWithoutSaving() {
+        UUID ownerId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        Notification notification = new Notification();
+        notification.setId(UUID.randomUUID());
+        notification.setUserId(ownerId);
+        when(notificationRepository.findById(notification.getId()))
+                .thenReturn(Optional.of(notification));
+        when(messageService.get("wallet.accessDenied"))
+                .thenReturn("You cannot access this notification");
+
+        AccessDeniedException exception = assertThrows(
+                AccessDeniedException.class,
+                () -> notificationService.markAsRead(
+                        notification.getId(), requesterId));
+
+        assertEquals("You cannot access this notification",
+                exception.getMessage());
+        assertFalse(notification.getRead());
+        verify(notificationRepository, never()).save(any(Notification.class));
     }
 }

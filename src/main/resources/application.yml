@@ -1,0 +1,167 @@
+spring:
+  application:
+    name: BFlowStudio
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bflow}?sslmode=${DB_SSL_MODE:disable}&prepareThreshold=0
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 30000
+      max-lifetime: 600000
+      keepalive-time: 180000
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    open-in-view: false
+    format-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    fail-on-missing-locations: true
+    validate-migration-naming: true
+    validate-on-migrate: true
+    clean-disabled: true
+  servlet:
+    multipart:
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:11MB}
+  thymeleaf:
+    prefix: classpath:/templates/email/
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI}
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  shutdown: graceful
+  servlet:
+    context-path: /
+  tomcat:
+    accesslog:
+      enabled: true
+      directory: /dev
+      prefix: stdout
+      suffix: ''
+      file-date-format: ''
+      rotate: false
+      buffered: false
+      pattern: '{"type":"access","method":"%m","path":"%U","status":%s,"us":%D}'
+
+app:
+  base-url: ${BASE_URL:http://localhost:8080}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  security:
+    auth-error-log-throttle-seconds: ${AUTH_ERROR_LOG_THROTTLE_SECONDS:60}
+  storage:
+    allowed-content-types: ${STORAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,application/pdf}
+    presign-duration-minutes: ${STORAGE_PRESIGN_DURATION_MINUTES:15}
+    download-presign-duration-minutes: ${STORAGE_DOWNLOAD_PRESIGN_DURATION_MINUTES:15}
+    avatar-max-file-size-bytes: ${AVATAR_MAX_FILE_SIZE_BYTES:2097152}
+  ocr:
+    request-poll-wait-seconds: ${OCR_REQUEST_POLL_WAIT_SECONDS:20}
+    result-poll-wait-seconds: ${OCR_RESULT_POLL_WAIT_SECONDS:20}
+    poll-max-messages: ${OCR_POLL_MAX_MESSAGES:5}
+    poll-error-backoff-seconds: ${OCR_POLL_ERROR_BACKOFF_SECONDS:5}
+  email:
+    logo-url: ${LOGO_URL}
+
+aws:
+  region: ${AWS_REGION}
+  ses:
+    from: ${AWS_SES_FROM_EMAIL}
+  s3:
+    bucket: ${S3_BUCKET}
+    max-file-size-bytes: ${S3_MAX_FILE_SIZE_BYTES:10485760}
+  sqs:
+    receipt-ocr-requests-queue-url: ${RECEIPT_OCR_REQUESTS_QUEUE_URL}
+    receipt-ocr-results-queue-url: ${RECEIPT_OCR_RESULTS_QUEUE_URL}
+  sns:
+    receipt-ocr-results-topic-arn: ${RECEIPT_OCR_RESULTS_TOPIC_ARN}
+  textract:
+    sns-role-arn: ${TEXTRACT_SNS_ROLE_ARN}
+  cognito:
+    user-pool-id: ${COGNITO_USER_POOL_ID}
+
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:}
+  service-account-json-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
+
+security:
+  password-reset:
+    expiration-minutes: 15
+  email-verification:
+    expiration-hours: 24
+
+wompi:
+  token-url: https://id.wompi.sv/connect/token
+  base-url: https://api.wompi.sv
+  product-image-url: ${WOMPI_PRODUCT_IMAGE_URL:${LOGO_URL:}}
+  client-id: ${WOMPI_CLIENT_ID}
+  client-secret: ${WOMPI_CLIENT_SECRET}
+  app-id: ${WOMPI_APP_ID}
+  api-secret: ${WOMPI_API_SECRET}
+
+management:
+  info:
+    env:
+      enabled: true
+    git:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+info:
+  app:
+    name: BFlow
+    version: 0.1.0
+    description: Finance management API
+
+support:
+  email: support@bflow-studio.com
+
+logging:
+  level:
+    root: WARN
+    bflow: INFO
+    org.springframework: WARN
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+    com.zaxxer.hikari: WARN
+    software.amazon.awssdk: WARN
+    org.flywaydb: WARN
+  pattern:
+    level: '%5p [trace_id=%X{trace_id:-} span_id=%X{span_id:-}]'
+    dateformat: yyyy-MM-dd HH:mm:ss.SSS

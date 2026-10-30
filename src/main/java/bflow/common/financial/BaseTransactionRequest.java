@@ -7,7 +7,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.PastOrPresent;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -72,7 +71,7 @@ public abstract class BaseTransactionRequest {
 
     /** Transaction date. */
     @NotNull(message = "{transaction.date.required}")
-    @PastOrPresent(message = "{transaction.date.futureNotAllowed}")
+    @ValidTransactionDate(allowNull = true)
     private LocalDate date;
 
     /** Associated wallet id. */

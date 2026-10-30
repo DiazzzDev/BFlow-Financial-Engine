@@ -22,6 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -110,7 +113,7 @@ public class CsvImportService {
 
         try (
                 InputStreamReader reader = new InputStreamReader(
-                        new ByteArrayInputStream(content), StandardCharsets.UTF_8
+                        new ByteArrayInputStream(content), detectCharset(content)
                 );
                 CSVParser parser = CSVFormat.DEFAULT.builder()
                         .setDelimiter(delimiter)
@@ -214,5 +217,15 @@ public class CsvImportService {
         );
 
         return summary;
+    }
+
+    private Charset detectCharset(final byte[] content) {
+        try {
+            StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(content));
+            return StandardCharsets.UTF_8;
+        } catch (CharacterCodingException e) {
+            log.info("CSV is not valid UTF-8; decoding as Windows-1252");
+            return Charset.forName("windows-1252");
+        }
     }
 }

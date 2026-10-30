@@ -104,13 +104,10 @@ public interface RepositoryTransfers extends JpaRepository<Transfer, UUID> {
 
     @Modifying
     @Query("UPDATE Transfer t SET t.user = :toUser "
-            + "WHERE t.user.id = :fromUserId "
-            + "AND (t.fromWallet.id IN :walletIds "
-            + "OR t.toWallet.id IN :walletIds)")
-    int reassignContributor(
+            + "WHERE t.user.id = :fromUserId")
+    int reassignAllContributions(
             @Param("fromUserId") UUID fromUserId,
-            @Param("toUser") User toUser,
-            @Param("walletIds") List<UUID> walletIds
+            @Param("toUser") User toUser
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

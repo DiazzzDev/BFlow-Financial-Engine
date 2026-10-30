@@ -48,6 +48,13 @@ public interface RepositorySubscription
             List<SubscriptionStatus> statuses
     );
 
+    /** Find an existing pending checkout so renewal reminders stay idempotent. */
+    Optional<Subscription> findFirstByUserIdAndPlanIdAndStatusOrderByCreatedAtDesc(
+            UUID userId,
+            UUID planId,
+            SubscriptionStatus status
+    );
+
     /**
      * Find all subscriptions for a user ordered from newest to oldest.
      *

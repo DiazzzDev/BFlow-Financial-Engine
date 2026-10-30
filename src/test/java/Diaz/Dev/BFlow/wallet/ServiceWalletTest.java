@@ -5,8 +5,10 @@ import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.expenses.RepositoryExpense;
+import bflow.expenses.entity.Expense;
 import bflow.income.RepositoryIncome;
 import bflow.common.i18n.MessageService;
+import bflow.recurring.RepositoryRecurringTransaction;
 import bflow.tranfers.RepositoryTransfers;
 import bflow.wallet.DTO.UpdateWalletRequest;
 import bflow.wallet.DTO.WalletResponse;
@@ -17,10 +19,13 @@ import bflow.wallet.enums.Currency;
 import bflow.wallet.enums.WalletRole;
 import bflow.wallet.repository.RepositoryWalletUser;
 import bflow.wallet.service.ServiceWallet;
+import bflow.subscription.services.PlanLimitService;
+import bflow.wallet.DTO.WalletRequest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +38,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
@@ -50,6 +57,12 @@ class ServiceWalletTest {
 
     @Mock
     private RepositoryWalletUser repositoryWalletUser;
+
+    @Mock
+    private RepositoryRecurringTransaction repositoryRecurringTransaction;
+
+    @Mock
+    private PlanLimitService planLimitService;
 
     @Mock
     private RepositoryUser repositoryUser;
@@ -131,6 +144,186 @@ class ServiceWalletTest {
         // Act & Assert
         assertThrows(AccessDeniedException.class,
                 () -> serviceWallet.getWalletById(walletId, userId));
+    }
+
+    @Test
+    void createWallet_pendingDeletionUserIsRejectedBeforeWalletQueries() {
+        user.setStatus(UserStatus.PENDING_DELETION);
+        org.mockito.Mockito.doThrow(new IllegalStateException("inactive"))
+                .when(userService).validateUserActive(userId);
+
+        assertThrows(IllegalStateException.class,
+                () -> serviceWallet.createWallet(null, userId));
+
+        verify(repositoryWalletUser, never())
+                .countByUserIdAndRole(any(), any());
+        verify(repositoryWallet, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createWallet_roundsOpeningBalanceAndCreatesOwnerMembership() {
+        WalletRequest request = new WalletRequest();
+        request.setName("  Emergency fund  ");
+        request.setDescription("  Savings reserve  ");
+        request.setCurrency(Currency.USD);
+        request.setInitialValue(new BigDecimal("12.346"));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.countByUserIdAndRole(userId, WalletRole.OWNER))
+                .thenReturn(0L);
+        when(repositoryUser.findById(userId)).thenReturn(Optional.of(user));
+        when(repositoryWallet.saveAndFlush(any(Wallet.class)))
+                .thenAnswer(invocation -> {
+                    Wallet saved = invocation.getArgument(0);
+                    saved.setId(walletId);
+                    saved.setCreatedAt(Instant.now());
+                    return saved;
+                });
+        when(repositoryWalletUser.countByWalletId(walletId)).thenReturn(1L);
+
+        WalletResponse response = serviceWallet.createWallet(request, userId);
+
+        assertEquals(walletId, response.getId());
+        assertEquals("Emergency fund", response.getName());
+        assertEquals("  Savings reserve  ", response.getDescription());
+        assertEquals(new BigDecimal("12.35"), response.getBalance());
+        ArgumentCaptor<Wallet> savedWallet = ArgumentCaptor.forClass(Wallet.class);
+        verify(repositoryWallet).saveAndFlush(savedWallet.capture());
+        assertEquals(new BigDecimal("12.35"), savedWallet.getValue().getInitialValue());
+        verify(planLimitService).assertCanCreate(
+                userId, bflow.subscription.FeatureCodes.WALLETS, 0L);
+        ArgumentCaptor<WalletUser> membership =
+                ArgumentCaptor.forClass(WalletUser.class);
+        verify(repositoryWalletUser).save(membership.capture());
+        assertEquals(user, membership.getValue().getUser());
+        assertEquals(WalletRole.OWNER, membership.getValue().getRole());
+    }
+
+    @Test
+    void getWalletInfo_withoutHistoryReturnsNullActivityAndZeroCount() {
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryExpense.findMaxCreatedAtByWalletId(walletId)).thenReturn(null);
+        when(repositoryIncome.findMaxCreatedAtByWalletId(walletId)).thenReturn(null);
+        when(repositoryTransfers.findMaxCreatedAtByWallet(walletId)).thenReturn(null);
+        when(repositoryExpense.findTopByWalletIdOrderByAmountDesc(walletId))
+                .thenReturn(Optional.empty());
+        when(repositoryExpense.countByWalletId(walletId)).thenReturn(0L);
+        when(repositoryIncome.countByWalletId(walletId)).thenReturn(0L);
+        when(repositoryTransfers.countByWallet(walletId)).thenReturn(0L);
+        when(repositoryRecurringTransaction
+                .findByWalletIdAndActiveTrueOrderByNextExecutionDateAsc(
+                        any(), any())).thenReturn(java.util.List.of());
+
+        bflow.wallet.DTO.WalletInfoResponse response =
+                serviceWallet.getWalletInfo(walletId, userId);
+
+        assertNull(response.getLastActivity());
+        assertNull(response.getHighestExpense());
+        assertEquals(0L, response.getTransactions());
+        assertEquals(wallet.getInitialValue(), response.getInitialValue());
+        assertEquals(java.util.List.of(), response.getUpcoming());
+    }
+
+    @Test
+    void getWalletInfo_selectsLatestActivityAndCountsAllTransactionTypes() {
+        Instant expenseAt = Instant.parse("2026-10-01T10:00:00Z");
+        Instant incomeAt = Instant.parse("2026-10-03T10:00:00Z");
+        Instant transferAt = Instant.parse("2026-10-02T10:00:00Z");
+        Expense highestExpense = new Expense();
+        highestExpense.setTitle("Rent");
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryExpense.findMaxCreatedAtByWalletId(walletId))
+                .thenReturn(expenseAt);
+        when(repositoryIncome.findMaxCreatedAtByWalletId(walletId))
+                .thenReturn(incomeAt);
+        when(repositoryTransfers.findMaxCreatedAtByWallet(walletId))
+                .thenReturn(transferAt);
+        when(repositoryExpense.findTopByWalletIdOrderByAmountDesc(walletId))
+                .thenReturn(Optional.of(highestExpense));
+        when(repositoryExpense.countByWalletId(walletId)).thenReturn(2L);
+        when(repositoryIncome.countByWalletId(walletId)).thenReturn(3L);
+        when(repositoryTransfers.countByWallet(walletId)).thenReturn(4L);
+        when(repositoryRecurringTransaction
+                .findByWalletIdAndActiveTrueOrderByNextExecutionDateAsc(
+                        any(), any())).thenReturn(java.util.List.of());
+
+        bflow.wallet.DTO.WalletInfoResponse response =
+                serviceWallet.getWalletInfo(walletId, userId);
+
+        assertEquals(incomeAt, response.getLastActivity());
+        assertEquals("Rent", response.getHighestExpense());
+        assertEquals(9L, response.getTransactions());
+    }
+
+    @Test
+    void createDefaultWallet_createsUsdOwnerDefaultWhenNoWalletExists() {
+        when(repositoryWalletUser.existsByUserId(userId)).thenReturn(false);
+        when(repositoryWallet.save(any(Wallet.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(repositoryWalletUser.save(any(WalletUser.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Wallet created = serviceWallet.createDefaultWallet(user);
+
+        assertEquals("Personal", created.getName());
+        assertEquals("Default wallet", created.getDescription());
+        assertEquals(Currency.USD, created.getCurrency());
+        assertEquals(BigDecimal.ZERO, created.getBalance());
+        ArgumentCaptor<WalletUser> membership =
+                ArgumentCaptor.forClass(WalletUser.class);
+        verify(repositoryWalletUser).save(membership.capture());
+        assertEquals(user, membership.getValue().getUser());
+        assertEquals(WalletRole.OWNER, membership.getValue().getRole());
+        assertTrue(membership.getValue().isDefaultWallet());
+    }
+
+    @Test
+    void createDefaultWallet_returnsExistingOwnerWalletWithoutCreatingAnother() {
+        when(repositoryWalletUser.existsByUserId(userId)).thenReturn(true);
+        when(repositoryWalletUser
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
+                .thenReturn(Optional.of(walletUser));
+
+        assertEquals(wallet, serviceWallet.createDefaultWallet(user));
+
+        verify(repositoryWallet, never()).save(any());
+        verify(repositoryWalletUser, never()).save(any());
+    }
+
+    @Test
+    void deleteWallet_refusesFinancialHistoryBeforeDeletingMembership() {
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryExpense.countByWalletId(walletId)).thenReturn(1L);
+
+        assertThrows(IllegalStateException.class,
+                () -> serviceWallet.deleteWallet(walletId, userId));
+
+        verify(repositoryWalletUser, never()).delete(any(WalletUser.class));
+        verify(repositoryWallet, never()).delete(any(Wallet.class));
+    }
+
+    @Test
+    void deleteWallet_withoutFinancialHistoryDeletesWalletAndMembership() {
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryExpense.countByWalletId(walletId)).thenReturn(0L);
+        when(repositoryIncome.countByWalletId(walletId)).thenReturn(0L);
+        when(repositoryTransfers.countByWallet(walletId)).thenReturn(0L);
+        when(repositoryRecurringTransaction.existsByWalletId(walletId))
+                .thenReturn(false);
+
+        serviceWallet.deleteWallet(walletId, userId);
+
+        verify(repositoryWalletUser).delete(walletUser);
+        verify(repositoryWallet).delete(wallet);
     }
 
     @Test

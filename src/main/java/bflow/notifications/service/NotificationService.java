@@ -5,6 +5,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.budget.DTO.BudgetResponse;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.aws.service.SesEmailService;
+import bflow.common.exception.EmailDeliveryException;
 import bflow.common.i18n.MessageService;
 import bflow.notifications.DTO.NotificationResponse;
 import bflow.notifications.entity.Notification;
@@ -12,6 +13,7 @@ import bflow.notifications.enums.NotificationType;
 import bflow.notifications.mapper.NotificationMapper;
 import bflow.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.factory.Mappers;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
@@ -22,6 +24,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public final class NotificationService {
 
     /** Generated response mapper kept behind the existing service API. */
@@ -216,13 +219,20 @@ public final class NotificationService {
                     walletName + " stayed within budget this period"
             );
 
-            emailTemplateService.sendBudgetGroupSuccessEmail(
-                    member.getEmail(),
-                    member.getName(),
-                    walletName,
-                    budget,
-                    member.getLanguage()
-            );
+            try {
+                emailTemplateService.sendBudgetGroupSuccessEmail(
+                        member.getEmail(),
+                        member.getName(),
+                        walletName,
+                        budget,
+                        member.getLanguage()
+                );
+            } catch (EmailDeliveryException ex) {
+                log.warn(
+                        "Budget group email delivery failed for user {}",
+                        member.getId(), ex
+                );
+            }
         }
     }
 
@@ -242,13 +252,17 @@ public final class NotificationService {
             final String message
     ) {
         repositoryUser.findById(userId)
-                .ifPresent(user ->
+                .ifPresent(user -> {
+                    try {
                         emailService.sendEmail(
-                                user.getEmail(),
-                                subject,
-                                message
-                        )
-                );
+                                user.getEmail(), subject, message);
+                    } catch (EmailDeliveryException ex) {
+                        log.warn(
+                                "Notification email delivery failed for user {}",
+                                userId, ex
+                        );
+                    }
+                });
     }
 
     private void create(final UUID userId, final NotificationType type,
@@ -294,5 +308,20 @@ public final class NotificationService {
                         "notification.walletInvitation.message",
                         invitedUser.getLanguage(), inviterName, walletName),
                 invitationId);
+    }
+
+    /** Creates a localized in-app reminder for an upcoming subscription bill. */
+    public void sendSubscriptionRenewalReminder(
+            final User user,
+            final String planName,
+            final String nextBillingDate
+    ) {
+        create(user.getId(), NotificationType.SUBSCRIPTION_RENEWAL,
+                messageService.getForLanguage(
+                        "notification.subscriptionRenewal.title",
+                        user.getLanguage()),
+                messageService.getForLanguage(
+                        "notification.subscriptionRenewal.message",
+                        user.getLanguage(), planName, nextBillingDate));
     }
 }

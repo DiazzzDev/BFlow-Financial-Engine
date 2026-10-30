@@ -4,6 +4,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.WalletAccessDeniedException;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.services.ServiceExpense;
@@ -102,6 +103,9 @@ public class ReceiptUploadService {
 
     /** Clock used when OCR does not provide a receipt date. */
     private final Clock businessClock;
+
+    /** Shared validation for a date supplied while confirming a receipt. */
+    private final TransactionDatePolicy transactionDatePolicy;
 
     /**
      * Registers an already-uploaded file as a receipt pending OCR
@@ -293,6 +297,8 @@ public class ReceiptUploadService {
                             receipt.getStatus()
                     ));
         }
+
+        transactionDatePolicy.validateOptional(request.getDate());
 
         BigDecimal normalizedAmount = request.getAmount().abs();
         LocalDate transactionDate = request.getDate() != null

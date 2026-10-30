@@ -65,9 +65,17 @@ public class RecurringTransactionExecutor {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void executeSingle(final UUID recurringId) {
-        RecurringTransaction recurring = repository.findById(recurringId)
+        RecurringTransaction recurring = repository.findByIdForUpdate(recurringId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Recurring transaction not found: " + recurringId));
+
+        LocalDate today = LocalDate.now(clock);
+        if (!Boolean.TRUE.equals(recurring.getActive())
+                || recurring.getNextExecutionDate().isAfter(today)
+                || (recurring.getEndDate() != null
+                    && recurring.getEndDate().isBefore(today))) {
+            return;
+        }
 
         if (recurring.getType() == RecurringType.EXPENSE) {
             createExpense(recurring);
@@ -75,7 +83,7 @@ public class RecurringTransactionExecutor {
             createIncome(recurring);
         }
 
-        updateNextExecution(recurring);
+        updateNextExecution(recurring, today);
         recurring.setFailedAttempts(0);
         recurring.setLastFailureReason(null);
     }
@@ -111,7 +119,7 @@ public class RecurringTransactionExecutor {
 
         recurring.setFailedAttempts(attempts);
         recurring.setLastFailureReason(reason);
-        recurring.setLastFailureAt(Instant.now());
+        recurring.setLastFailureAt(Instant.now(clock));
 
         if (deactivated) {
             recurring.setActive(false);
@@ -165,7 +173,10 @@ public class RecurringTransactionExecutor {
         serviceIncome.newIncome(request, recurring.getUser().getId());
     }
 
-    private void updateNextExecution(final RecurringTransaction recurring) {
+    private void updateNextExecution(
+            final RecurringTransaction recurring,
+            final LocalDate today
+    ) {
         LocalDate next = recurring.getNextExecutionDate();
         LocalDate nextDate = next;
 
@@ -186,10 +197,29 @@ public class RecurringTransactionExecutor {
                 break;
         }
 
+        // If the scheduler was down, run at most one catch-up transaction.
+        // Advance beyond today so subsequent five-minute cron ticks do not
+        // replay every missed occurrence as a duplicate charge.
+        while (!nextDate.isAfter(today)) {
+            nextDate = advance(nextDate, recurring);
+        }
+
         recurring.setNextExecutionDate(nextDate);
-        if (recurring.getEndDate() != null && nextDate.isAfter(recurring.getEndDate())) {
+        if (recurring.getEndDate() != null
+                && nextDate.isAfter(recurring.getEndDate())) {
             recurring.setActive(false);
         }
+    }
+
+    private LocalDate advance(
+            final LocalDate date, final RecurringTransaction recurring
+    ) {
+        return switch (recurring.getFrequency()) {
+            case DAILY -> date.plusDays(recurring.getIntervalValue());
+            case WEEKLY -> date.plusWeeks(recurring.getIntervalValue());
+            case MONTHLY -> date.plusMonths(recurring.getIntervalValue());
+            case YEARLY -> date.plusYears(recurring.getIntervalValue());
+        };
     }
 
     /**

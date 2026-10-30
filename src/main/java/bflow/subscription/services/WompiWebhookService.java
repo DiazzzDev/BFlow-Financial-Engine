@@ -8,6 +8,7 @@ import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.gateway.dto.WompiWebhookPayload;
 import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
+import bflow.subscription.WompiApiClient;
 import bflow.common.i18n.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,9 @@ public class WompiWebhookService {
 
     /** Repository used to access subscription data. */
     private final RepositorySubscription repositorySubscription;
+
+    /** Client used to stop billing the previous recurring plan. */
+    private final WompiApiClient wompiApiClient;
 
     /** Repository used to access payment data. */
     private final RepositoryPayment repositoryPayment;
@@ -162,15 +166,7 @@ public class WompiWebhookService {
             );
         }
 
-        repositorySubscription.findByUserIdAndStatus(
-                subscription.getUser().getId(),
-                        SubscriptionStatus.ACTIVE)
-                .filter(other -> !other.getId().equals(subscription.getId()))
-                .ifPresent(other -> {
-                    other.setStatus(SubscriptionStatus.CANCELED);
-                    other.setCanceledAt(Instant.now());
-                    repositorySubscription.save(other);
-                });
+        Instant renewalStart = cancelOtherActiveSubscription(subscription);
 
         Payment payment = new Payment();
         payment.setUser(subscription.getUser());
@@ -185,9 +181,13 @@ public class WompiWebhookService {
         payment.setProcessedAt(Instant.now());
         repositoryPayment.save(payment);
 
-        Instant nextBilling = computeNextBillingAt(subscription);
+        Instant nextBilling = computeNextBillingAt(subscription, renewalStart);
         subscription.setStatus(SubscriptionStatus.ACTIVE);
+        if (renewalStart != null) {
+            subscription.setStartsAt(renewalStart);
+        }
         subscription.setNextBillingAt(nextBilling);
+        subscription.setReminderSentAt(null);
         if (subscription.getPlan().getBillingPeriod() == BillingPeriod.YEARLY) {
             subscription.setEndsAt(nextBilling);
         }
@@ -198,6 +198,55 @@ public class WompiWebhookService {
                 subscription.getId(),
                 providerPaymentId
         );
+    }
+
+    /**
+     * Activates a recurring subscription after Wompi confirms that the
+     * customer enrolled their card. Enrollment is not a payment: the first
+     * payment record is created only when Wompi later sends an approved
+     * transaction webhook.
+     *
+     * @param subscription local subscription matched to the Wompi enrolment
+     * @param providerSubscriberId Wompi subscriber identifier
+     */
+    /** Cancels another plan currently active for the same user. */
+    private Instant cancelOtherActiveSubscription(
+            final Subscription subscription
+    ) {
+        Subscription other = repositorySubscription.findByUserIdAndStatus(
+                subscription.getUser().getId(), SubscriptionStatus.ACTIVE)
+                .filter(candidate ->
+                        !candidate.getId().equals(subscription.getId()))
+                .orElse(null);
+        if (other == null) {
+            return null;
+        }
+
+        Instant renewalStart = null;
+        if (subscription.getPlan().getBillingPeriod() == BillingPeriod.YEARLY
+                && other.getPlan().getBillingPeriod() == BillingPeriod.YEARLY) {
+            Instant currentEnd = other.getEndsAt() != null
+                    ? other.getEndsAt() : other.getNextBillingAt();
+            if (currentEnd != null && currentEnd.isAfter(Instant.now())) {
+                renewalStart = currentEnd;
+            }
+        }
+
+        if (other.isAutoRenew() && other.getProviderLinkId() != null) {
+            try {
+                wompiApiClient.deactivateRecurringLink(other.getProviderLinkId());
+            } catch (RuntimeException exception) {
+                log.error("Could not deactivate replaced Wompi subscription {}",
+                        other.getId(), exception);
+            }
+        }
+        other.setStatus(SubscriptionStatus.CANCELED);
+        other.setCanceledAt(Instant.now());
+        other.setAutoRenew(false);
+        other.setEndsAt(Instant.now());
+        other.setNextBillingAt(null);
+        repositorySubscription.save(other);
+        return renewalStart;
     }
 
     /**
@@ -253,10 +302,14 @@ public class WompiWebhookService {
      * @param subscription the activated subscription
      * @return the next billing timestamp
      */
-    private Instant computeNextBillingAt(final Subscription subscription) {
+    private Instant computeNextBillingAt(
+            final Subscription subscription,
+            final Instant renewalStart
+    ) {
         return switch (subscription.getPlan().getBillingPeriod()) {
             case MONTHLY -> computeNextMonthly(subscription);
-            case YEARLY -> Instant.now().plus(DAYS_PER_YEAR, ChronoUnit.DAYS);
+            case YEARLY -> (renewalStart == null ? Instant.now() : renewalStart)
+                    .plus(DAYS_PER_YEAR, ChronoUnit.DAYS);
         };
     }
 

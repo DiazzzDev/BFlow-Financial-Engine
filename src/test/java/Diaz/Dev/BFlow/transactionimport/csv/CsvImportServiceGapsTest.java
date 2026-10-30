@@ -1,6 +1,8 @@
 package Diaz.Dev.BFlow.transactionimport.csv;
 
 import bflow.auth.services.UserService;
+import bflow.common.financial.TransactionDatePolicy;
+import bflow.common.i18n.MessageService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
@@ -15,7 +17,6 @@ import bflow.transactionimport.service.InputSanitizer;
 import bflow.transactionimport.service.TransactionRowParser;
 import bflow.wallet.repository.RepositoryWalletUser;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -24,6 +25,9 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +36,13 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Uses a real {@link TransactionRowParser} (with a stubbed
@@ -48,6 +57,7 @@ class CsvImportServiceGapsTest {
     @Mock private UserService userService;
     @Mock private RepositoryCategory repositoryCategory;
     @Mock private CsvImportBatchExecutor batchExecutor;
+    @Mock private MessageService messageService;
 
     private CsvImportService service;
     private final UUID walletId = UUID.randomUUID();
@@ -81,11 +91,106 @@ class CsvImportServiceGapsTest {
                 new CsvFileSniffer(),
                 new ImportColumnMapper(),
                 new TransactionRowParser(repositoryCategory, new InputSanitizer(),
-                        java.time.Clock.system(java.time.ZoneId.of("America/El_Salvador"))),
+                        new TransactionDatePolicy(
+                                Clock.fixed(Instant.parse("2026-10-05T18:00:00Z"),
+                                        ZoneId.of("America/El_Salvador")),
+                                messageService)),
                 batchExecutor,
                 repositoryWalletUser,
                 userService
         );
+    }
+
+    @Test
+    void historicalAndFutureDatesFailPerRowWhileValidRowsPersistInOrder() {
+        lenient().when(messageService.get(
+                eq("transaction.date.outOfRangeWithBounds"), any(), any()))
+                .thenAnswer(invocation -> "Date must be between "
+                        + invocation.getArgument(1) + " and "
+                        + invocation.getArgument(2));
+        String csv = "title,amount,category,date\n"
+                + "Valid yesterday,10,Comida,2026-10-04\n"
+                + "Valid lower limit,11,Comida,1976-10-05\n"
+                + "Too old,12,Comida,1500-01-01\n"
+                + "Too ancient,13,Comida,0033-01-01\n"
+                + "Future,14,Comida,2026-10-06\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "dates.csv", "text/csv",
+                csv.getBytes(StandardCharsets.UTF_8));
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(5);
+        assertThat(summary.getSuccessCount()).isEqualTo(2);
+        assertThat(summary.getFailureCount()).isEqualTo(3);
+        assertThat(summary.getResults()).extracting(ImportRowResult::getRow)
+                .containsExactly(1, 2, 3, 4, 5);
+        assertThat(summary.getResults().get(0).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(1).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(2).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        assertThat(summary.getResults().get(3).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        assertThat(summary.getResults().get(4).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).extracting(ParsedRow::date)
+                .containsExactly(
+                        java.time.LocalDate.of(2026, 10, 4),
+                        java.time.LocalDate.of(1976, 10, 5));
+    }
+
+    @Test
+    void blankDateUsesBusinessTodayInImportedTransaction() {
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Lunch transaction,5,Comida,\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).singleElement()
+                .extracting(ParsedRow::date)
+                .isEqualTo(java.time.LocalDate.of(2026, 10, 5));
+    }
+
+    @Test
+    void unsupportedHistoricalDateFailsWithoutCallingBatchExecutor() {
+        lenient().when(messageService.get(
+                eq("transaction.date.outOfRangeWithBounds"), any(), any()))
+                .thenReturn("Date is outside the supported window");
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Ancient transaction,5,Comida,0033-01-01\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().getFirst().getMessage())
+                .contains("outside the supported window");
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void acceptsExactHistoricalLimitInRegionalCsvDate() {
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Historical transaction,5,Comida,05/10/1976\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).singleElement()
+                .extracting(ParsedRow::date)
+                .isEqualTo(java.time.LocalDate.of(1976, 10, 5));
     }
 
     // NOT a gap after all — ImportColumnMapper.normalize() already
@@ -109,13 +214,6 @@ class CsvImportServiceGapsTest {
         assertThat(summary.getFailureCount()).isZero();
     }
 
-    // GAP: files encoded as Windows-1252/Latin-1 get accented
-    // headers/values corrupted because we force UTF-8 decoding
-    // unconditionally. Wrapped with assertThatCode so this shows as
-    // a clean assertion failure (not a stack-trace error) until
-    // encoding detection is implemented.
-    @Disabled("GAP: non-UTF-8 encodings (Windows-1252/Latin-1) corrupt "
-            + "accented headers/values — see edge cases discussion")
     @Test
     void resolvesHeadersEncodedAsWindows1252() {
         byte[] content = "título,monto,categoría\nAlmuerzo,5,Comida\n"
@@ -178,5 +276,163 @@ class CsvImportServiceGapsTest {
         ImportSummary summary = service.importTransactions(file, walletId, userId);
 
         assertThat(summary.getTotalRows()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsEmptyUploadBeforeParsingOrPersisting() {
+        MockMultipartFile empty = new MockMultipartFile(
+                "file", "empty.csv", "text/csv", new byte[0]);
+
+        assertThatThrownBy(() -> service.importTransactions(empty, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("CSV file is required");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void rejectsUploadsAboveTwoMegabytesBeforeParsing() {
+        MockMultipartFile oversized = new MockMultipartFile(
+                "file", "large.csv", "text/csv", new byte[2 * 1024 * 1024 + 1]);
+
+        assertThatThrownBy(() -> service.importTransactions(
+                oversized, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maximum allowed size of 2MB");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void deniesImportWhenRequesterDoesNotBelongToWallet() {
+        when(repositoryWalletUser.existsByWalletIdAndUserId(walletId, userId))
+                .thenReturn(false);
+        MockMultipartFile file = csv("title,amount,category\nLunch,5,Food\n");
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(bflow.common.exception.WalletAccessDeniedException.class);
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void importsSemicolonDelimitedRegionalSpreadsheet() {
+        ImportSummary summary = service.importTransactions(
+                csv("title;amount;category\nAlmuerzo;12,50;Comida\n"),
+                walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(1);
+        assertThat(summary.getFailureCount()).isZero();
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), anyList());
+    }
+
+    @Test
+    void rejectsXlsxSignatureInsteadOfDecodingItAsText() {
+        byte[] zipHeader = {0x50, 0x4b, 0x03, 0x04, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "renamed.csv", "text/csv", zipHeader);
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(".xlsx");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void missingRequiredHeadersRejectWholeFileWithoutBatchCalls() {
+        MockMultipartFile file = csv("description,date\nLunch,2026-10-01\n");
+
+        assertThatThrownBy(() -> service.importTransactions(file, walletId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Could not detect required column");
+
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void failedPersistenceBatchReturnsPerRowFailuresInsteadOfLosingRows() {
+        doThrow(new IllegalStateException("database unavailable"))
+                .when(batchExecutor).executeBatch(any(), any(), anyList());
+        MockMultipartFile file = csv("title,amount,category\n"
+                + "Lunch,5,Food\nDinner,8,Food\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2);
+        assertThat(summary.getSuccessCount()).isZero();
+        assertThat(summary.getFailureCount()).isEqualTo(2);
+        assertThat(summary.getResults()).allSatisfy(row ->
+                assertThat(row.getMessage()).contains("Batch failed: database unavailable"));
+    }
+
+    @Test
+    void transferTypeRowFailsIndependentlyWhileValidExpensePersists() {
+        MockMultipartFile file = csv("title,amount,category,type\n"
+                + "Lunch,5,Food,EXPENSE\n"
+                + "Move money,10,Food,TRANSFER\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2);
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().get(0).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(1).getMessage())
+                .contains("Transfers are not supported");
+    }
+
+    @Test
+    void validRowsArePersistedInBatchesWithoutChangingFileOrder() {
+        StringBuilder content = new StringBuilder("title,amount,category\n");
+        for (int i = 1; i <= 101; i++) {
+            content.append("Lunch purchase ").append(i)
+                    .append(",5,Food\n");
+        }
+
+        ImportSummary summary = service.importTransactions(
+                csv(content.toString()), walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(101);
+        assertThat(summary.getSuccessCount()).isEqualTo(101);
+        assertThat(summary.getFailureCount()).isZero();
+        assertThat(summary.getResults())
+                .extracting(ImportRowResult::getRow)
+                .containsExactlyElementsOf(
+                        java.util.stream.IntStream.rangeClosed(1, 101)
+                                .boxed().toList());
+        verify(batchExecutor).executeBatch(
+                eq(walletId), eq(userId), argThat(batch -> batch.size() == 100));
+        verify(batchExecutor).executeBatch(
+                eq(walletId), eq(userId), argThat(batch -> batch.size() == 1));
+    }
+
+    @Test
+    void rowsAfterTheImportLimitAreReportedInsteadOfPersisted() {
+        StringBuilder content = new StringBuilder("title,amount,category\n");
+        for (int i = 1; i <= 2001; i++) {
+            content.append("Lunch purchase ").append(i)
+                    .append(",5,Food\n");
+        }
+
+        ImportSummary summary = service.importTransactions(
+                csv(content.toString()), walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2001);
+        assertThat(summary.getSuccessCount()).isEqualTo(2000);
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().get(1999).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(2000).isSuccess()).isFalse();
+        assertThat(summary.getResults().get(2000).getRow())
+                .isEqualTo(2001);
+        assertThat(summary.getResults().get(2000).getMessage())
+                .contains("maximum of 2000 rows");
+        verify(batchExecutor, org.mockito.Mockito.times(20))
+                .executeBatch(eq(walletId), eq(userId), anyList());
+    }
+
+    private MockMultipartFile csv(String content) {
+        return new MockMultipartFile("file", "import.csv", "text/csv",
+                content.getBytes(StandardCharsets.UTF_8));
     }
 }
