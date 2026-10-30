@@ -135,6 +135,35 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void cancelaSuscripcionPastDueYNoIntentaDesactivarEnlaceAusente() {
+        UUID userId = UUID.randomUUID();
+        Subscription pastDue = subscriptionWith(
+                "PRO_MONTHLY", SubscriptionStatus.PAST_DUE, userId, null);
+        when(repositorySubscription.findById(pastDue.getId()))
+                .thenReturn(Optional.of(pastDue));
+
+        service.cancel(userId, pastDue.getId());
+
+        assertThat(pastDue.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        assertThat(pastDue.isAutoRenew()).isFalse();
+        verify(wompiApiClient, never()).deactivateRecurringLink(any());
+        verify(repositorySubscription).save(pastDue);
+    }
+
+    @Test
+    void cancelMissingSubscriptionReportsNotFound() {
+        UUID id = UUID.randomUUID();
+        when(repositorySubscription.findById(id)).thenReturn(Optional.empty());
+        when(messageService.get("subscription.notFound"))
+                .thenReturn("Subscription not found");
+
+        assertThatThrownBy(() -> service.cancel(UUID.randomUUID(), id))
+                .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+                .hasMessage("Subscription not found");
+        verifyNoInteractions(wompiApiClient);
+    }
+
+    @Test
     void creaSuscripcionFreeCuandoElUsuarioNoTieneNingunaActiva() {
         UUID userId = UUID.randomUUID();
         User user = new User();

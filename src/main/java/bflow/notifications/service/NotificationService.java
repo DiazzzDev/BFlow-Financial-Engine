@@ -309,4 +309,19 @@ public final class NotificationService {
                         invitedUser.getLanguage(), inviterName, walletName),
                 invitationId);
     }
+
+    /** Creates a localized in-app reminder for an upcoming subscription bill. */
+    public void sendSubscriptionRenewalReminder(
+            final User user,
+            final String planName,
+            final String nextBillingDate
+    ) {
+        create(user.getId(), NotificationType.SUBSCRIPTION_RENEWAL,
+                messageService.getForLanguage(
+                        "notification.subscriptionRenewal.title",
+                        user.getLanguage()),
+                messageService.getForLanguage(
+                        "notification.subscriptionRenewal.message",
+                        user.getLanguage(), planName, nextBillingDate));
+    }
 }

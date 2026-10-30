@@ -83,7 +83,6 @@ public class PaymentService {
                 userId,
                 plan.getId(),
                 List.of(
-                        SubscriptionStatus.ACTIVE,
                         SubscriptionStatus.PENDING_ACTIVATION,
                         SubscriptionStatus.PAST_DUE
                 ))) {

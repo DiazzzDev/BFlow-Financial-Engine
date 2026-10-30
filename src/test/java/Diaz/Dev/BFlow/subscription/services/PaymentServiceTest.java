@@ -8,7 +8,9 @@ import bflow.subscription.dto.CheckoutRequest;
 import bflow.subscription.entities.Plan;
 import bflow.subscription.entities.Feature;
 import bflow.subscription.entities.PlanFeature;
+import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.BillingPeriod;
+import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositoryPlan;
 import bflow.subscription.repository.RepositoryPlanFeature;
 import bflow.subscription.repository.RepositorySubscription;
@@ -28,8 +30,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,10 +62,10 @@ class PaymentServiceTest {
         user.setId(userId);
         when(repositoryPlan.findById(proMonthly.getId()))
                 .thenReturn(Optional.of(proMonthly));
-        when(repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
+        lenient().when(repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
                 eq(userId), eq(proMonthly.getId()), any())).thenReturn(false);
-        when(repositoryUser.getReferenceById(userId)).thenReturn(user);
-        when(repositoryPlanFeature.findByPlanId(proMonthly.getId()))
+        lenient().when(repositoryUser.getReferenceById(userId)).thenReturn(user);
+        lenient().when(repositoryPlanFeature.findByPlanId(proMonthly.getId()))
                 .thenReturn(proMonthlyFeatures());
     }
 
@@ -87,6 +92,72 @@ class PaymentServiceTest {
                 .contains("hasta 25 transacciones recurrentes")
                 .contains("exportar tus datos");
         assertThat(response.checkoutUrl()).isEqualTo("https://s.wompi.sv/link-123");
+    }
+
+    @Test
+    void activeSubscriptionCanPrepareAnotherWompiCheckoutBeforeItEnds() {
+        when(wompiApiClient.createRecurringLink(any(Integer.class), any(),
+                eq(new BigDecimal("9.99")), any()))
+                .thenReturn(new WompiApiClient.RecurringLinkResponse(
+                        "renewal-link", "https://s.wompi.sv/renewal"));
+
+        var checkout = service.createCheckout(userId,
+                new CheckoutRequest(proMonthly.getId()));
+
+        ArgumentCaptor<List<SubscriptionStatus>> statuses =
+                ArgumentCaptor.forClass(List.class);
+        verify(repositorySubscription).existsByUserIdAndPlanIdAndStatusIn(
+                eq(userId), eq(proMonthly.getId()), statuses.capture());
+        assertThat(statuses.getValue())
+                .containsExactly(SubscriptionStatus.PENDING_ACTIVATION,
+                        SubscriptionStatus.PAST_DUE)
+                .doesNotContain(SubscriptionStatus.ACTIVE);
+        ArgumentCaptor<Subscription> pending =
+                ArgumentCaptor.forClass(Subscription.class);
+        verify(repositorySubscription).saveAndFlush(pending.capture());
+        assertThat(pending.getValue().getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        assertThat(checkout.checkoutUrl()).isEqualTo("https://s.wompi.sv/renewal");
+    }
+
+    @Test
+    void duplicatePendingCheckoutIsRejectedWithoutCreatingAnotherWompiLink() {
+        when(repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
+                eq(userId), eq(proMonthly.getId()), any())).thenReturn(true);
+        when(messageService.get("subscription.alreadyActiveOrPending"))
+                .thenReturn("A checkout is already active or pending");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                service.createCheckout(userId,
+                        new CheckoutRequest(proMonthly.getId())))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already active or pending");
+
+        verify(wompiApiClient, never()).createRecurringLink(anyInt(), any(),
+                any(), any());
+        verify(repositorySubscription, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void annualRenewalCheckoutIsPendingUntilOneTimePaymentIsConfirmed() {
+        proMonthly.setBillingPeriod(BillingPeriod.YEARLY);
+        when(wompiApiClient.createPaymentLink(any(), eq(new BigDecimal("9.99")),
+                any())).thenReturn(new WompiApiClient.PaymentLinkResponse(
+                        101L, "qr", "https://wompi.example/annual", false));
+
+        var checkout = service.createCheckout(userId,
+                new CheckoutRequest(proMonthly.getId()));
+
+        ArgumentCaptor<Subscription> pending =
+                ArgumentCaptor.forClass(Subscription.class);
+        verify(repositorySubscription).saveAndFlush(pending.capture());
+        assertThat(pending.getValue().getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        assertThat(pending.getValue().isAutoRenew()).isFalse();
+        assertThat(pending.getValue().getCheckoutReference()).isNotBlank();
+        assertThat(checkout.checkoutUrl())
+                .isEqualTo("https://wompi.example/annual");
+        verify(wompiApiClient, never()).attachRecurringLinkImage(any());
     }
 
     private Plan proMonthlyPlan() {

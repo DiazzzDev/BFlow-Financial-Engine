@@ -6,6 +6,7 @@ import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.PaymentStatus;
 import bflow.subscription.enums.SubscriptionStatus;
+import bflow.subscription.WompiApiClient;
 import bflow.subscription.repository.RepositoryPayment;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.auth.entities.User;
@@ -42,6 +43,7 @@ class WompiWebhookServiceTest {
 
     @Mock private RepositorySubscription repositorySubscription;
     @Mock private RepositoryPayment repositoryPayment;
+    @Mock private WompiApiClient wompiApiClient;
     @Mock private MessageService messageService;
 
     private WompiWebhookService service;
@@ -52,7 +54,7 @@ class WompiWebhookServiceTest {
                 .thenReturn("Monto del pago no coincide con el monto "
                         + "esperado de la suscripción");
         service = new WompiWebhookService(
-                repositorySubscription, repositoryPayment,
+                repositorySubscription, wompiApiClient, repositoryPayment,
                 new ObjectMapper(), messageService
         );
         ReflectionTestUtils.setField(service, "apiSecret", SECRET);
@@ -369,6 +371,7 @@ class WompiWebhookServiceTest {
         Subscription previous = monthlySubscription(new BigDecimal("9.00"));
         previous.setStatus(SubscriptionStatus.ACTIVE);
         previous.setUser(current.getUser());
+        previous.setProviderLinkId("old-link");
         when(repositoryPayment.existsByProviderPaymentId(transactionId))
                 .thenReturn(false);
         when(repositorySubscription.findByProviderSubscriberId("sub-new"))
@@ -381,6 +384,9 @@ class WompiWebhookServiceTest {
 
         assertThat(previous.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
         assertThat(previous.getCanceledAt()).isNotNull();
+        assertThat(previous.isAutoRenew()).isFalse();
+        assertThat(previous.getNextBillingAt()).isNull();
+        verify(wompiApiClient).deactivateRecurringLink("old-link");
         verify(repositorySubscription).save(previous);
         verify(repositorySubscription).save(current);
     }
@@ -409,6 +415,32 @@ class WompiWebhookServiceTest {
     }
 
     @Test
+    void enrollmentConfirmationReplacesOldPlanOnlyAtActivation() {
+        Subscription old = monthlySubscription(new BigDecimal("9.00"));
+        old.setStatus(SubscriptionStatus.ACTIVE);
+        old.setProviderLinkId("old-link");
+        Subscription next = monthlySubscription(new BigDecimal("15.00"));
+        next.setId(UUID.randomUUID());
+        next.setUser(old.getUser());
+        next.setStatus(SubscriptionStatus.PENDING_ACTIVATION);
+        next.setReminderSentAt(Instant.now());
+        when(repositorySubscription.findByUserIdAndStatus(
+                old.getUser().getId(), SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(old));
+
+        service.activateEnrollment(next, "new-subscriber");
+
+        assertThat(old.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        assertThat(next.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(next.getProviderSubscriberId()).isEqualTo("new-subscriber");
+        assertThat(next.getReminderSentAt()).isNull();
+        verify(wompiApiClient).deactivateRecurringLink("old-link");
+        verify(repositorySubscription).save(old);
+        verify(repositorySubscription).save(next);
+        verifyNoInteractions(repositoryPayment);
+    }
+
+    @Test
     void monthlyActivationSchedulesFutureBillingAndKeepsNoEndDate()
             throws Exception {
         String transactionId = UUID.randomUUID().toString();
@@ -416,6 +448,7 @@ class WompiWebhookServiceTest {
                 transactionId, "sub-monthly", "a@a.com", "15");
         Subscription subscription = monthlySubscription(new BigDecimal("15.00"));
         subscription.setProviderSubscriberId("sub-monthly");
+        subscription.setReminderSentAt(Instant.now());
         when(repositoryPayment.existsByProviderPaymentId(transactionId))
                 .thenReturn(false);
         when(repositorySubscription.findByProviderSubscriberId("sub-monthly"))
@@ -428,6 +461,7 @@ class WompiWebhookServiceTest {
         assertThat(nextBillingAt.atZone(ZoneOffset.UTC).getDayOfMonth())
                 .isEqualTo(21);
         assertThat(subscription.getEndsAt()).isNull();
+        assertThat(subscription.getReminderSentAt()).isNull();
     }
 
     @Test

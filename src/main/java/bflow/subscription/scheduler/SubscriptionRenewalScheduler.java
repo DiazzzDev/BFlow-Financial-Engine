@@ -1,6 +1,7 @@
 package bflow.subscription.scheduler;
 
 import bflow.common.aws.service.EmailTemplateService;
+import bflow.notifications.service.NotificationService;
 import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
@@ -27,6 +28,9 @@ public class SubscriptionRenewalScheduler {
     /** Reminder window for annual renewals. */
     private static final int ANNUAL_REMINDER_WINDOW_DAYS = 14;
 
+    /** Reminder window before the monthly grace period begins. */
+    private static final int MONTHLY_REMINDER_WINDOW_DAYS = 3;
+
     /** Repository used to access subscriptions. */
     private final RepositorySubscription repositorySubscription;
 
@@ -36,6 +40,9 @@ public class SubscriptionRenewalScheduler {
 
     /** Service used to send renewal emails. */
     private final EmailTemplateService emailTemplateService;
+
+    /** Service that persists and publishes in-app notifications. */
+    private final NotificationService notificationService;
 
     /**
      * Flag overdue subscriptions when Wompi failed to confirm payment.
@@ -93,24 +100,33 @@ public class SubscriptionRenewalScheduler {
                 ANNUAL_REMINDER_WINDOW_DAYS, ChronoUnit.DAYS
         );
 
-        List<Subscription> dueSoon = repositorySubscription
-                .findRenewalReminderCandidates(
-                        BillingPeriod.YEARLY,
-                        SubscriptionStatus.ACTIVE,
-                        now,
-                        windowEnd
-                );
+        sendRemindersForPeriod(BillingPeriod.YEARLY, now, windowEnd);
+        sendRemindersForPeriod(BillingPeriod.MONTHLY, now,
+                now.plus(MONTHLY_REMINDER_WINDOW_DAYS, ChronoUnit.DAYS));
+    }
 
+    private void sendRemindersForPeriod(
+            final BillingPeriod period,
+            final Instant now,
+            final Instant reminderEnd
+    ) {
+        List<Subscription> dueSoon = repositorySubscription
+                .findRenewalReminderCandidates(period, SubscriptionStatus.ACTIVE,
+                        now, reminderEnd);
         for (Subscription subscription : dueSoon) {
+            String billingDate = subscription.getNextBillingAt().toString();
             emailTemplateService.sendRenewalReminderEmail(
                     subscription.getUser().getEmail(),
                     subscription.getUser().getName(),
                     subscription.getPlan().getName(),
                     subscription.getBillingAmount().toString(),
-                    subscription.getNextBillingAt().toString(),
+                    billingDate,
                     subscription.getCheckoutUrl(),
                     subscription.getUser().getLanguage()
             );
+            notificationService.sendSubscriptionRenewalReminder(
+                    subscription.getUser(), subscription.getPlan().getName(),
+                    billingDate);
 
             subscription.setReminderSentAt(now);
             repositorySubscription.save(subscription);

@@ -125,6 +125,33 @@ class NotificationServiceTest {
     }
 
     @Test
+    void subscriptionRenewalReminderCreatesLocalizedInAppNotification() {
+        User user = user("member@example.com", "Member");
+        user.setLanguage(SupportedLanguage.ES);
+        when(messageService.getForLanguage(
+                "notification.subscriptionRenewal.title",
+                SupportedLanguage.ES)).thenReturn("Próximo cobro");
+        when(messageService.getForLanguage(
+                "notification.subscriptionRenewal.message",
+                SupportedLanguage.ES, "Pro", "2026-11-28"))
+                .thenReturn("El plan Pro se renueva el 2026-11-28");
+
+        notificationService.sendSubscriptionRenewalReminder(
+                user, "Pro", "2026-11-28");
+
+        ArgumentCaptor<Notification> notification =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notification.capture());
+        assertEquals(NotificationType.SUBSCRIPTION_RENEWAL,
+                notification.getValue().getType());
+        assertEquals(user.getId(), notification.getValue().getUserId());
+        assertEquals("Próximo cobro", notification.getValue().getTitle());
+        assertEquals("El plan Pro se renueva el 2026-11-28",
+                notification.getValue().getMessage());
+        verify(eventPublisher).publishEvent(any());
+    }
+
+    @Test
     void sendBudgetGroupSuccess_emptyMemberList_sendsNothing() {
         BudgetResponse response = new BudgetResponse();
 

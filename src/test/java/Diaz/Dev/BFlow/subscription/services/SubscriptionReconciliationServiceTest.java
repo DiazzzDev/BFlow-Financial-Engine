@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionReconciliationServiceTest {
@@ -124,6 +125,57 @@ class SubscriptionReconciliationServiceTest {
         org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
                 .isEqualTo(SubscriptionStatus.EXPIRED);
         verify(repositorySubscription).save(subscription);
+    }
+
+    @Test
+    void pendingCheckoutWithoutProviderLinkIsLeftPending() {
+        Subscription subscription = pendingSubscription(Instant.now());
+        subscription.setProviderLinkId(null);
+        when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
+                .thenReturn(List.of(subscription));
+
+        service.reconcilePendingActivations();
+
+        org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        verify(wompiApiClient, never()).getSubscribers(any());
+        verify(repositorySubscription, never()).save(subscription);
+    }
+
+    @Test
+    void providerFailureDoesNotExpireOrChangePendingCheckout() {
+        Subscription subscription = pendingSubscription(
+                Instant.now().minus(31, ChronoUnit.DAYS));
+        when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
+                .thenReturn(List.of(subscription));
+        doThrow(new IllegalStateException("Wompi unavailable"))
+                .when(wompiApiClient).getSubscribers("provider-link");
+
+        service.reconcilePendingActivations();
+
+        org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        verify(repositorySubscription, never()).save(subscription);
+    }
+
+    @Test
+    void unrelatedWompiSubscribersDoNotActivateCheckout() {
+        Subscription subscription = pendingSubscription(Instant.now());
+        when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
+                .thenReturn(List.of(subscription));
+        when(wompiApiClient.getSubscribers("provider-link"))
+                .thenReturn(List.of(new WompiApiClient.SubscriberInfo(
+                        "other", Instant.now(), "Other plan", BigDecimal.TEN,
+                        0, "Activa", "someone-else@example.test", "Other",
+                        Instant.now(), 1)));
+
+        service.reconcilePendingActivations();
+
+        verify(wompiWebhookService, never()).activateEnrollment(any(), any());
+        verify(repositorySubscription, never()).save(subscription);
     }
 
     private Subscription pendingSubscription(final Instant createdAt) {
