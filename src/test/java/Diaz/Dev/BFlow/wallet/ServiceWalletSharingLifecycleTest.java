@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -350,6 +351,211 @@ class ServiceWalletSharingLifecycleTest {
 
         assertThatThrownBy(() -> service.acceptInvitation("missing", guestId))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void collaboratorSearchRejectsRequesterWithoutWalletMembership() {
+        when(walletUserRepository.findByWalletIdAndUserId(walletId, ownerId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.searchCollaborators(
+                walletId, ownerId, "guest"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(userRepository, never()).findAll(
+                org.mockito.ArgumentMatchers.<Specification<User>>any(),
+                any(PageRequest.class));
+    }
+
+    @Test
+    void inviteRequiresOwnerRoleBeforeCheckingPlanLimits() {
+        WalletUser member = ownerLink();
+        member.setRole(WalletRole.MEMBER);
+        when(walletUserRepository.findByWalletIdAndUserId(walletId, ownerId))
+                .thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> service.inviteMember(
+                walletId, ownerId, "guest@example.com"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(planLimitService, never()).assertFeatureEnabled(any(), anyString());
+        verify(invitationRepository, never()).save(any());
+    }
+
+    @Test
+    void inviteStopsWhenOwnerHasNoAvailableMemberSeats() {
+        allowInvite();
+        org.mockito.Mockito.doThrow(new PlanLimitExceededException("full"))
+                .when(planLimitService)
+                .assertCanCreate(eq(ownerId), anyString(), anyLong());
+
+        assertThatThrownBy(() -> service.inviteMember(
+                walletId, ownerId, "guest@example.com"))
+                .isInstanceOf(PlanLimitExceededException.class);
+
+        verify(userRepository, never()).findByEmail(anyString());
+        verify(invitationRepository, never()).save(any());
+    }
+
+    @Test
+    void inviteSendsEmailButNoInAppNotificationForUnregisteredRecipient() {
+        allowInvite();
+        when(invitationRepository.save(any(WalletInvitation.class)))
+                .thenAnswer(invocation -> {
+                    WalletInvitation invitation = invocation.getArgument(0);
+                    invitation.setId(UUID.randomUUID());
+                    return invitation;
+                });
+
+        service.inviteMember(walletId, ownerId, " GUEST@example.com ");
+
+        ArgumentCaptor<WalletInvitation> invitation =
+                ArgumentCaptor.forClass(WalletInvitation.class);
+        verify(invitationRepository).save(invitation.capture());
+        assertThat(invitation.getValue().getInvitedEmail())
+                .isEqualTo("guest@example.com");
+        verify(emailTemplateService).sendWalletInvitationEmail(
+                eq("guest@example.com"), eq("Owner"), eq("Household"),
+                anyString(), any(), eq(bflow.auth.enums.SupportedLanguage.ES));
+        verify(notificationService, never()).sendWalletInvitation(
+                any(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void acceptInvitationByTokenAddsMemberAndMarksItAccepted() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        User guest = user("guest@example.com", "Guest");
+        when(invitationRepository.findByToken("valid-token"))
+                .thenReturn(Optional.of(invitation));
+        when(userRepository.findById(guestId)).thenReturn(Optional.of(guest));
+        when(walletUserRepository.countByWalletId(walletId)).thenReturn(2L);
+        when(invitationRepository.countByWalletIdAndStatus(
+                walletId, WalletInvitationStatus.PENDING)).thenReturn(1L);
+        when(serviceWallet.convertToDTO(any(WalletUser.class)))
+                .thenReturn(new WalletResponse());
+
+        service.acceptInvitation("valid-token", guestId);
+
+        assertThat(invitation.getStatus()).isEqualTo(WalletInvitationStatus.ACCEPTED);
+        verify(walletUserRepository).save(any(WalletUser.class));
+        verify(invitationRepository).save(invitation);
+    }
+
+    @Test
+    void acceptRejectsUserAlreadyLinkedToWallet() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        User guest = user("guest@example.com", "Guest");
+        when(invitationRepository.findById(invitation.getId()))
+                .thenReturn(Optional.of(invitation));
+        when(userRepository.findById(guestId)).thenReturn(Optional.of(guest));
+        when(walletUserRepository.countByWalletId(walletId)).thenReturn(2L);
+        when(invitationRepository.countByWalletIdAndStatus(
+                walletId, WalletInvitationStatus.PENDING)).thenReturn(1L);
+        when(walletUserRepository.existsByWalletIdAndUserId(walletId, guestId))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.acceptInvitationById(
+                invitation.getId(), guestId))
+                .isInstanceOf(ConflictException.class);
+
+        verify(walletUserRepository, never()).save(any());
+        assertThat(invitation.getStatus()).isEqualTo(WalletInvitationStatus.PENDING);
+    }
+
+    @Test
+    void acceptRejectsWhenRecipientAccountDoesNotExist() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        when(invitationRepository.findById(invitation.getId()))
+                .thenReturn(Optional.of(invitation));
+        when(userRepository.findById(guestId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.acceptInvitationById(
+                invitation.getId(), guestId))
+                .isInstanceOf(NotFoundException.class);
+
+        verify(walletUserRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectByIdRejectsInvitationForWrongAccount() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        when(invitationRepository.findById(invitation.getId()))
+                .thenReturn(Optional.of(invitation));
+        when(userRepository.findById(guestId))
+                .thenReturn(Optional.of(user("another@example.com", "Other")));
+
+        assertThatThrownBy(() -> service.rejectInvitationById(
+                invitation.getId(), guestId))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(invitationRepository, never()).save(any());
+        assertThat(invitation.getStatus()).isEqualTo(WalletInvitationStatus.PENDING);
+    }
+
+    @Test
+    void rejectExpiredInvitationMarksItExpired() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        invitation.setExpiresAt(Instant.now().minusSeconds(1));
+        when(invitationRepository.findById(invitation.getId()))
+                .thenReturn(Optional.of(invitation));
+
+        assertThatThrownBy(() -> service.rejectInvitationById(
+                invitation.getId(), guestId))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(invitation.getStatus()).isEqualTo(WalletInvitationStatus.EXPIRED);
+        verify(userRepository, never()).findById(guestId);
+        verify(invitationRepository).save(invitation);
+    }
+
+    @Test
+    void cancelRejectsInvitationThatIsNoLongerPending() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        invitation.setStatus(WalletInvitationStatus.ACCEPTED);
+        when(invitationRepository.findById(invitation.getId()))
+                .thenReturn(Optional.of(invitation));
+        when(walletUserRepository.findByWalletIdAndUserId(walletId, ownerId))
+                .thenReturn(Optional.of(ownerLink()));
+
+        assertThatThrownBy(() -> service.cancelInvitation(
+                invitation.getId(), ownerId))
+                .isInstanceOf(ConflictException.class);
+
+        verify(invitationRepository, never()).save(any());
+    }
+
+    @Test
+    void pendingInvitationListExcludesExpiredEntries() {
+        User guest = user("guest@example.com", "Guest");
+        WalletInvitation current = invitation("guest@example.com");
+        WalletInvitation expired = invitation("guest@example.com");
+        expired.setExpiresAt(Instant.now().minusSeconds(1));
+        when(userRepository.findById(guestId)).thenReturn(Optional.of(guest));
+        when(invitationRepository.findByInvitedEmailAndStatus(
+                guest.getEmail(), WalletInvitationStatus.PENDING))
+                .thenReturn(List.of(current, expired));
+
+        var result = service.getPendingInvitations(guestId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo(current.getId());
+    }
+
+    @Test
+    void sentInvitationHistoryIsScopedToTheAuthorizedOwner() {
+        WalletInvitation invitation = invitation("guest@example.com");
+        when(walletUserRepository.findByWalletIdAndUserId(walletId, ownerId))
+                .thenReturn(Optional.of(ownerLink()));
+        when(invitationRepository
+                .findByInvitedByUserIdAndWalletIdOrderByCreatedAtDesc(
+                        ownerId, walletId))
+                .thenReturn(List.of(invitation));
+
+        assertThat(service.getSentInvitations(walletId, ownerId)).hasSize(1);
+
+        verify(invitationRepository)
+                .findByInvitedByUserIdAndWalletIdOrderByCreatedAtDesc(
+                        ownerId, walletId);
     }
 
     private void allowInvite() {

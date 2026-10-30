@@ -9,6 +9,7 @@ import bflow.common.aws.service.ImageModerationService;
 import bflow.common.exception.InvalidFileException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.i18n.MessageService;
+import bflow.storage.DTO.PresignedUploadRequest;
 import bflow.storage.entity.StoredFile;
 import bflow.storage.enums.FileStatus;
 import bflow.storage.repository.RepositoryStoredFile;
@@ -23,9 +24,13 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
+import java.net.URL;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -72,6 +77,116 @@ class FileUploadServiceTest {
                 Set.of("image/jpeg", "image/png",
                         "application/pdf")
         );
+        ReflectionTestUtils.setField(service, "bucket", "test-bucket");
+        ReflectionTestUtils.setField(service, "presignDurationMinutes", 10L);
+        ReflectionTestUtils.setField(
+                service, "downloadPresignDurationMinutes", 15L);
+    }
+
+    @Test
+    void createPresignedUploadPersistsPendingMetadataAndReturnsRequiredHeader()
+            throws Exception {
+        User user = new User();
+        user.setId(userId);
+        PresignedPutObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedPutObjectRequest.class);
+        when(presigned.url()).thenReturn(new URL(
+                "https://storage.example/upload?signature=test"));
+        when(repositoryUser.getReferenceById(userId)).thenReturn(user);
+        when(repositoryStoredFile.save(any(StoredFile.class)))
+                .thenAnswer(invocation -> {
+                    StoredFile file = invocation.getArgument(0);
+                    file.setId(fileId);
+                    return file;
+                });
+        when(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class)))
+                .thenReturn(presigned);
+
+        var response = service.createPresignedUpload(
+                userId,
+                new PresignedUploadRequest("receipt.jpg", "image/jpeg", 512L));
+
+        assertThat(response.getFileId()).isEqualTo(fileId);
+        assertThat(response.getUploadUrl())
+                .isEqualTo("https://storage.example/upload?signature=test");
+        assertThat(response.getObjectKey()).startsWith("users/" + userId + "/");
+        assertThat(response.getObjectKey()).endsWith(".jpg");
+        assertThat(response.getRequiredHeaders())
+                .containsEntry("Content-Type", "image/jpeg");
+        org.mockito.ArgumentCaptor<StoredFile> saved =
+                org.mockito.ArgumentCaptor.forClass(StoredFile.class);
+        verify(repositoryStoredFile).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(FileStatus.PENDING);
+        assertThat(saved.getValue().getSizeBytes()).isEqualTo(512L);
+        org.mockito.ArgumentCaptor<PutObjectPresignRequest> presignRequest =
+                org.mockito.ArgumentCaptor.forClass(PutObjectPresignRequest.class);
+        verify(s3Presigner).presignPutObject(presignRequest.capture());
+        assertThat(presignRequest.getValue().putObjectRequest().bucket())
+                .isEqualTo("test-bucket");
+        assertThat(presignRequest.getValue().putObjectRequest().contentType())
+                .isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void createPresignedUploadRejectsContentTypeBeforePersistence() {
+        PresignedUploadRequest request = new PresignedUploadRequest(
+                "receipt.exe", "application/x-msdownload", 512L);
+
+        assertThatThrownBy(() -> service.createPresignedUpload(userId, request))
+                .isInstanceOf(InvalidFileException.class);
+
+        verify(repositoryStoredFile, never()).save(any());
+        verify(s3Presigner, never()).presignPutObject(
+                any(PutObjectPresignRequest.class));
+    }
+
+    @Test
+    void createPresignedUploadRejectsOversizeBeforePersistence() {
+        PresignedUploadRequest request = new PresignedUploadRequest(
+                "receipt.jpg", "image/jpeg", 10_485_761L);
+
+        assertThatThrownBy(() -> service.createPresignedUpload(userId, request))
+                .isInstanceOf(InvalidFileException.class);
+
+        verify(imageModerationService)
+                .validateFilename("receipt.jpg", "image/jpeg");
+        verify(repositoryStoredFile, never()).save(any());
+        verify(s3Presigner, never()).presignPutObject(
+                any(PutObjectPresignRequest.class));
+    }
+
+    @Test
+    void createDownloadUrlSignsOnlyUploadedFilesAndSanitizesHeader()
+            throws Exception {
+        StoredFile uploaded = new StoredFile();
+        uploaded.setId(fileId);
+        uploaded.setObjectKey("users/" + userId + "/receipt.jpg");
+        uploaded.setOriginalFilename("receipt\"\r\n.jpg");
+        uploaded.setContentType("image/jpeg");
+        uploaded.setSizeBytes(512L);
+        uploaded.setStatus(FileStatus.UPLOADED);
+        PresignedGetObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(new URL(
+                "https://storage.example/download?signature=test"));
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(uploaded));
+        when(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class)))
+                .thenReturn(presigned);
+
+        var response = service.createDownloadUrl(userId, fileId);
+
+        assertThat(response.getFileId()).isEqualTo(fileId);
+        assertThat(response.getDownloadUrl())
+                .isEqualTo("https://storage.example/download?signature=test");
+        assertThat(response.getOriginalFilename())
+                .isEqualTo("receipt\"\r\n.jpg");
+        org.mockito.ArgumentCaptor<GetObjectPresignRequest> presignRequest =
+                org.mockito.ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+        verify(s3Presigner).presignGetObject(presignRequest.capture());
+        assertThat(presignRequest.getValue().getObjectRequest()
+                .responseContentDisposition())
+                .isEqualTo("attachment; filename=\"receipt___.jpg\"");
     }
 
     @Test
@@ -225,6 +340,70 @@ class FileUploadServiceTest {
     }
 
     @Test
+    void completeUploadRejectsAFileOwnedByAnotherUser() {
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.completeUpload(userId, fileId))
+                .isInstanceOf(bflow.common.exception.FileAccessDeniedException.class);
+
+        verify(storageService, never()).exists(anyString());
+        verify(fileStatusTransitionService, never()).transition(any(), any());
+    }
+
+    @Test
+    void completeUploadDoesNotRetryAFileThatAlreadyFailed() {
+        StoredFile failed = new StoredFile();
+        failed.setId(fileId);
+        failed.setStatus(FileStatus.FAILED);
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(failed));
+
+        assertThatThrownBy(() -> service.completeUpload(userId, fileId))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(storageService, never()).exists(anyString());
+        verify(fileStatusTransitionService, never()).transition(any(), any());
+    }
+
+    @Test
+    void completeUploadTransitionsAValidStoredObjectToUploaded() {
+        StoredFile pending = new StoredFile();
+        pending.setId(fileId);
+        pending.setObjectKey("users/" + userId + "/receipt.png");
+        pending.setContentType("image/png");
+        pending.setOriginalFilename("receipt.png");
+        pending.setSizeBytes(4L);
+        pending.setStatus(FileStatus.PENDING);
+        StoredFile uploaded = new StoredFile();
+        uploaded.setId(fileId);
+        uploaded.setObjectKey(pending.getObjectKey());
+        uploaded.setOriginalFilename(pending.getOriginalFilename());
+        uploaded.setContentType(pending.getContentType());
+        uploaded.setSizeBytes(pending.getSizeBytes());
+        uploaded.setStatus(FileStatus.UPLOADED);
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(pending));
+        when(storageService.exists(pending.getObjectKey())).thenReturn(true);
+        when(storageService.download(pending.getObjectKey()))
+                .thenReturn(new StorageObject(
+                        new ByteArrayInputStream(new byte[] {
+                                (byte) 0x89, 0x50, 0x4e, 0x47
+                        }), "image/png", 4));
+        when(fileStatusTransitionService.transition(
+                fileId, FileStatus.UPLOADED)).thenReturn(uploaded);
+
+        var response = service.completeUpload(userId, fileId);
+
+        assertThat(response.getId()).isEqualTo(fileId);
+        verify(imageModerationService).assertSafeObject(
+                pending.getObjectKey(), "image/png",
+                new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47});
+        verify(fileStatusTransitionService)
+                .transition(fileId, FileStatus.UPLOADED);
+    }
+
+    @Test
     void completeUploadRejectsUnsafePresignedImageAndRemovesItFromStorage() {
         StoredFile pending = new StoredFile();
         pending.setId(fileId);
@@ -295,6 +474,33 @@ class FileUploadServiceTest {
         pending.setStatus(FileStatus.PENDING);
         when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
                 .thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.createDownloadUrl(userId, fileId))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(s3Presigner, never()).presignGetObject(
+                any(GetObjectPresignRequest.class));
+    }
+
+    @Test
+    void downloadUrlRejectsFileNotOwnedByRequester() {
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.createDownloadUrl(userId, fileId))
+                .isInstanceOf(bflow.common.exception.FileAccessDeniedException.class);
+
+        verify(s3Presigner, never()).presignGetObject(
+                any(GetObjectPresignRequest.class));
+    }
+
+    @Test
+    void downloadUrlIsRejectedForFailedUpload() {
+        StoredFile failed = new StoredFile();
+        failed.setId(fileId);
+        failed.setStatus(FileStatus.FAILED);
+        when(repositoryStoredFile.findByIdAndUserId(fileId, userId))
+                .thenReturn(Optional.of(failed));
 
         assertThatThrownBy(() -> service.createDownloadUrl(userId, fileId))
                 .isInstanceOf(IllegalStateException.class);

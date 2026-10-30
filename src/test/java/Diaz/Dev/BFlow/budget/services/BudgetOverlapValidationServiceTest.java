@@ -10,6 +10,8 @@ import bflow.common.exception.BudgetOverlapException;
 import bflow.common.i18n.MessageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -146,6 +149,154 @@ class BudgetOverlapValidationServiceTest {
                 .existsByUserIdAndScopeAndCategoryIdAndPeriodAndIdNot(
                         userId, BudgetScope.CATEGORY_GLOBAL, categoryId,
                         PeriodType.MONTHLY, budget.getId());
+    }
+
+    @ParameterizedTest
+    @EnumSource(BudgetScope.class)
+    void createAllowsEachScopeWhenNoOverlapExists(final BudgetScope scope) {
+        BudgetRequest request = request(scope);
+        UUID userId = UUID.randomUUID();
+        stubCreateQuery(request, userId, false);
+
+        assertDoesNotThrow(
+                () -> validationService.validateCreateOverlap(request, userId));
+
+        verifyCreateQuery(request, userId);
+    }
+
+    @ParameterizedTest
+    @EnumSource(BudgetScope.class)
+    void createRejectsEachScopeWhenAnOverlapExists(final BudgetScope scope) {
+        BudgetRequest request = request(scope);
+        UUID userId = UUID.randomUUID();
+        stubCreateQuery(request, userId, true);
+        when(messageService.get("budget.overlap"))
+                .thenReturn("A budget already exists for this period.");
+
+        assertThrows(BudgetOverlapException.class,
+                () -> validationService.validateCreateOverlap(request, userId));
+
+        verifyCreateQuery(request, userId);
+    }
+
+    @ParameterizedTest
+    @EnumSource(BudgetScope.class)
+    void patchAllowsEachScopeWhenNoOverlapExists(final BudgetScope scope) {
+        Budget budget = budget();
+        UUID walletId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        stubPatchQuery(scope, budget, walletId, categoryId, userId, false);
+
+        assertDoesNotThrow(() -> validationService.validatePatchOverlap(
+                budget, scope, walletId, categoryId,
+                PeriodType.MONTHLY, userId));
+
+        verifyPatchQuery(scope, budget, walletId, categoryId, userId);
+    }
+
+    @ParameterizedTest
+    @EnumSource(BudgetScope.class)
+    void patchRejectsEachScopeWhenAnOverlapExists(final BudgetScope scope) {
+        Budget budget = budget();
+        UUID walletId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        stubPatchQuery(scope, budget, walletId, categoryId, userId, true);
+        when(messageService.get("budget.overlap"))
+                .thenReturn("A budget already exists for this period.");
+
+        assertThrows(BudgetOverlapException.class,
+                () -> validationService.validatePatchOverlap(
+                        budget, scope, walletId, categoryId,
+                        PeriodType.MONTHLY, userId));
+
+        verifyPatchQuery(scope, budget, walletId, categoryId, userId);
+    }
+
+    private void stubCreateQuery(
+            BudgetRequest request,
+            UUID userId,
+            boolean exists
+    ) {
+        switch (request.getScope()) {
+            case WALLET -> when(repositoryBudget
+                    .existsByWalletIdAndUserIdAndScopeAndPeriod(
+                            request.getWalletId(), userId, request.getScope(),
+                            request.getPeriod())).thenReturn(exists);
+            case WALLET_CATEGORY -> when(repositoryBudget
+                    .existsByWalletIdAndUserIdAndCategoryIdAndPeriod(
+                            request.getWalletId(), userId, request.getCategoryId(),
+                            request.getPeriod())).thenReturn(exists);
+            case CATEGORY_GLOBAL -> when(repositoryBudget
+                    .existsByUserIdAndScopeAndCategoryIdAndPeriod(
+                            userId, request.getScope(), request.getCategoryId(),
+                            request.getPeriod())).thenReturn(exists);
+        }
+    }
+
+    private void verifyCreateQuery(BudgetRequest request, UUID userId) {
+        switch (request.getScope()) {
+            case WALLET -> verify(repositoryBudget)
+                    .existsByWalletIdAndUserIdAndScopeAndPeriod(
+                            request.getWalletId(), userId, request.getScope(),
+                            request.getPeriod());
+            case WALLET_CATEGORY -> verify(repositoryBudget)
+                    .existsByWalletIdAndUserIdAndCategoryIdAndPeriod(
+                            request.getWalletId(), userId, request.getCategoryId(),
+                            request.getPeriod());
+            case CATEGORY_GLOBAL -> verify(repositoryBudget)
+                    .existsByUserIdAndScopeAndCategoryIdAndPeriod(
+                            userId, request.getScope(), request.getCategoryId(),
+                            request.getPeriod());
+        }
+    }
+
+    private void stubPatchQuery(
+            BudgetScope scope,
+            Budget budget,
+            UUID walletId,
+            UUID categoryId,
+            UUID userId,
+            boolean exists
+    ) {
+        switch (scope) {
+            case WALLET -> when(repositoryBudget
+                    .existsByWalletIdAndUserIdAndScopeAndPeriodAndIdNot(
+                            walletId, userId, scope, PeriodType.MONTHLY,
+                            budget.getId())).thenReturn(exists);
+            case WALLET_CATEGORY -> when(repositoryBudget
+                    .existsByWalletIdAndUserIdAndCategoryIdAndPeriodAndIdNot(
+                            walletId, userId, categoryId, PeriodType.MONTHLY,
+                            budget.getId())).thenReturn(exists);
+            case CATEGORY_GLOBAL -> when(repositoryBudget
+                    .existsByUserIdAndScopeAndCategoryIdAndPeriodAndIdNot(
+                            userId, scope, categoryId, PeriodType.MONTHLY,
+                            budget.getId())).thenReturn(exists);
+        }
+    }
+
+    private void verifyPatchQuery(
+            BudgetScope scope,
+            Budget budget,
+            UUID walletId,
+            UUID categoryId,
+            UUID userId
+    ) {
+        switch (scope) {
+            case WALLET -> verify(repositoryBudget)
+                    .existsByWalletIdAndUserIdAndScopeAndPeriodAndIdNot(
+                            walletId, userId, scope, PeriodType.MONTHLY,
+                            budget.getId());
+            case WALLET_CATEGORY -> verify(repositoryBudget)
+                    .existsByWalletIdAndUserIdAndCategoryIdAndPeriodAndIdNot(
+                            walletId, userId, categoryId, PeriodType.MONTHLY,
+                            budget.getId());
+            case CATEGORY_GLOBAL -> verify(repositoryBudget)
+                    .existsByUserIdAndScopeAndCategoryIdAndPeriodAndIdNot(
+                            userId, scope, categoryId, PeriodType.MONTHLY,
+                            budget.getId());
+        }
     }
 
     private BudgetRequest request(final BudgetScope scope) {
