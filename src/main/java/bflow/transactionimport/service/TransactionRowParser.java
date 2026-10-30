@@ -3,6 +3,7 @@ package bflow.transactionimport.service;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.transactionimport.enums.ImportTransactionType;
 import bflow.transactionimport.mapping.ColumnMapping;
 import bflow.transactionimport.mapping.ImportField;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.Clock;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
@@ -34,8 +34,8 @@ public class TransactionRowParser {
 
     private final InputSanitizer inputSanitizer;
 
-    /** Business-calendar clock used when an import row omits its date. */
-    private final Clock clock;
+    /** Shared transaction-date policy and business calendar. */
+    private final TransactionDatePolicy transactionDatePolicy;
 
     /**
      * Parses and validates one row.
@@ -179,16 +179,20 @@ public class TransactionRowParser {
      */
     private LocalDate parseDate(final String rawDate) {
         if (rawDate == null || rawDate.isBlank()) {
-            return LocalDate.now(clock);
+            return transactionDatePolicy.today();
         }
         try {
-            return LocalDate.parse(rawDate.trim());
+            LocalDate parsed = LocalDate.parse(rawDate.trim());
+            transactionDatePolicy.validateRequired(parsed);
+            return parsed;
         } catch (DateTimeParseException e) {
             for (String pattern : new String[] {"d/M/uuuu", "d-M-uuuu"}) {
                 try {
-                    return LocalDate.parse(rawDate.trim(),
+                    LocalDate parsed = LocalDate.parse(rawDate.trim(),
                             DateTimeFormatter.ofPattern(pattern)
                                     .withResolverStyle(ResolverStyle.STRICT));
+                    transactionDatePolicy.validateRequired(parsed);
+                    return parsed;
                 } catch (DateTimeParseException ignored) {
                     // Try the next supported export format.
                 }

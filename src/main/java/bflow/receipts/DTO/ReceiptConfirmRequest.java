@@ -1,5 +1,6 @@
 package bflow.receipts.DTO;
 
+import bflow.common.financial.ValidTransactionDate;
 import bflow.receipts.enums.ReceiptTransactionType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -9,7 +10,6 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -88,12 +88,14 @@ public class ReceiptConfirmRequest {
     /**
      * The date of the resulting transaction. It is optional when
      * OCR cannot determine it; the business-calendar date is then
-     * used.
+     * used. Otherwise it must be no more than 50 years old or in
+     * the future in the El Salvador business calendar.
      */
-    @PastOrPresent
+    @ValidTransactionDate(allowNull = true)
     @Schema(description = "Optional transaction date in ISO-8601 format "
             + "(yyyy-MM-dd). If omitted or null, the server uses today's "
-            + "date in America/El_Salvador. Future dates are not allowed.",
+            + "date in America/El_Salvador. Dates must be within the previous "
+            + "50 years and not in the future.",
             format = "date", nullable = true, example = "2026-10-05")
     private LocalDate date;
 

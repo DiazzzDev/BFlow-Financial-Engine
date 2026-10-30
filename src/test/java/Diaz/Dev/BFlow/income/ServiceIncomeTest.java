@@ -4,6 +4,8 @@ import bflow.auth.entities.User;
 import bflow.auth.enums.UserStatus;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
+import bflow.common.financial.InvalidTransactionDateException;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.income.DTO.IncomeRequest;
 import bflow.income.DTO.IncomeResponse;
 import bflow.income.RepositoryIncome;
@@ -37,6 +39,8 @@ import java.util.Set;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jakarta.validation.ConstraintValidatorFactory;
+import jakarta.validation.ValidatorFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -93,6 +97,9 @@ class ServiceIncomeTest {
     @Mock
     private RecurringLinkService recurringLinkService;
 
+    @Mock
+    private TransactionDatePolicy transactionDatePolicy;
+
     @InjectMocks
     private ServiceIncome serviceIncome;
 
@@ -140,12 +147,14 @@ class ServiceIncomeTest {
     @Test
     void testCreateIncome() {
         // Arrange
+        LocalDate transactionDate = LocalDate.of(2026, 10, 5);
         IncomeRequest request = new IncomeRequest();
         request.setWalletId(walletId);
         request.setCategoryId(categoryId);
         request.setTitle("Test Income Title");
         request.setAmount(BigDecimal.valueOf(500));
         request.setDescription("Test income");
+        request.setDate(transactionDate);
 
         Income income = new Income();
         income.setId(UUID.randomUUID());
@@ -154,6 +163,7 @@ class ServiceIncomeTest {
         income.setWallet(wallet);
         income.setAmount(BigDecimal.valueOf(500));
         income.setDescription("Test income");
+        income.setDate(transactionDate);
         income.setCreatedAt(Instant.now());
 
         doNothing().when(userService).validateUserActive(userId);
@@ -171,9 +181,43 @@ class ServiceIncomeTest {
         IncomeResponse result = serviceIncome.newIncome(request, userId);
 
         // Assert
-        assertNotNull(result);
+        assertEquals(transactionDate, result.getDate());
+        verify(transactionDatePolicy).validateRequired(transactionDate);
         verify(userService).validateUserActive(userId);
         verify(repositoryIncome).saveAndFlush(any(Income.class));
+    }
+
+    @Test
+    void invalidHistoricalDateDoesNotPersistIncomeOrChangeBalance() {
+        IncomeRequest request = new IncomeRequest();
+        request.setDate(LocalDate.of(1500, 1, 1));
+        doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(request.getDate());
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceIncome.newIncome(request, userId));
+
+        verify(repositoryIncome, never()).saveAndFlush(any());
+        verify(serviceWallet, never()).addBalance(any(), any());
+    }
+
+    @Test
+    void futureDateDoesNotUpdateIncomeOrChangeBalance() {
+        IncomeRequest request = new IncomeRequest();
+        request.setDate(LocalDate.of(9999, 12, 31));
+        doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(request.getDate());
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceIncome.updateIncome(
+                        UUID.randomUUID(), request, userId));
+
+        verify(repositoryIncome, never()).save(any());
+        verify(serviceWallet, never()).adjustBalanceForIncomeUpdate(
+                any(), any(), any());
+        verify(serviceWallet, never()).addBalance(any(), any());
     }
 
     @Test
@@ -273,7 +317,7 @@ class ServiceIncomeTest {
         request.setCategoryId(categoryId);
         request.setTitle("Large settlement");
         request.setAmount(maxAmount);
-        request.setDate(LocalDate.now());
+        request.setDate(LocalDate.of(2026, 10, 5));
 
         Income income = new Income();
         income.setId(UUID.randomUUID());
@@ -301,12 +345,39 @@ class ServiceIncomeTest {
 
     @Test
     void testIncomeRequest_amountExceedingPrecisionIsRejected() {
-        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        jakarta.validation.ValidatorFactory defaultFactory =
+                Validation.buildDefaultValidatorFactory();
+        TransactionDatePolicy fixedPolicy = new TransactionDatePolicy(
+                java.time.Clock.fixed(
+                        java.time.Instant.parse("2026-10-05T18:00:00Z"),
+                        java.time.ZoneId.of("America/El_Salvador")),
+                org.mockito.Mockito.mock(bflow.common.i18n.MessageService.class));
+        ValidatorFactory factory = Validation.byDefaultProvider().configure()
+                .constraintValidatorFactory(new ConstraintValidatorFactory() {
+                    @Override
+                    public <T extends jakarta.validation.ConstraintValidator<?, ?>>
+                    T getInstance(Class<T> key) {
+                        if (key == bflow.common.financial.TransactionDateValidator.class) {
+                            return key.cast(new bflow.common.financial.TransactionDateValidator(
+                                    fixedPolicy));
+                        }
+                        return defaultFactory.getConstraintValidatorFactory()
+                                .getInstance(key);
+                    }
+
+                    @Override
+                    public void releaseInstance(
+                            jakarta.validation.ConstraintValidator<?, ?> instance) {
+                        defaultFactory.getConstraintValidatorFactory()
+                                .releaseInstance(instance);
+                    }
+                }).buildValidatorFactory();
+        Validator validator = factory.getValidator();
 
         IncomeRequest request = new IncomeRequest();
         request.setTitle("Overflow test");
         request.setAmount(new BigDecimal("99999999999999.99")); // 14 enteros, excede el límite de 13
-        request.setDate(LocalDate.now());
+        request.setDate(LocalDate.of(2026, 10, 5));
         request.setWalletId(UUID.randomUUID());
         request.setCategoryId(UUID.randomUUID());
 

@@ -12,6 +12,7 @@ import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.common.financial.TransactionMapper;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.common.i18n.MessageService;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
@@ -103,6 +104,9 @@ public class ServiceExpense {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    /** Shared validation for user-provided transaction dates. */
+    private final TransactionDatePolicy transactionDatePolicy;
+
 
     /**
      * Creates a new expense entry for the specified wallet and user.
@@ -117,6 +121,7 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
         repositoryWalletUser
@@ -173,6 +178,7 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
         Expense expense = repositoryExpense.findById(expenseId)

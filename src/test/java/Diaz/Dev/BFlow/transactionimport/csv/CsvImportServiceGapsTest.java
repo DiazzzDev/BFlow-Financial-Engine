@@ -1,6 +1,8 @@
 package Diaz.Dev.BFlow.transactionimport.csv;
 
 import bflow.auth.services.UserService;
+import bflow.common.financial.TransactionDatePolicy;
+import bflow.common.i18n.MessageService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
@@ -23,6 +25,9 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +57,7 @@ class CsvImportServiceGapsTest {
     @Mock private UserService userService;
     @Mock private RepositoryCategory repositoryCategory;
     @Mock private CsvImportBatchExecutor batchExecutor;
+    @Mock private MessageService messageService;
 
     private CsvImportService service;
     private final UUID walletId = UUID.randomUUID();
@@ -85,11 +91,55 @@ class CsvImportServiceGapsTest {
                 new CsvFileSniffer(),
                 new ImportColumnMapper(),
                 new TransactionRowParser(repositoryCategory, new InputSanitizer(),
-                        java.time.Clock.system(java.time.ZoneId.of("America/El_Salvador"))),
+                        new TransactionDatePolicy(
+                                Clock.fixed(Instant.parse("2026-10-05T18:00:00Z"),
+                                        ZoneId.of("America/El_Salvador")),
+                                messageService)),
                 batchExecutor,
                 repositoryWalletUser,
                 userService
         );
+    }
+
+    @Test
+    void historicalAndFutureDatesFailPerRowWhileValidRowsPersistInOrder() {
+        lenient().when(messageService.get(
+                eq("transaction.date.outOfRangeWithBounds"), any(), any()))
+                .thenAnswer(invocation -> "Date must be between "
+                        + invocation.getArgument(1) + " and "
+                        + invocation.getArgument(2));
+        String csv = "title,amount,category,date\n"
+                + "Valid yesterday,10,Comida,2026-10-04\n"
+                + "Valid lower limit,11,Comida,1976-10-05\n"
+                + "Too old,12,Comida,1500-01-01\n"
+                + "Too ancient,13,Comida,0033-01-01\n"
+                + "Future,14,Comida,2026-10-06\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "dates.csv", "text/csv",
+                csv.getBytes(StandardCharsets.UTF_8));
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(5);
+        assertThat(summary.getSuccessCount()).isEqualTo(2);
+        assertThat(summary.getFailureCount()).isEqualTo(3);
+        assertThat(summary.getResults()).extracting(ImportRowResult::getRow)
+                .containsExactly(1, 2, 3, 4, 5);
+        assertThat(summary.getResults().get(0).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(1).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(2).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        assertThat(summary.getResults().get(3).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        assertThat(summary.getResults().get(4).getMessage())
+                .contains("1976-10-05", "2026-10-05");
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).extracting(ParsedRow::date)
+                .containsExactly(
+                        java.time.LocalDate.of(2026, 10, 4),
+                        java.time.LocalDate.of(1976, 10, 5));
     }
 
     // NOT a gap after all — ImportColumnMapper.normalize() already

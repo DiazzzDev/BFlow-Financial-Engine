@@ -6,6 +6,7 @@ import bflow.auth.services.CurrentUserService;
 import bflow.common.aws.service.StorageService;
 import bflow.common.exception.FileAccessDeniedException;
 import bflow.common.i18n.MessageService;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.expenses.DTO.ExpenseRequest;
 import bflow.expenses.DTO.ExpenseResponse;
 import bflow.expenses.services.ServiceExpense;
@@ -239,7 +240,8 @@ class ReceiptModuleE2ETest {
                 repositoryReceiptUpload, repositoryStoredFile,
                 fileUploadService, repositoryWalletUser, repositoryUser, messageService,
                 serviceExpense, serviceIncome, storageService, publisher,
-                BUSINESS_CLOCK);
+                BUSINESS_CLOCK,
+                new TransactionDatePolicy(BUSINESS_CLOCK, messageService));
 
         controller = new ControllerReceiptUpload(
                 receiptUploadService, currentUserService, messageService);
@@ -499,6 +501,82 @@ class ReceiptModuleE2ETest {
     }
 
     @Test
+    void outOfRangeReceiptDateDoesNotCreateTransactionOrConfirmReceipt()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ReceiptConfirmRequest request = new ReceiptConfirmRequest();
+        request.setType(ReceiptTransactionType.EXPENSE);
+        request.setTitle("Historical receipt");
+        request.setAmount(new BigDecimal("15.00"));
+        request.setDate(LocalDate.of(1500, 1, 1));
+
+        assertThatThrownBy(() -> controller.confirm(
+                receiptId, request, authentication, httpServletRequest))
+                .isInstanceOf(bflow.common.financial.InvalidTransactionDateException.class);
+
+        assertThat(store.get(receiptId).getStatus())
+                .isEqualTo(ReceiptStatus.EXTRACTED);
+        verify(serviceExpense, never()).newExpense(any(), any());
+        verify(serviceIncome, never()).newIncome(any(), any());
+    }
+
+    @Test
+    void yearThirtyThreeReceiptDateDoesNotCreateTransactionOrConfirmReceipt()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ReceiptConfirmRequest request = new ReceiptConfirmRequest();
+        request.setType(ReceiptTransactionType.EXPENSE);
+        request.setTitle("Ancient receipt");
+        request.setAmount(new BigDecimal("15.00"));
+        request.setDate(LocalDate.of(33, 1, 1));
+
+        assertThatThrownBy(() -> controller.confirm(
+                receiptId, request, authentication, httpServletRequest))
+                .isInstanceOf(
+                        bflow.common.financial.InvalidTransactionDateException.class);
+
+        assertThat(store.get(receiptId).getStatus())
+                .isEqualTo(ReceiptStatus.EXTRACTED);
+        verify(serviceExpense, never()).newExpense(any(), any());
+        verify(serviceIncome, never()).newIncome(any(), any());
+    }
+
+    @Test
+    void receiptConfirmationAcceptsExactFiftyYearBoundary()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ExpenseResponse expenseResponse = new ExpenseResponse();
+        UUID expenseId = UUID.randomUUID();
+        expenseResponse.setId(expenseId.toString());
+        ArgumentCaptor<ExpenseRequest> expenseCaptor =
+                ArgumentCaptor.forClass(ExpenseRequest.class);
+        when(serviceExpense.newExpense(expenseCaptor.capture(), eq(userId)))
+                .thenReturn(expenseResponse);
+
+        ReceiptConfirmRequest request = new ReceiptConfirmRequest();
+        request.setType(ReceiptTransactionType.EXPENSE);
+        request.setTitle("Historical receipt");
+        request.setAmount(new BigDecimal("15.00"));
+        request.setDate(LocalDate.of(1976, 10, 5));
+
+        controller.confirm(
+                receiptId, request, authentication, httpServletRequest);
+
+        assertThat(expenseCaptor.getValue().getDate())
+                .isEqualTo(LocalDate.of(1976, 10, 5));
+        assertThat(store.get(receiptId).getStatus())
+                .isEqualTo(ReceiptStatus.CONFIRMED);
+        assertThat(store.get(receiptId).getResultingTransactionId())
+                .isEqualTo(expenseId);
+    }
+
+    @Test
     void confirmCanOverrideSuggestedTypeToIncome() throws Exception {
         UUID receiptId = registerReceipt();
         driveToExtracted(receiptId);
@@ -590,7 +668,7 @@ class ReceiptModuleE2ETest {
         confirmRequest.setTitle("Anything");
         confirmRequest.setAmount(BigDecimal.ONE);
         confirmRequest.setCategoryId(categoryId);
-        confirmRequest.setDate(LocalDate.now());
+        confirmRequest.setDate(LocalDate.of(2026, 10, 5));
 
         assertThatThrownBy(() -> controller.confirm(
                 receiptId, confirmRequest, authentication, httpServletRequest))
@@ -673,7 +751,7 @@ class ReceiptModuleE2ETest {
         confirmRequest.setTitle("Anything");
         confirmRequest.setAmount(BigDecimal.ONE);
         confirmRequest.setCategoryId(categoryId);
-        confirmRequest.setDate(LocalDate.now());
+        confirmRequest.setDate(LocalDate.of(2026, 10, 5));
 
         assertThatThrownBy(() -> controller.confirm(
                 receiptId, confirmRequest, authentication, httpServletRequest))
@@ -696,7 +774,7 @@ class ReceiptModuleE2ETest {
         confirmRequest.setTitle("Anything");
         confirmRequest.setAmount(BigDecimal.ONE);
         confirmRequest.setCategoryId(categoryId);
-        confirmRequest.setDate(LocalDate.now());
+        confirmRequest.setDate(LocalDate.of(2026, 10, 5));
         controller.confirm(
                 receiptId, confirmRequest, authentication, httpServletRequest);
 

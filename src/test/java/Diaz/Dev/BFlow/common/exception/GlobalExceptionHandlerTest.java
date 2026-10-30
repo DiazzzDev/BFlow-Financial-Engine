@@ -3,6 +3,7 @@ package Diaz.Dev.BFlow.common.exception;
 import bflow.common.exception.BudgetOverlapException;
 import bflow.common.exception.GlobalExceptionHandler;
 import bflow.common.exception.InvalidBudgetDateException;
+import bflow.common.financial.InvalidTransactionDateException;
 import bflow.common.exception.PlanLimitExceededException;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
@@ -73,6 +74,22 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertFalse(response.getBody().isSuccess());
+    }
+
+    @Test
+    void invalidTransactionDateReturnsBadRequestAndDateFieldError() {
+        ResponseEntity<ApiResponse<Void>> response =
+                handler.handleInvalidTransactionDate(
+                        new InvalidTransactionDateException(
+                                "Date must be between 1976-10-05 and 2026-10-05"),
+                        request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("date", response.getBody().getErrors().getFirst().field());
+        assertEquals("INVALID_TRANSACTION_DATE",
+                response.getBody().getErrors().getFirst().code());
+        assertEquals("Date must be between 1976-10-05 and 2026-10-05",
+                response.getBody().getErrors().getFirst().message());
     }
 
     @Test

@@ -3,6 +3,8 @@ package Diaz.Dev.BFlow.transactionimport.service;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
+import bflow.common.i18n.MessageService;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.transactionimport.mapping.ColumnMapping;
 import bflow.transactionimport.mapping.ImportColumnMapper;
 import bflow.transactionimport.model.ImportRow;
@@ -33,6 +35,7 @@ class TransactionRowParserEdgeCasesTest {
 
     @Mock private RepositoryCategory repositoryCategory;
     @Mock private InputSanitizer inputSanitizer;
+    @Mock private MessageService messageService;
 
     private TransactionRowParser parser;
     private ColumnMapping mapping;
@@ -44,8 +47,10 @@ class TransactionRowParserEdgeCasesTest {
         when(inputSanitizer.sanitize(anyString(), any()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
         parser = new TransactionRowParser(repositoryCategory, inputSanitizer,
-                Clock.fixed(Instant.parse("2026-10-05T03:00:00Z"),
-                        ZoneId.of("America/El_Salvador")));
+                new TransactionDatePolicy(
+                        Clock.fixed(Instant.parse("2026-10-05T03:00:00Z"),
+                                ZoneId.of("America/El_Salvador")),
+                        messageService));
     }
 
     @Test

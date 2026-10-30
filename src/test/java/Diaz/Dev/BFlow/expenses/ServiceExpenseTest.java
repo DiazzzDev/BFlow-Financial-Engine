@@ -10,6 +10,8 @@ import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.category.enums.CategoryType;
 import bflow.common.exception.FileAccessDeniedException;
+import bflow.common.financial.InvalidTransactionDateException;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.common.i18n.MessageService;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.expenses.DTO.ExpenseRequest;
@@ -101,6 +103,9 @@ class ServiceExpenseTest {
     @Mock
     private MessageService messageService;
 
+    @Mock
+    private TransactionDatePolicy transactionDatePolicy;
+
     @InjectMocks
     private ServiceExpense serviceExpense;
 
@@ -150,12 +155,14 @@ class ServiceExpenseTest {
 
     @Test
     void testCreateExpense() {
+        LocalDate transactionDate = LocalDate.of(2026, 10, 5);
         ExpenseRequest request = new ExpenseRequest();
         request.setWalletId(walletId);
         request.setCategoryId(categoryId);
         request.setTitle("Test Expense Title");
         request.setAmount(BigDecimal.valueOf(100));
         request.setDescription("Test expense");
+        request.setDate(transactionDate);
 
         Expense expense = new Expense();
         expense.setId(UUID.randomUUID());
@@ -164,6 +171,7 @@ class ServiceExpenseTest {
         expense.setWallet(wallet);
         expense.setAmount(BigDecimal.valueOf(100));
         expense.setDescription("Test expense");
+        expense.setDate(transactionDate);
         expense.setCreatedAt(Instant.now());
 
         doNothing().when(userService).validateUserActive(userId);
@@ -179,9 +187,45 @@ class ServiceExpenseTest {
 
         ExpenseResponse result = serviceExpense.newExpense(request, userId);
 
-        assertNotNull(result);
+        assertEquals(transactionDate, result.getDate());
+        verify(transactionDatePolicy).validateRequired(transactionDate);
         verify(userService).validateUserActive(userId);
         verify(repositoryExpense).saveAndFlush(any(Expense.class));
+    }
+
+    @Test
+    void invalidHistoricalDateDoesNotPersistExpenseOrChangeBalance() {
+        ExpenseRequest request = new ExpenseRequest();
+        request.setDate(LocalDate.of(1500, 1, 1));
+        org.mockito.Mockito.doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(request.getDate());
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceExpense.newExpense(request, userId));
+
+        verify(repositoryExpense, never()).saveAndFlush(any());
+        verify(serviceWallet, never()).subtractBalance(any(), any());
+        verify(serviceBudget, never()).evaluateBudgetsForExpenseEvent(
+                any(), any());
+    }
+
+    @Test
+    void futureDateDoesNotUpdateExpenseOrChangeBalance() {
+        ExpenseRequest request = new ExpenseRequest();
+        request.setDate(LocalDate.of(9999, 12, 31));
+        org.mockito.Mockito.doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(request.getDate());
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceExpense.updateExpense(
+                        UUID.randomUUID(), request, userId));
+
+        verify(repositoryExpense, never()).save(any());
+        verify(serviceWallet, never()).adjustBalanceForExpenseUpdate(
+                any(), any(), any());
+        verify(serviceWallet, never()).subtractBalance(any(), any());
     }
 
     @Test

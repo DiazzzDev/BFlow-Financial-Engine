@@ -6,6 +6,7 @@ import bflow.budget.services.BudgetService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
 import bflow.common.exception.ResourceNotFoundException;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.expenses.RepositoryExpense;
 import bflow.expenses.entity.Expense;
 import bflow.income.RepositoryIncome;
@@ -66,6 +67,9 @@ public class CsvImportBatchExecutor {
     /** Service for budget business logic operations. */
     private final BudgetService serviceBudget;
 
+    /** Shared validation guarding every transaction import write path. */
+    private final TransactionDatePolicy transactionDatePolicy;
+
     /**
      * Persists a single batch of already-validated rows in one
      * transaction: one wallet lock, one balance adjustment per
@@ -83,6 +87,8 @@ public class CsvImportBatchExecutor {
             final UUID userId,
             final List<ParsedRow> batch
     ) {
+        batch.forEach(row -> transactionDatePolicy.validateRequired(row.date()));
+
         Wallet wallet = repositoryWallet.findByIdForUpdate(walletId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Wallet not found"

@@ -10,6 +10,7 @@ import bflow.category.CategoryValidator;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
 import bflow.common.financial.TransactionMapper;
+import bflow.common.financial.TransactionDatePolicy;
 import bflow.common.i18n.MessageService;
 import bflow.income.DTO.IncomeRequest;
 import bflow.income.DTO.IncomeResponse;
@@ -92,6 +93,9 @@ public class ServiceIncome {
     /** Service for resolving localized messages. */
     private final MessageService messageService;
 
+    /** Shared validation for user-provided transaction dates. */
+    private final TransactionDatePolicy transactionDatePolicy;
+
     /**
      * Creates a new income entry for the specified wallet and user.
      *
@@ -105,6 +109,7 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
+        transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
         repositoryWalletUser
@@ -148,6 +153,7 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
+        transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
         Income income = repositoryIncome.findById(incomeId)
