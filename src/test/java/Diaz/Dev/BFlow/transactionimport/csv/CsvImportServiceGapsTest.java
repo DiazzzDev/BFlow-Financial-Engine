@@ -281,6 +281,55 @@ class CsvImportServiceGapsTest {
                 .contains("Transfers are not supported");
     }
 
+    @Test
+    void validRowsArePersistedInBatchesWithoutChangingFileOrder() {
+        StringBuilder content = new StringBuilder("title,amount,category\n");
+        for (int i = 1; i <= 101; i++) {
+            content.append("Lunch purchase ").append(i)
+                    .append(",5,Food\n");
+        }
+
+        ImportSummary summary = service.importTransactions(
+                csv(content.toString()), walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(101);
+        assertThat(summary.getSuccessCount()).isEqualTo(101);
+        assertThat(summary.getFailureCount()).isZero();
+        assertThat(summary.getResults())
+                .extracting(ImportRowResult::getRow)
+                .containsExactlyElementsOf(
+                        java.util.stream.IntStream.rangeClosed(1, 101)
+                                .boxed().toList());
+        verify(batchExecutor).executeBatch(
+                eq(walletId), eq(userId), argThat(batch -> batch.size() == 100));
+        verify(batchExecutor).executeBatch(
+                eq(walletId), eq(userId), argThat(batch -> batch.size() == 1));
+    }
+
+    @Test
+    void rowsAfterTheImportLimitAreReportedInsteadOfPersisted() {
+        StringBuilder content = new StringBuilder("title,amount,category\n");
+        for (int i = 1; i <= 2001; i++) {
+            content.append("Lunch purchase ").append(i)
+                    .append(",5,Food\n");
+        }
+
+        ImportSummary summary = service.importTransactions(
+                csv(content.toString()), walletId, userId);
+
+        assertThat(summary.getTotalRows()).isEqualTo(2001);
+        assertThat(summary.getSuccessCount()).isEqualTo(2000);
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().get(1999).isSuccess()).isTrue();
+        assertThat(summary.getResults().get(2000).isSuccess()).isFalse();
+        assertThat(summary.getResults().get(2000).getRow())
+                .isEqualTo(2001);
+        assertThat(summary.getResults().get(2000).getMessage())
+                .contains("maximum of 2000 rows");
+        verify(batchExecutor, org.mockito.Mockito.times(20))
+                .executeBatch(eq(walletId), eq(userId), anyList());
+    }
+
     private MockMultipartFile csv(String content) {
         return new MockMultipartFile("file", "import.csv", "text/csv",
                 content.getBytes(StandardCharsets.UTF_8));
