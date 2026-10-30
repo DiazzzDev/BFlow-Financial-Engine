@@ -193,12 +193,6 @@ class CsvImportServiceGapsTest {
                 .isEqualTo(java.time.LocalDate.of(1976, 10, 5));
     }
 
-    private MockMultipartFile csv(final String content) {
-        return new MockMultipartFile(
-                "file", "transactions.csv", "text/csv",
-                content.getBytes(StandardCharsets.UTF_8));
-    }
-
     // NOT a gap after all — ImportColumnMapper.normalize() already
     // strips the BOM character as part of its non-alnum cleanup.
     // Kept as a regression test so it doesn't silently break later.
