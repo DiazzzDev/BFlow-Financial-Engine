@@ -13,7 +13,6 @@ import bflow.common.exception.WalletAccessDeniedException;
 import bflow.common.response.ApiResponse;
 import bflow.common.response.ErrorCode;
 import bflow.dashboard.exception.InvalidStatisticsFilterException;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -38,6 +37,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.util.List;
 import java.util.Set;
@@ -334,7 +334,7 @@ class GlobalExceptionHandlerBranchTest {
         assertEquals("title: must not be blank",
                 response.getBody().getMessage());
         assertEquals("title", response.getBody().getErrors().getFirst().field());
-        assertEquals("NotBlank",
+        assertEquals("NotBlank.request.title",
                 response.getBody().getErrors().getFirst().code());
     }
 

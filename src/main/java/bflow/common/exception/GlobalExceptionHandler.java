@@ -672,8 +672,8 @@ public final class GlobalExceptionHandler {
                     .map(Object::toString)
                     .collect(java.util.stream.Collectors.joining(", "));
 
-            message = "Invalid value '%s' for "
-                    + "parameter '%s'. Allowed values: %s.".formatted(
+            message = ("Invalid value '%s' for parameter '%s'. "
+                    + "Allowed values: %s.").formatted(
                     ex.getValue(),
                     ex.getName(),
                     allowedValues
