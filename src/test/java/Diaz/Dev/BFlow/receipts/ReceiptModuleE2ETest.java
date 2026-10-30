@@ -546,6 +546,52 @@ class ReceiptModuleE2ETest {
     }
 
     @Test
+    void futureReceiptDateDoesNotCreateTransactionOrConfirmReceipt()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ReceiptConfirmRequest request = new ReceiptConfirmRequest();
+        request.setType(ReceiptTransactionType.EXPENSE);
+        request.setTitle("Future receipt");
+        request.setAmount(new BigDecimal("15.00"));
+        request.setDate(LocalDate.of(2026, 10, 6));
+
+        assertThatThrownBy(() -> controller.confirm(
+                receiptId, request, authentication, httpServletRequest))
+                .isInstanceOf(
+                        bflow.common.financial.InvalidTransactionDateException.class);
+
+        assertThat(store.get(receiptId).getStatus())
+                .isEqualTo(ReceiptStatus.EXTRACTED);
+        verify(serviceExpense, never()).newExpense(any(), any());
+        verify(serviceIncome, never()).newIncome(any(), any());
+    }
+
+    @Test
+    void dayBeforeHistoricalLimitCannotConfirmReceiptAsIncome()
+            throws Exception {
+        UUID receiptId = registerReceipt();
+        driveToExtracted(receiptId);
+
+        ReceiptConfirmRequest request = new ReceiptConfirmRequest();
+        request.setType(ReceiptTransactionType.INCOME);
+        request.setTitle("Historical refund");
+        request.setAmount(new BigDecimal("15.00"));
+        request.setDate(LocalDate.of(1976, 10, 4));
+
+        assertThatThrownBy(() -> controller.confirm(
+                receiptId, request, authentication, httpServletRequest))
+                .isInstanceOf(
+                        bflow.common.financial.InvalidTransactionDateException.class);
+
+        assertThat(store.get(receiptId).getStatus())
+                .isEqualTo(ReceiptStatus.EXTRACTED);
+        verify(serviceIncome, never()).newIncome(any(), any());
+        verify(serviceExpense, never()).newExpense(any(), any());
+    }
+
+    @Test
     void receiptConfirmationAcceptsExactFiftyYearBoundary()
             throws Exception {
         UUID receiptId = registerReceipt();

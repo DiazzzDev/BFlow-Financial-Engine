@@ -22,6 +22,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +73,53 @@ class TransactionDatePolicyTest {
                 () -> policy.validateRequired(LocalDate.of(1500, 1, 1)))
                 .isInstanceOf(InvalidTransactionDateException.class)
                 .hasMessage("invalid date range");
+    }
+
+    @Test
+    void optionalDateMayBeOmittedOrUseAnAllowedPastDate() {
+        assertThatCode(() -> policy.validateOptional(null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> policy.validateOptional(EARLIEST))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> policy.validateOptional(TODAY.minusDays(1)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void optionalDateRejectsDatesOutsideTheSupportedWindow() {
+        when(messageService.get("transaction.date.outOfRangeWithBounds",
+                EARLIEST, TODAY)).thenReturn("invalid date range");
+
+        assertThatThrownBy(() -> policy.validateOptional(
+                EARLIEST.minusDays(1)))
+                .isInstanceOf(InvalidTransactionDateException.class)
+                .hasMessage("invalid date range");
+        assertThatThrownBy(() -> policy.validateOptional(TODAY.plusDays(1)))
+                .isInstanceOf(InvalidTransactionDateException.class)
+                .hasMessage("invalid date range");
+    }
+
+    @Test
+    void requiredDateRejectsMissingValueWithRequiredMessage() {
+        when(messageService.get("transaction.date.required"))
+                .thenReturn("Date is required");
+
+        assertThatThrownBy(() -> policy.validateRequired(null))
+                .isInstanceOf(InvalidTransactionDateException.class)
+                .hasMessage("Date is required");
+    }
+
+    @Test
+    void derivesBusinessDateFromElSalvadorZoneAtUtcDayBoundary() {
+        TransactionDatePolicy boundaryPolicy = new TransactionDatePolicy(
+                Clock.fixed(Instant.parse("2026-10-05T05:30:00Z"),
+                        BUSINESS_ZONE),
+                messageService);
+
+        assertThat(boundaryPolicy.today())
+                .isEqualTo(LocalDate.of(2026, 10, 4));
+        assertThat(boundaryPolicy.isValid(LocalDate.of(2026, 10, 5)))
+                .isFalse();
     }
 
     @Test

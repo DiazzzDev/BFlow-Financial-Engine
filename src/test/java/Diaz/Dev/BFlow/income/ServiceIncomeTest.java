@@ -203,6 +203,22 @@ class ServiceIncomeTest {
     }
 
     @Test
+    void oneDayBeforeHistoricalLimitCannotCreateIncome() {
+        LocalDate invalidDate = LocalDate.of(1976, 10, 4);
+        IncomeRequest request = new IncomeRequest();
+        request.setDate(invalidDate);
+        doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(invalidDate);
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceIncome.newIncome(request, userId));
+
+        verify(repositoryIncome, never()).saveAndFlush(any());
+        verify(serviceWallet, never()).addBalance(any(), any());
+    }
+
+    @Test
     void futureDateDoesNotUpdateIncomeOrChangeBalance() {
         IncomeRequest request = new IncomeRequest();
         request.setDate(LocalDate.of(9999, 12, 31));

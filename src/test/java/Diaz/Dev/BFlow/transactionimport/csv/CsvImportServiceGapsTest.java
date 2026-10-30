@@ -142,6 +142,63 @@ class CsvImportServiceGapsTest {
                         java.time.LocalDate.of(1976, 10, 5));
     }
 
+    @Test
+    void blankDateUsesBusinessTodayInImportedTransaction() {
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Lunch transaction,5,Comida,\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).singleElement()
+                .extracting(ParsedRow::date)
+                .isEqualTo(java.time.LocalDate.of(2026, 10, 5));
+    }
+
+    @Test
+    void unsupportedHistoricalDateFailsWithoutCallingBatchExecutor() {
+        lenient().when(messageService.get(
+                eq("transaction.date.outOfRangeWithBounds"), any(), any()))
+                .thenReturn("Date is outside the supported window");
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Ancient transaction,5,Comida,0033-01-01\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getFailureCount()).isEqualTo(1);
+        assertThat(summary.getResults().getFirst().getMessage())
+                .contains("outside the supported window");
+        verify(batchExecutor, never()).executeBatch(any(), any(), anyList());
+    }
+
+    @Test
+    void acceptsExactHistoricalLimitInRegionalCsvDate() {
+        MockMultipartFile file = csv(
+                "title,amount,category,date\n"
+                        + "Historical transaction,5,Comida,05/10/1976\n");
+
+        ImportSummary summary = service.importTransactions(file, walletId, userId);
+
+        assertThat(summary.getSuccessCount()).isEqualTo(1);
+        org.mockito.ArgumentCaptor<List<ParsedRow>> batch =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).executeBatch(eq(walletId), eq(userId), batch.capture());
+        assertThat(batch.getValue()).singleElement()
+                .extracting(ParsedRow::date)
+                .isEqualTo(java.time.LocalDate.of(1976, 10, 5));
+    }
+
+    private MockMultipartFile csv(final String content) {
+        return new MockMultipartFile(
+                "file", "transactions.csv", "text/csv",
+                content.getBytes(StandardCharsets.UTF_8));
+    }
+
     // NOT a gap after all — ImportColumnMapper.normalize() already
     // strips the BOM character as part of its non-alnum cleanup.
     // Kept as a regression test so it doesn't silently break later.

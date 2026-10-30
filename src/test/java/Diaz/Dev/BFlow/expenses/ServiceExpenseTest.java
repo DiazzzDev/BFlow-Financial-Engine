@@ -211,6 +211,22 @@ class ServiceExpenseTest {
     }
 
     @Test
+    void oneDayBeforeHistoricalLimitCannotCreateExpense() {
+        LocalDate invalidDate = LocalDate.of(1976, 10, 4);
+        ExpenseRequest request = new ExpenseRequest();
+        request.setDate(invalidDate);
+        doThrow(new InvalidTransactionDateException(
+                "date must be within the supported range"))
+                .when(transactionDatePolicy).validateRequired(invalidDate);
+
+        assertThrows(InvalidTransactionDateException.class,
+                () -> serviceExpense.newExpense(request, userId));
+
+        verify(repositoryExpense, never()).saveAndFlush(any());
+        verify(serviceWallet, never()).subtractBalance(any(), any());
+    }
+
+    @Test
     void futureDateDoesNotUpdateExpenseOrChangeBalance() {
         ExpenseRequest request = new ExpenseRequest();
         request.setDate(LocalDate.of(9999, 12, 31));
