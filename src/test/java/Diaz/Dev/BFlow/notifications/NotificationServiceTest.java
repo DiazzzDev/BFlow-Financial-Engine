@@ -11,6 +11,7 @@ import bflow.common.i18n.MessageService;
 import bflow.notifications.entity.Notification;
 import bflow.notifications.enums.NotificationType;
 import bflow.notifications.repository.NotificationRepository;
+import bflow.notifications.service.NotificationCreatedEvent;
 import bflow.notifications.service.NotificationService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -141,6 +142,8 @@ class NotificationServiceTest {
 
         ArgumentCaptor<Notification> notification =
                 ArgumentCaptor.forClass(Notification.class);
+        ArgumentCaptor<Object> publishedEvent =
+                ArgumentCaptor.forClass(Object.class);
         verify(notificationRepository).save(notification.capture());
         assertEquals(NotificationType.SUBSCRIPTION_RENEWAL,
                 notification.getValue().getType());
@@ -148,7 +151,14 @@ class NotificationServiceTest {
         assertEquals("Próximo cobro", notification.getValue().getTitle());
         assertEquals("El plan Pro se renueva el 2026-11-28",
                 notification.getValue().getMessage());
-        verify(eventPublisher).publishEvent(any());
+        verify(eventPublisher).publishEvent(publishedEvent.capture());
+        assertEquals(new NotificationCreatedEvent(
+                null,
+                user.getId(),
+                NotificationType.SUBSCRIPTION_RENEWAL,
+                "Próximo cobro",
+                "El plan Pro se renueva el 2026-11-28"),
+                publishedEvent.getValue());
     }
 
     @Test

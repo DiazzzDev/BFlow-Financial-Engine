@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -51,8 +52,7 @@ class SubscriptionRenewalSchedulerTest {
         assertEquals(SubscriptionStatus.EXPIRED, yearly.getStatus());
         verify(repositorySubscription).save(monthly);
         verify(repositorySubscription).save(yearly);
-        org.junit.jupiter.api.Assertions.assertNotNull(
-                yearly.getReminderSentAt());
+        assertNull(yearly.getReminderSentAt());
     }
 
     @Test
@@ -78,6 +78,9 @@ class SubscriptionRenewalSchedulerTest {
     @Test
     void sendRenewalRemindersAlsoCoversMonthlySubscriptionsBeforeGracePeriod() {
         Subscription monthly = subscription(BillingPeriod.MONTHLY);
+        when(repositorySubscription.findRenewalReminderCandidates(
+                eq(BillingPeriod.YEARLY), eq(SubscriptionStatus.ACTIVE),
+                any(), any())).thenReturn(List.of());
         when(repositorySubscription.findRenewalReminderCandidates(
                 eq(BillingPeriod.MONTHLY), eq(SubscriptionStatus.ACTIVE),
                 any(), any())).thenReturn(List.of(monthly));
