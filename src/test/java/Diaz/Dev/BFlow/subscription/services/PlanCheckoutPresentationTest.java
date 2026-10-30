@@ -41,7 +41,7 @@ class PlanCheckoutPresentationTest {
         assertThat(presentation.serviceName(plan))
                 .isEqualTo("BFlow Pro Plan — suscripción mensual");
         assertThat(description)
-                .contains("administrar tus finanzas personales")
+                .contains("Administra tus finanzas personales")
                 .contains("hasta 100 billeteras")
                 .contains("hasta 100 presupuestos")
                 .contains("hasta 25 transacciones recurrentes")
@@ -49,7 +49,7 @@ class PlanCheckoutPresentationTest {
                 .contains("hasta 10 miembros por billetera compartida")
                 .contains("crear billeteras compartidas")
                 .contains("exportar tus datos")
-                .contains("personalizar tu dashboard")
+                .contains("personalizar tu panel financiero")
                 .contains("cada mes");
     }
 

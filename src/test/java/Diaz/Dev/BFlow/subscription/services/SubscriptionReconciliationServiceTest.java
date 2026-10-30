@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,7 +47,7 @@ class SubscriptionReconciliationServiceTest {
         Subscription subscription = pendingSubscription(Instant.now());
         WompiApiClient.SubscriberInfo enrollment = subscriber("Activa", 0);
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
-                SubscriptionStatus.PENDING_ACTIVATION, any()))
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
         when(wompiApiClient.getSubscribers("provider-link"))
                 .thenReturn(List.of(enrollment));
@@ -65,7 +66,7 @@ class SubscriptionReconciliationServiceTest {
                 new BigDecimal("9.99"), 0, "ACTIVA", "USER@EXAMPLE.TEST",
                 "Customer", Instant.now(), 28);
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
-                SubscriptionStatus.PENDING_ACTIVATION, any()))
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
         when(wompiApiClient.getSubscribers("provider-link"))
                 .thenReturn(List.of(enrollment));
@@ -81,7 +82,7 @@ class SubscriptionReconciliationServiceTest {
         Subscription subscription = pendingSubscription(
                 Instant.now().minus(2, ChronoUnit.DAYS));
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
-                SubscriptionStatus.PENDING_ACTIVATION, any()))
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
         when(wompiApiClient.getSubscribers("provider-link"))
                 .thenReturn(List.of());
@@ -97,7 +98,7 @@ class SubscriptionReconciliationServiceTest {
         Subscription subscription = pendingSubscription(
                 Instant.now().minus(2, ChronoUnit.DAYS));
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
-                SubscriptionStatus.PENDING_ACTIVATION, any()))
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
         when(wompiApiClient.getSubscribers("provider-link"))
                 .thenReturn(List.of(subscriber("Pendiente", 0)));
@@ -113,7 +114,7 @@ class SubscriptionReconciliationServiceTest {
         Subscription subscription = pendingSubscription(
                 Instant.now().minus(31, ChronoUnit.DAYS));
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
-                SubscriptionStatus.PENDING_ACTIVATION, any()))
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
         when(wompiApiClient.getSubscribers("provider-link"))
                 .thenReturn(List.of());
