@@ -6,8 +6,11 @@ import bflow.common.i18n.MessageService;
 import bflow.subscription.WompiApiClient;
 import bflow.subscription.dto.CheckoutRequest;
 import bflow.subscription.entities.Plan;
+import bflow.subscription.entities.Feature;
+import bflow.subscription.entities.PlanFeature;
 import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.repository.RepositoryPlan;
+import bflow.subscription.repository.RepositoryPlanFeature;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.subscription.services.PaymentService;
 import bflow.subscription.services.PlanCheckoutPresentation;
@@ -20,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.when;
 class PaymentServiceTest {
 
     @Mock private RepositoryPlan repositoryPlan;
+    @Mock private RepositoryPlanFeature repositoryPlanFeature;
     @Mock private RepositorySubscription repositorySubscription;
     @Mock private RepositoryUser repositoryUser;
     @Mock private WompiApiClient wompiApiClient;
@@ -45,7 +50,7 @@ class PaymentServiceTest {
     void setUp() {
         service = new PaymentService(repositoryPlan, repositorySubscription,
                 repositoryUser, wompiApiClient, messageService,
-                new PlanCheckoutPresentation());
+                new PlanCheckoutPresentation(repositoryPlanFeature));
         userId = UUID.randomUUID();
         proMonthly = proMonthlyPlan();
         User user = new User();
@@ -55,6 +60,8 @@ class PaymentServiceTest {
         when(repositorySubscription.existsByUserIdAndPlanIdAndStatusIn(
                 eq(userId), eq(proMonthly.getId()), any())).thenReturn(false);
         when(repositoryUser.getReferenceById(userId)).thenReturn(user);
+        when(repositoryPlanFeature.findByPlanId(proMonthly.getId()))
+                .thenReturn(proMonthlyFeatures());
     }
 
     @Test
@@ -89,11 +96,29 @@ class PaymentServiceTest {
         plan.setName("Pro Plan");
         plan.setPrice(new BigDecimal("9.99"));
         plan.setBillingPeriod(BillingPeriod.MONTHLY);
-        plan.setMaxWallets(100);
-        plan.setMaxBudgets(100);
-        plan.setMaxRecurringTransactions(25);
-        plan.setMaxSharedWallets(100);
-        plan.setMaxWalletMembers(10);
         return plan;
+    }
+
+    private List<PlanFeature> proMonthlyFeatures() {
+        return List.of(
+                planFeature("WALLETS", 100),
+                planFeature("BUDGETS", 100),
+                planFeature("RECURRING_TRANSACTIONS", 25),
+                planFeature("SHARED_WALLETS", 100),
+                planFeature("WALLET_MEMBERS", 10),
+                planFeature("CAN_CREATE_SHARED_WALLETS", null),
+                planFeature("EXPORT", null),
+                planFeature("DASHBOARD_CUSTOMIZATION", null)
+        );
+    }
+
+    private PlanFeature planFeature(String code, Integer limit) {
+        Feature feature = new Feature();
+        feature.setCode(code);
+        PlanFeature planFeature = new PlanFeature();
+        planFeature.setFeature(feature);
+        planFeature.setLimit(limit);
+        planFeature.setEnabled(true);
+        return planFeature;
     }
 }
