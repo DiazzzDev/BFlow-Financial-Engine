@@ -72,3 +72,9 @@ Estos elementos se muestran como pasos externos del workflow o se documentan aqu
 - `infra/terraform/observability.tf`
 - `infra/terraform/github-and-outputs.tf`
 - `.github/workflows/deploy.yml`
+
+# BFlow architecture overview
+
+View the live architecture diagram in [index.html](index.html). The diagram's header links to the BFlow application at [www.bflow-studio.com](https://www.bflow-studio.com/).
+
+The repository publishes this directory to GitHub Pages with [architecture-pages.yml](../../.github/workflows/architecture-pages.yml). Configure the repository's Pages source as **GitHub Actions** once; pushes to `main` that change this directory publish the static site. See [GITHUB-PAGES.md](GITHUB-PAGES.md) for setup and custom-domain guidance.
