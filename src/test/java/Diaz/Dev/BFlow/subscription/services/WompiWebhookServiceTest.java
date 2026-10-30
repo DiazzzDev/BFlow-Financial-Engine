@@ -447,7 +447,6 @@ class WompiWebhookServiceTest {
     }
 
     @Test
-    @Test
     void monthlyActivationSchedulesFutureBillingAndKeepsNoEndDate()
             throws Exception {
         String transactionId = UUID.randomUUID().toString();
