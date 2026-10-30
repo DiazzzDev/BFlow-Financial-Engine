@@ -215,7 +215,8 @@ public class WompiWebhookService {
     ) {
         Subscription other = repositorySubscription.findByUserIdAndStatus(
                 subscription.getUser().getId(), SubscriptionStatus.ACTIVE)
-                .filter(other -> !other.getId().equals(subscription.getId()))
+                .filter(candidate ->
+                        !candidate.getId().equals(subscription.getId()))
                 .orElse(null);
         if (other == null) {
             return null;
