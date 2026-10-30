@@ -166,7 +166,7 @@ public class WompiWebhookService {
             );
         }
 
-        cancelOtherActiveSubscription(subscription);
+        Instant renewalStart = cancelOtherActiveSubscription(subscription);
 
         Payment payment = new Payment();
         payment.setUser(subscription.getUser());
@@ -181,8 +181,11 @@ public class WompiWebhookService {
         payment.setProcessedAt(Instant.now());
         repositoryPayment.save(payment);
 
-        Instant nextBilling = computeNextBillingAt(subscription);
+        Instant nextBilling = computeNextBillingAt(subscription, renewalStart);
         subscription.setStatus(SubscriptionStatus.ACTIVE);
+        if (renewalStart != null) {
+            subscription.setStartsAt(renewalStart);
+        }
         subscription.setNextBillingAt(nextBilling);
         subscription.setReminderSentAt(null);
         if (subscription.getPlan().getBillingPeriod() == BillingPeriod.YEARLY) {
@@ -206,44 +209,43 @@ public class WompiWebhookService {
      * @param subscription local subscription matched to the Wompi enrolment
      * @param providerSubscriberId Wompi subscriber identifier
      */
-    public void activateEnrollment(
-            final Subscription subscription,
-            final String providerSubscriberId
-    ) {
-        cancelOtherActiveSubscription(subscription);
-        subscription.setProviderSubscriberId(providerSubscriberId);
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setNextBillingAt(computeNextBillingAt(subscription));
-        subscription.setReminderSentAt(null);
-        repositorySubscription.save(subscription);
-
-        log.info("Subscription {} activated from Wompi enrollment {}",
-                subscription.getId(), providerSubscriberId);
-    }
-
     /** Cancels another plan currently active for the same user. */
-    private void cancelOtherActiveSubscription(final Subscription subscription) {
-        repositorySubscription.findByUserIdAndStatus(
+    private Instant cancelOtherActiveSubscription(
+            final Subscription subscription
+    ) {
+        Subscription other = repositorySubscription.findByUserIdAndStatus(
                 subscription.getUser().getId(), SubscriptionStatus.ACTIVE)
                 .filter(other -> !other.getId().equals(subscription.getId()))
-                .ifPresent(other -> {
-                    if (other.getProviderLinkId() != null) {
-                        try {
-                            wompiApiClient.deactivateRecurringLink(
-                                    other.getProviderLinkId());
-                        } catch (RuntimeException exception) {
-                            log.error("Could not deactivate replaced Wompi "
-                                            + "subscription {}", other.getId(),
-                                    exception);
-                        }
-                    }
-                    other.setStatus(SubscriptionStatus.CANCELED);
-                    other.setCanceledAt(Instant.now());
-                    other.setAutoRenew(false);
-                    other.setEndsAt(Instant.now());
-                    other.setNextBillingAt(null);
-                    repositorySubscription.save(other);
-                });
+                .orElse(null);
+        if (other == null) {
+            return null;
+        }
+
+        Instant renewalStart = null;
+        if (subscription.getPlan().getBillingPeriod() == BillingPeriod.YEARLY
+                && other.getPlan().getBillingPeriod() == BillingPeriod.YEARLY) {
+            Instant currentEnd = other.getEndsAt() != null
+                    ? other.getEndsAt() : other.getNextBillingAt();
+            if (currentEnd != null && currentEnd.isAfter(Instant.now())) {
+                renewalStart = currentEnd;
+            }
+        }
+
+        if (other.isAutoRenew() && other.getProviderLinkId() != null) {
+            try {
+                wompiApiClient.deactivateRecurringLink(other.getProviderLinkId());
+            } catch (RuntimeException exception) {
+                log.error("Could not deactivate replaced Wompi subscription {}",
+                        other.getId(), exception);
+            }
+        }
+        other.setStatus(SubscriptionStatus.CANCELED);
+        other.setCanceledAt(Instant.now());
+        other.setAutoRenew(false);
+        other.setEndsAt(Instant.now());
+        other.setNextBillingAt(null);
+        repositorySubscription.save(other);
+        return renewalStart;
     }
 
     /**
@@ -299,10 +301,14 @@ public class WompiWebhookService {
      * @param subscription the activated subscription
      * @return the next billing timestamp
      */
-    private Instant computeNextBillingAt(final Subscription subscription) {
+    private Instant computeNextBillingAt(
+            final Subscription subscription,
+            final Instant renewalStart
+    ) {
         return switch (subscription.getPlan().getBillingPeriod()) {
             case MONTHLY -> computeNextMonthly(subscription);
-            case YEARLY -> Instant.now().plus(DAYS_PER_YEAR, ChronoUnit.DAYS);
+            case YEARLY -> (renewalStart == null ? Instant.now() : renewalStart)
+                    .plus(DAYS_PER_YEAR, ChronoUnit.DAYS);
         };
     }
 

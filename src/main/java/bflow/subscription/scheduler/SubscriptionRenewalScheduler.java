@@ -2,10 +2,12 @@ package bflow.subscription.scheduler;
 
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.notifications.service.NotificationService;
+import bflow.subscription.dto.CheckoutResponse;
 import bflow.subscription.entities.Subscription;
 import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositorySubscription;
+import bflow.subscription.services.PaymentService;
 import bflow.subscription.services.SubscriptionReconciliationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +45,9 @@ public class SubscriptionRenewalScheduler {
 
     /** Service that persists and publishes in-app notifications. */
     private final NotificationService notificationService;
+
+    /** Creates a fresh provider checkout for an annual renewal. */
+    private final PaymentService paymentService;
 
     /**
      * Flag overdue subscriptions when Wompi failed to confirm payment.
@@ -115,13 +120,21 @@ public class SubscriptionRenewalScheduler {
                         now, reminderEnd);
         for (Subscription subscription : dueSoon) {
             String billingDate = subscription.getNextBillingAt().toString();
+            String checkoutUrl = subscription.getCheckoutUrl();
+            if (period == BillingPeriod.YEARLY) {
+                CheckoutResponse checkout = paymentService.createRenewalCheckout(
+                        subscription.getUser().getId(),
+                        subscription.getPlan().getId()
+                );
+                checkoutUrl = checkout.checkoutUrl();
+            }
             emailTemplateService.sendRenewalReminderEmail(
                     subscription.getUser().getEmail(),
                     subscription.getUser().getName(),
                     subscription.getPlan().getName(),
                     subscription.getBillingAmount().toString(),
                     billingDate,
-                    subscription.getCheckoutUrl(),
+                    checkoutUrl,
                     subscription.getUser().getLanguage()
             );
             notificationService.sendSubscriptionRenewalReminder(

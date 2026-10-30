@@ -251,6 +251,38 @@ class WompiWebhookServiceTest {
     }
 
     @Test
+    void annualRenewalStartsAfterExistingPaidTermAndAddsAFullYear()
+            throws Exception {
+        String transactionId = UUID.randomUUID().toString();
+        String reference = UUID.randomUUID().toString();
+        String body = oneTimePayload(transactionId, reference, "150.00");
+        Subscription renewal = annualSubscription(reference);
+        Subscription current = annualSubscription("old-reference");
+        current.setStatus(SubscriptionStatus.ACTIVE);
+        Instant currentPaidThrough = Instant.now().plusSeconds(10 * 24 * 60 * 60);
+        current.setEndsAt(currentPaidThrough);
+        current.setNextBillingAt(currentPaidThrough);
+        current.setUser(renewal.getUser());
+        when(repositoryPayment.existsByProviderPaymentId(transactionId))
+                .thenReturn(false);
+        when(repositorySubscription.findByCheckoutReferenceAndStatus(reference,
+                SubscriptionStatus.PENDING_ACTIVATION))
+                .thenReturn(Optional.of(renewal));
+        when(repositorySubscription.findByUserIdAndStatus(
+                renewal.getUser().getId(), SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(current));
+
+        service.process(body, sign(body));
+
+        assertThat(renewal.getStartsAt()).isEqualTo(currentPaidThrough);
+        assertThat(renewal.getEndsAt()).isEqualTo(
+                currentPaidThrough.plus(365, java.time.temporal.ChronoUnit.DAYS));
+        assertThat(current.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        verify(repositoryPayment).save(any(Payment.class));
+        verify(wompiApiClient, never()).deactivateRecurringLink(any());
+    }
+
+    @Test
     void primerPagoRecurrenteGuardaElIdDelSuscriptorEnElFallbackPorEmail()
             throws Exception {
         String transactionId = UUID.randomUUID().toString();
@@ -415,31 +447,6 @@ class WompiWebhookServiceTest {
     }
 
     @Test
-    void enrollmentConfirmationReplacesOldPlanOnlyAtActivation() {
-        Subscription old = monthlySubscription(new BigDecimal("9.00"));
-        old.setStatus(SubscriptionStatus.ACTIVE);
-        old.setProviderLinkId("old-link");
-        Subscription next = monthlySubscription(new BigDecimal("15.00"));
-        next.setId(UUID.randomUUID());
-        next.setUser(old.getUser());
-        next.setStatus(SubscriptionStatus.PENDING_ACTIVATION);
-        next.setReminderSentAt(Instant.now());
-        when(repositorySubscription.findByUserIdAndStatus(
-                old.getUser().getId(), SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(old));
-
-        service.activateEnrollment(next, "new-subscriber");
-
-        assertThat(old.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
-        assertThat(next.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(next.getProviderSubscriberId()).isEqualTo("new-subscriber");
-        assertThat(next.getReminderSentAt()).isNull();
-        verify(wompiApiClient).deactivateRecurringLink("old-link");
-        verify(repositorySubscription).save(old);
-        verify(repositorySubscription).save(next);
-        verifyNoInteractions(repositoryPayment);
-    }
-
     @Test
     void monthlyActivationSchedulesFutureBillingAndKeepsNoEndDate()
             throws Exception {
@@ -480,39 +487,6 @@ class WompiWebhookServiceTest {
 
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         verify(repositoryPayment).save(any(Payment.class));
-    }
-
-    @Test
-    void activeEnrollmentGrantsPlanWithoutCreatingAFalsePayment() {
-        Subscription subscription = monthlySubscription(new BigDecimal("9.99"));
-
-        service.activateEnrollment(subscription, "subscriber-123");
-
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(subscription.getProviderSubscriberId())
-                .isEqualTo("subscriber-123");
-        assertThat(subscription.getNextBillingAt()).isNotNull();
-        verify(repositorySubscription).save(subscription);
-        verifyNoInteractions(repositoryPayment);
-    }
-
-    @Test
-    void enrollmentCancelsAnOlderActivePlanForTheSameUser() {
-        Subscription pro = monthlySubscription(new BigDecimal("9.99"));
-        Subscription free = monthlySubscription(BigDecimal.ZERO);
-        free.setStatus(SubscriptionStatus.ACTIVE);
-        free.setUser(pro.getUser());
-        when(repositorySubscription.findByUserIdAndStatus(
-                pro.getUser().getId(), SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(free));
-
-        service.activateEnrollment(pro, "subscriber-123");
-
-        assertThat(free.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
-        assertThat(free.getCanceledAt()).isNotNull();
-        verify(repositorySubscription).save(free);
-        verify(repositorySubscription).save(pro);
-        verifyNoInteractions(repositoryPayment);
     }
 
     /*

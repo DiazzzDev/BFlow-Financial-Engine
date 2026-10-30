@@ -8,7 +8,6 @@ import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.subscription.services.SubscriptionReconciliationService;
-import bflow.subscription.services.WompiWebhookService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,18 +32,16 @@ class SubscriptionReconciliationServiceTest {
 
     @Mock private RepositorySubscription repositorySubscription;
     @Mock private WompiApiClient wompiApiClient;
-    @Mock private WompiWebhookService wompiWebhookService;
-
     private SubscriptionReconciliationService service;
 
     @BeforeEach
     void setUp() {
         service = new SubscriptionReconciliationService(
-                repositorySubscription, wompiApiClient, wompiWebhookService);
+                repositorySubscription, wompiApiClient);
     }
 
     @Test
-    void activeWompiEnrollmentActivatesProBeforeFirstPayment() {
+    void activeWompiEnrollmentRemainsPendingUntilApprovedPaymentWebhook() {
         Subscription subscription = pendingSubscription(Instant.now());
         WompiApiClient.SubscriberInfo enrollment = subscriber("Activa", 0);
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
@@ -55,12 +52,13 @@ class SubscriptionReconciliationServiceTest {
 
         service.reconcilePendingActivations();
 
-        verify(wompiWebhookService).activateEnrollment(subscription,
-                enrollment.id());
+        org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        verify(repositorySubscription, never()).save(subscription);
     }
 
     @Test
-    void activeWompiEnrollmentMatchesEmailIgnoringCase() {
+    void activeWompiEnrollmentMatchingEmailStillDoesNotGrantPro() {
         Subscription subscription = pendingSubscription(Instant.now());
         WompiApiClient.SubscriberInfo enrollment = new WompiApiClient
                 .SubscriberInfo("subscriber-id", Instant.now(), "BFlow Pro",
@@ -74,8 +72,9 @@ class SubscriptionReconciliationServiceTest {
 
         service.reconcilePendingActivations();
 
-        verify(wompiWebhookService).activateEnrollment(subscription,
-                "subscriber-id");
+        org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
+                .isEqualTo(SubscriptionStatus.PENDING_ACTIVATION);
+        verify(repositorySubscription, never()).save(subscription);
     }
 
     @Test
@@ -91,7 +90,6 @@ class SubscriptionReconciliationServiceTest {
         service.reconcilePendingActivations();
 
         verify(repositorySubscription, never()).save(subscription);
-        verify(wompiWebhookService, never()).activateEnrollment(any(), any());
     }
 
     @Test
@@ -107,7 +105,6 @@ class SubscriptionReconciliationServiceTest {
         service.reconcilePendingActivations();
 
         verify(repositorySubscription, never()).save(subscription);
-        verify(wompiWebhookService, never()).activateEnrollment(any(), any());
     }
 
     @Test
@@ -124,6 +121,7 @@ class SubscriptionReconciliationServiceTest {
 
         org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
                 .isEqualTo(SubscriptionStatus.EXPIRED);
+        verify(wompiApiClient).deactivateRecurringLink("provider-link");
         verify(repositorySubscription).save(subscription);
     }
 
@@ -174,7 +172,6 @@ class SubscriptionReconciliationServiceTest {
 
         service.reconcilePendingActivations();
 
-        verify(wompiWebhookService, never()).activateEnrollment(any(), any());
         verify(repositorySubscription, never()).save(subscription);
     }
 

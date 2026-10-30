@@ -160,6 +160,53 @@ class PaymentServiceTest {
         verify(wompiApiClient, never()).attachRecurringLinkImage(any());
     }
 
+    @Test
+    void renewalCheckoutCreatesANewOneTimeWompiLinkWhenNoneIsPending() {
+        proMonthly.setBillingPeriod(BillingPeriod.YEARLY);
+        when(repositorySubscription
+                .findFirstByUserIdAndPlanIdAndStatusOrderByCreatedAtDesc(
+                        userId, proMonthly.getId(),
+                        SubscriptionStatus.PENDING_ACTIVATION))
+                .thenReturn(Optional.empty());
+        when(wompiApiClient.createPaymentLink(any(),
+                eq(new BigDecimal("9.99")), any()))
+                .thenReturn(new WompiApiClient.PaymentLinkResponse(
+                        202L, "qr", "https://wompi.example/annual-renewal", false));
+
+        var checkout = service.createRenewalCheckout(userId, proMonthly.getId());
+
+        assertThat(checkout.checkoutUrl())
+                .isEqualTo("https://wompi.example/annual-renewal");
+        ArgumentCaptor<Subscription> saved =
+                ArgumentCaptor.forClass(Subscription.class);
+        verify(repositorySubscription).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getCheckoutReference()).isNotBlank();
+        assertThat(saved.getValue().getCheckoutUrl())
+                .isEqualTo("https://wompi.example/annual-renewal");
+    }
+
+    @Test
+    void renewalCheckoutReusesOnlyThePendingRenewalLinkNotTheActivePlanUrl() {
+        proMonthly.setBillingPeriod(BillingPeriod.YEARLY);
+        Subscription pending = new Subscription();
+        pending.setId(UUID.randomUUID());
+        pending.setStatus(SubscriptionStatus.PENDING_ACTIVATION);
+        pending.setCheckoutReference("new-unique-reference");
+        pending.setCheckoutUrl("https://wompi.example/fresh-pending-link");
+        when(repositorySubscription
+                .findFirstByUserIdAndPlanIdAndStatusOrderByCreatedAtDesc(
+                        userId, proMonthly.getId(),
+                        SubscriptionStatus.PENDING_ACTIVATION))
+                .thenReturn(Optional.of(pending));
+
+        var checkout = service.createRenewalCheckout(userId, proMonthly.getId());
+
+        assertThat(checkout.subscriptionId()).isEqualTo(pending.getId());
+        assertThat(checkout.checkoutUrl())
+                .isEqualTo("https://wompi.example/fresh-pending-link");
+        verify(wompiApiClient, never()).createPaymentLink(any(), any(), any());
+    }
+
     private Plan proMonthlyPlan() {
         Plan plan = new Plan();
         plan.setId(UUID.randomUUID());

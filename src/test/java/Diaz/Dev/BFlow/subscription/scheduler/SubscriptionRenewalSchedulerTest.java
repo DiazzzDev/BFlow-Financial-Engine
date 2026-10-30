@@ -10,6 +10,8 @@ import bflow.subscription.enums.BillingPeriod;
 import bflow.subscription.enums.SubscriptionStatus;
 import bflow.subscription.repository.RepositorySubscription;
 import bflow.subscription.scheduler.SubscriptionRenewalScheduler;
+import bflow.subscription.dto.CheckoutResponse;
+import bflow.subscription.services.PaymentService;
 import bflow.subscription.services.SubscriptionReconciliationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionRenewalSchedulerTest {
@@ -36,6 +39,7 @@ class SubscriptionRenewalSchedulerTest {
     @Mock private SubscriptionReconciliationService reconciliationService;
     @Mock private EmailTemplateService emailTemplateService;
     @Mock private NotificationService notificationService;
+    @Mock private PaymentService paymentService;
     @InjectMocks private SubscriptionRenewalScheduler scheduler;
 
     @Test
@@ -61,14 +65,21 @@ class SubscriptionRenewalSchedulerTest {
         when(repositorySubscription.findRenewalReminderCandidates(
                 eq(BillingPeriod.YEARLY), eq(SubscriptionStatus.ACTIVE),
                 any(), any())).thenReturn(List.of(yearly));
+        when(paymentService.createRenewalCheckout(eq(yearly.getUser().getId()),
+                eq(yearly.getPlan().getId()))).thenReturn(
+                new CheckoutResponse(java.util.UUID.randomUUID(),
+                        "https://checkout.example.com/fresh-annual-link"));
 
         scheduler.sendRenewalReminders();
 
         verify(emailTemplateService).sendRenewalReminderEmail(
                 yearly.getUser().getEmail(), yearly.getUser().getName(),
                 yearly.getPlan().getName(), "10.00",
-                yearly.getNextBillingAt().toString(), yearly.getCheckoutUrl(),
+                yearly.getNextBillingAt().toString(),
+                "https://checkout.example.com/fresh-annual-link",
                 yearly.getUser().getLanguage());
+        verify(paymentService).createRenewalCheckout(
+                eq(yearly.getUser().getId()), eq(yearly.getPlan().getId()));
         verify(notificationService).sendSubscriptionRenewalReminder(
                 yearly.getUser(), yearly.getPlan().getName(),
                 yearly.getNextBillingAt().toString());
@@ -92,6 +103,7 @@ class SubscriptionRenewalSchedulerTest {
                 monthly.getPlan().getName(), "10.00",
                 monthly.getNextBillingAt().toString(), monthly.getCheckoutUrl(),
                 monthly.getUser().getLanguage());
+        verifyNoInteractions(paymentService);
         verify(notificationService).sendSubscriptionRenewalReminder(
                 monthly.getUser(), monthly.getPlan().getName(),
                 monthly.getNextBillingAt().toString());
@@ -140,11 +152,13 @@ class SubscriptionRenewalSchedulerTest {
 
     private Subscription subscription(final BillingPeriod billingPeriod) {
         User user = new User();
+        user.setId(java.util.UUID.randomUUID());
         user.setEmail("member@example.com");
         user.setName("Member");
         user.setLanguage(SupportedLanguage.ES);
 
         Plan plan = new Plan();
+        plan.setId(java.util.UUID.randomUUID());
         plan.setName("Pro");
         plan.setBillingPeriod(billingPeriod);
 

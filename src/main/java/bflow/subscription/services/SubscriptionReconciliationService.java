@@ -30,9 +30,6 @@ public class SubscriptionReconciliationService {
     /** Client used to read subscriber information from Wompi. */
     private final WompiApiClient wompiApiClient;
 
-    /** Service used to activate subscriptions from trusted events. */
-    private final WompiWebhookService wompiWebhookService;
-
     /**
      * Reconcile pending activations that were not confirmed in time.
      */
@@ -98,8 +95,8 @@ public class SubscriptionReconciliationService {
     }
 
     /**
-     * Handle a matched subscriber and decide whether to activate the
-     * subscription.
+     * Keep matched enrollments pending until an approved-payment webhook
+     * arrives, or expire them after the checkout window closes.
      *
      * @param subscription the pending subscription
      * @param match the matching subscriber from Wompi
@@ -108,38 +105,22 @@ public class SubscriptionReconciliationService {
             final Subscription subscription,
             final WompiApiClient.SubscriberInfo match
     ) {
-        if (!"Activa".equalsIgnoreCase(match.estado())) {
-            Instant hardCutoff = subscription.getCreatedAt()
-                    .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
-            if (Instant.now().isAfter(hardCutoff)) {
-                subscription.setStatus(SubscriptionStatus.EXPIRED);
-                repositorySubscription.save(subscription);
-                log.warn(
-                        "Subscription {} expirada tras {} días sin "
-                                + "confirmación (estado Wompi={})",
-                        subscription.getId(),
-                        MAX_PENDING_ENROLLMENT_DAYS,
-                        match.estado()
-                );
-            } else {
-                log.info(
-                        "Subscription {} sin afiliación activa aún "
-                                + "(estado Wompi={})",
-                        subscription.getId(),
-                        match.estado()
-                );
-            }
+        Instant hardCutoff = subscription.getCreatedAt()
+                .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
+        if (Instant.now().isAfter(hardCutoff)) {
+            deactivateExpiredEnrollment(subscription);
+            subscription.setStatus(SubscriptionStatus.EXPIRED);
+            repositorySubscription.save(subscription);
+            log.warn("Subscription {} expirada tras {} días sin webhook "
+                            + "de transacción aprobada (estado Wompi={})",
+                    subscription.getId(), MAX_PENDING_ENROLLMENT_DAYS,
+                    match.estado());
             return;
         }
 
-        wompiWebhookService.activateEnrollment(subscription, match.id());
-
-        log.warn(
-                "Subscription {} activada vía reconciliación de afiliación "
-                        + "Wompi. idSuscriptor={}",
-                subscription.getId(),
-                match.idSuscriptor()
-        );
+        log.info("Subscription {} sigue pendiente: enrolamiento Wompi={} "
+                        + "pero falta el webhook de pago aprobado",
+                subscription.getId(), match.estado());
     }
 
     /**
@@ -151,6 +132,7 @@ public class SubscriptionReconciliationService {
         Instant hardCutoff = subscription.getCreatedAt()
                 .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
         if (Instant.now().isAfter(hardCutoff)) {
+            deactivateExpiredEnrollment(subscription);
             subscription.setStatus(SubscriptionStatus.EXPIRED);
             repositorySubscription.save(subscription);
             log.info(
@@ -163,5 +145,17 @@ public class SubscriptionReconciliationService {
 
         log.info("Subscription {} sigue pendiente: afiliación Wompi aún "
                         + "no encontrada", subscription.getId());
+    }
+
+    private void deactivateExpiredEnrollment(
+            final Subscription subscription
+    ) {
+        try {
+            wompiApiClient.deactivateRecurringLink(
+                    subscription.getProviderLinkId());
+        } catch (RuntimeException exception) {
+            log.error("Could not deactivate expired Wompi enrollment {}",
+                    subscription.getId(), exception);
+        }
     }
 }

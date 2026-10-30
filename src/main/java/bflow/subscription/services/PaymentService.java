@@ -157,6 +157,41 @@ public class PaymentService {
     }
 
     /**
+     * Get or create the pending annual checkout used by renewal reminders.
+     * A pending checkout has its own Wompi reference and is distinct from the
+     * single-use URL stored on the currently active annual subscription.
+     *
+     * @param userId the current user identifier
+     * @param planId the annual plan identifier
+     * @return a fresh pending checkout URL
+     */
+    @Transactional
+    public CheckoutResponse createRenewalCheckout(
+            final UUID userId,
+            final UUID planId
+    ) {
+        Plan plan = repositoryPlan.findById(planId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        messageService.get("subscription.plan.notFound")
+                ));
+        if (plan.getBillingPeriod() != BillingPeriod.YEARLY) {
+            throw new IllegalArgumentException(
+                    "Renewal checkouts are only supported for annual plans"
+            );
+        }
+
+        return repositorySubscription
+                .findFirstByUserIdAndPlanIdAndStatusOrderByCreatedAtDesc(
+                        userId, planId, SubscriptionStatus.PENDING_ACTIVATION)
+                .filter(pending -> pending.getCheckoutReference() != null
+                        && pending.getCheckoutUrl() != null)
+                .map(pending -> new CheckoutResponse(
+                        pending.getId(), pending.getCheckoutUrl()))
+                .orElseGet(() -> createCheckout(userId,
+                        new CheckoutRequest(planId)));
+    }
+
+    /**
      * Clamp the billing day to a safe value accepted by the provider.
      *
      * @param day the requested day of month
