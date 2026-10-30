@@ -149,8 +149,6 @@ class TransactionRowParserGapsTest {
 
     @Test
     void rejectsDayBeforeFiftyYearLimitInIsoFormat() {
-        stubExpenseCategory();
-
         assertThatThrownBy(() -> parser.parse(rowOf(Map.of(
                 "title", "Historical expense", "amount", "5.00",
                 "category", "Comida", "date", "1976-10-04"
@@ -160,8 +158,6 @@ class TransactionRowParserGapsTest {
 
     @Test
     void rejectsFutureDateInIsoFormat() {
-        stubExpenseCategory();
-
         assertThatThrownBy(() -> parser.parse(rowOf(Map.of(
                 "title", "Future expense", "amount", "5.00",
                 "category", "Comida", "date", "2026-10-06"
@@ -183,8 +179,6 @@ class TransactionRowParserGapsTest {
 
     @Test
     void rejectsDayBeforeFiftyYearLimitInLatAmFormat() {
-        stubExpenseCategory();
-
         assertThatThrownBy(() -> parser.parse(rowOf(Map.of(
                 "title", "Historical expense", "amount", "5.00",
                 "category", "Comida", "date", "04/10/1976"
@@ -194,8 +188,6 @@ class TransactionRowParserGapsTest {
 
     @Test
     void rejectsFutureDateInLatAmFormat() {
-        stubExpenseCategory();
-
         assertThatThrownBy(() -> parser.parse(rowOf(Map.of(
                 "title", "Future expense", "amount", "5.00",
                 "category", "Comida", "date", "06/10/2026"
