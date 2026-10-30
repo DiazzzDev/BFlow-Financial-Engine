@@ -114,3 +114,7 @@ This decision does not modify the API contract.
 JSON payloads remain unchanged through the existing `ApiResponse` wrapper.
 
 Only the controller implementation style changes by replacing unnecessary `ResponseEntity` wrappers with `@ResponseStatus` where appropriate.
+
+## Frontend error integration
+
+All API failures use the `ApiResponse` envelope where handled by the application. Request validation returns HTTP 400 with top-level `code: VALIDATION_ERROR` and an `errors` array. Each entry has `field`, stable validation `code`, and localized `message`; clients bind errors using `field` and must not parse `message`. Domain failures may omit `errors`, and legacy handlers may omit top-level `code`. See [the frontend error contract](../api/frontend-error-contract.md) for examples, status guidance, and compatibility behavior.
