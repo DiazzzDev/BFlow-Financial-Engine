@@ -5,6 +5,7 @@ import bflow.auth.enums.SupportedLanguage;
 import bflow.auth.services.UserService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
+import bflow.category.enums.CategoryType;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.i18n.MessageService;
 import bflow.recurring.DTO.RecurringRequest;
@@ -314,6 +315,190 @@ class RecurringExecutionServiceTest {
 
         assertNull(recurring.getEndDate());
         assertFalse(recurring.getActive());
+    }
+
+    @Test
+    void getWalletRecurring_checksWalletPermissionAndReturnsAllStatuses() {
+        UUID userId = UUID.randomUUID();
+        UUID walletId = UUID.randomUUID();
+        WalletUser membership = walletUser(userId);
+        membership.getWallet().setId(walletId);
+        RecurringExecutionService service = serviceWithClock(
+                Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                        ZoneId.of("America/El_Salvador")));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(membership));
+        when(repository.findByWalletIdOrderByNextExecutionDateAsc(walletId))
+                .thenReturn(java.util.List.of());
+
+        assertTrue(service.getWalletRecurring(walletId, userId).isEmpty());
+
+        verify(repository).findByWalletIdOrderByNextExecutionDateAsc(walletId);
+    }
+
+    @Test
+    void getWalletRecurring_deniesNonMemberWithoutQueryingRecurrences() {
+        UUID userId = UUID.randomUUID();
+        UUID walletId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(bflow.common.exception.WalletAccessDeniedException.class,
+                () -> service.getWalletRecurring(walletId, userId));
+
+        verify(repository, never())
+                .findByWalletIdOrderByNextExecutionDateAsc(any());
+    }
+
+    @Test
+    void getRecurringById_returnsOwnedRecurrence() {
+        UUID userId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        RecurringTransaction recurring = recurrence(userId,
+                RecurringFrequency.MONTHLY, LocalDate.now(), null);
+        recurring.setId(recurringId);
+        when(repository.findById(recurringId)).thenReturn(Optional.of(recurring));
+
+        RecurringResponse response = service.getRecurringById(recurringId, userId);
+
+        assertEquals(recurringId, response.getId());
+        assertNull(response.getEndDate());
+    }
+
+    @Test
+    void getRecurringById_deniesAnotherUsersRecurrence() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        RecurringTransaction recurring = recurrence(ownerId,
+                RecurringFrequency.MONTHLY, LocalDate.now(), null);
+        when(repository.findById(recurringId)).thenReturn(Optional.of(recurring));
+
+        assertThrows(bflow.common.exception.WalletAccessDeniedException.class,
+                () -> service.getRecurringById(recurringId, otherUserId));
+    }
+
+    @Test
+    void updateRecurring_allowsIndefiniteSalaryAndPreservesNextRunAndPausedState() {
+        UUID userId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = serviceWithClock(clock);
+        RecurringTransaction current = recurrence(userId, RecurringFrequency.MONTHLY,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 11, 1));
+        current.setId(recurringId);
+        current.setNextExecutionDate(LocalDate.of(2026, 11, 1));
+        current.setActive(false);
+        RecurringRequest request = request(current.getStartDate(), null);
+        request.setType(RecurringType.INCOME);
+        request.setFrequency(current.getFrequency());
+        request.setAmount(new BigDecimal("2000.00"));
+        WalletUser membership = walletUser(userId);
+        membership.getWallet().setId(request.getWalletId());
+        Category category = new Category();
+        category.setType(CategoryType.INCOME);
+
+        when(repository.findById(recurringId)).thenReturn(Optional.of(current));
+        when(repositoryWalletUser.findByWalletIdAndUserId(request.getWalletId(), userId))
+                .thenReturn(Optional.of(membership));
+        when(repositoryCategory.findById(request.getCategoryId()))
+                .thenReturn(Optional.of(category));
+        when(repository.save(current)).thenReturn(current);
+
+        RecurringResponse response = service.updateRecurring(recurringId, request, userId);
+
+        assertNull(current.getEndDate());
+        assertEquals(new BigDecimal("2000.00"), current.getAmount());
+        assertEquals(LocalDate.of(2026, 11, 1), current.getNextExecutionDate());
+        assertFalse(current.getActive(), "PUT must not silently resume a paused salary");
+        assertNull(response.getEndDate());
+        verify(repository).save(current);
+    }
+
+    @Test
+    void updateRecurring_scheduleChangeRecalculatesNextRunFromStartDate() {
+        UUID userId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = serviceWithClock(clock);
+        RecurringTransaction current = recurrence(userId, RecurringFrequency.MONTHLY,
+                LocalDate.of(2026, 1, 1), null);
+        current.setId(recurringId);
+        current.setNextExecutionDate(LocalDate.of(2026, 10, 1));
+        RecurringRequest request = request(LocalDate.of(2026, 9, 1), null);
+        WalletUser membership = walletUser(userId);
+        membership.getWallet().setId(request.getWalletId());
+        Category category = new Category();
+        category.setType(CategoryType.EXPENSE);
+        when(repository.findById(recurringId)).thenReturn(Optional.of(current));
+        when(repositoryWalletUser.findByWalletIdAndUserId(request.getWalletId(), userId))
+                .thenReturn(Optional.of(membership));
+        when(repositoryCategory.findById(request.getCategoryId()))
+                .thenReturn(Optional.of(category));
+        when(repository.save(current)).thenReturn(current);
+
+        service.updateRecurring(recurringId, request, userId);
+
+        assertEquals(LocalDate.of(2026, 11, 1), current.getNextExecutionDate());
+    }
+
+    @Test
+    void updateRecurring_rejectsCategoryOfDifferentFinancialType() {
+        UUID userId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        RecurringTransaction current = recurrence(userId, RecurringFrequency.MONTHLY,
+                LocalDate.now(), null);
+        current.setId(recurringId);
+        RecurringRequest request = request(LocalDate.now(), null);
+        Category income = new Category();
+        income.setType(CategoryType.INCOME);
+        WalletUser membership = walletUser(userId);
+        membership.getWallet().setId(request.getWalletId());
+        when(repository.findById(recurringId)).thenReturn(Optional.of(current));
+        when(repositoryWalletUser.findByWalletIdAndUserId(request.getWalletId(), userId))
+                .thenReturn(Optional.of(membership));
+        when(repositoryCategory.findById(request.getCategoryId()))
+                .thenReturn(Optional.of(income));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateRecurring(recurringId, request, userId));
+        verify(repository, never()).save(any());
+    }
+
+    private RecurringExecutionService serviceWithClock(final Clock clock) {
+        return new RecurringExecutionService(repository, executor,
+                emailTemplateService, userService, repositoryCategory,
+                repositoryWalletUser, planLimitService, messageService, clock);
+    }
+
+    private RecurringTransaction recurrence(
+            final UUID userId, final RecurringFrequency frequency,
+            final LocalDate startDate, final LocalDate endDate
+    ) {
+        User owner = new User();
+        owner.setId(userId);
+        RecurringTransaction recurrence = new RecurringTransaction();
+        recurrence.setUser(owner);
+        recurrence.setTitle("Salary");
+        recurrence.setAmount(new BigDecimal("2000.00"));
+        recurrence.setType(RecurringType.INCOME);
+        recurrence.setFrequency(frequency);
+        recurrence.setIntervalValue(1);
+        recurrence.setStartDate(startDate);
+        recurrence.setNextExecutionDate(startDate);
+        recurrence.setEndDate(endDate);
+        recurrence.setActive(true);
+        return recurrence;
     }
 
     private RecurringRequest request(final LocalDate startDate,
