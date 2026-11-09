@@ -2,6 +2,32 @@
 
 All notable changes to BFlow are documented here.
 
+## v1.6.1
+
+This release improves recurring transaction management.
+
+### Added
+
+* **Wallet Recurrence Lookup** — List active and inactive recurring transactions for an authorized wallet, and retrieve an individual recurrence by ID with ownership checks.
+* **Recurrence Editing** — Update recurrence details without posting another income or expense. Schedule changes recalculate the next occurrence while preserving the active or paused state.
+* **Indefinite Recurrences** — Leave the end date empty for recurring income or expenses with no known end date, such as a salary under an open-ended contract.
+
+---
+
+## v1.6.0
+
+This release adds optional Gmail transaction import with privacy-focused content limits.
+
+### Added
+
+* **Gmail Transaction Import** — Connect Gmail separately from Google sign-in with explicit read-only consent. The background integration detects transaction confirmations and registers the resulting income or expense in the selected wallet, then notifies the user.
+* **Content-Limited Processing** — Process only supported transaction content and supported USD amounts. For each message, select one source in priority order: compatible PDF, compatible image, then the email text only when no compatible attachment exists. Unsupported attachments do not create separate transactions.
+* **Temporary Receipt Analysis** — Analyze supported PDF and image attachments asynchronously through the existing Textract workflow using private temporary storage, then remove the staged file after processing.
+* **Gmail Data Protection** — Encrypt connection credentials, avoid retaining complete email bodies or Gmail receipt files, and retain only the transaction and technical processing metadata needed to operate the integration and prevent duplicate imports.
+* **Personal Data Export** — Add an authenticated JSON export for account and financial data associated with the requesting user.
+
+---
+
 ## v1.5.1
 
 * **Architecture Diagram** — Published an interactive diagram to help users explore how BFlow is organized: [architecture.bflow-studio.com](https://architecture.bflow-studio.com/).
@@ -116,4 +142,4 @@ BFlow is continuously evolving, and user feedback will help guide future develop
 
 ## Version
 
-**BFlow v1.5.1**
+**BFlow v1.6.1**

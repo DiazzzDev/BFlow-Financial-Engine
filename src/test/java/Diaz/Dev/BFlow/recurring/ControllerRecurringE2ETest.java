@@ -70,6 +70,25 @@ class ControllerRecurringE2ETest {
     }
 
     @Test
+    void getRecurrenceByIdUsesAuthenticatedUser() throws Exception {
+        UUID recurrenceId = UUID.randomUUID();
+        RecurringResponse response = new RecurringResponse();
+        response.setId(recurrenceId);
+        response.setTitle("Salary");
+        response.setEndDate(null);
+        when(recurringService.getRecurringById(recurrenceId, userId))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/recurring/{id}", recurrenceId)
+                        .principal(new TestingAuthenticationToken("user", "")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(recurrenceId.toString()))
+                .andExpect(jsonPath("$.title").value("Salary"));
+
+        verify(recurringService).getRecurringById(recurrenceId, userId);
+    }
+
+    @Test
     void putAllowsIndefiniteSalaryWhenEndDateIsOmitted() throws Exception {
         UUID recurrenceId = UUID.randomUUID();
         UUID walletId = UUID.randomUUID();

@@ -175,6 +175,20 @@ public class RecurringExecutionService {
                 .stream().map(this::mapToResponse).toList();
     }
 
+    /** Gets one recurrence after verifying that it belongs to the caller. */
+    public RecurringResponse getRecurringById(
+            final UUID id, final UUID userId
+    ) {
+        RecurringTransaction recurring = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("recurring.notFound")));
+        if (!recurring.getUser().getId().equals(userId)) {
+            throw new WalletAccessDeniedException(
+                    messageService.get("wallet.accessDenied"));
+        }
+        return mapToResponse(recurring);
+    }
+
     /**
      * Create a new recurring transaction.
      *

@@ -114,6 +114,25 @@ public class ControllerRecurring {
         return recurringService.getWalletRecurring(walletId, userId);
     }
 
+    /** Gets one recurrence owned by the authenticated user. */
+    @Operation(summary = "Get a recurring transaction by ID.",
+            description = "Returns a recurrence only when the authenticated "
+                    + "user owns it.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Recurrence returned."),
+            @ApiResponse(responseCode = "401", description = "Authentication is required."),
+            @ApiResponse(responseCode = "403", description = "The user does not own this recurrence."),
+            @ApiResponse(responseCode = "404", description = "Recurrence was not found.")
+    })
+    @GetMapping("/{id}")
+    public RecurringResponse getById(
+            @PathVariable final UUID id,
+            final Authentication authentication
+    ) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        return recurringService.getRecurringById(id, userId);
+    }
+
     /** Replaces editable recurrence details while preserving its active/paused state. */
     @Operation(summary = "Update a recurring transaction.",
             description = "Replaces title, description, amount, wallet, category, "

@@ -353,6 +353,38 @@ class RecurringExecutionServiceTest {
     }
 
     @Test
+    void getRecurringById_returnsOwnedRecurrence() {
+        UUID userId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        RecurringTransaction recurring = recurrence(userId,
+                RecurringFrequency.MONTHLY, LocalDate.now(), null);
+        recurring.setId(recurringId);
+        when(repository.findById(recurringId)).thenReturn(Optional.of(recurring));
+
+        RecurringResponse response = service.getRecurringById(recurringId, userId);
+
+        assertEquals(recurringId, response.getId());
+        assertNull(response.getEndDate());
+    }
+
+    @Test
+    void getRecurringById_deniesAnotherUsersRecurrence() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID recurringId = UUID.randomUUID();
+        RecurringExecutionService service = serviceWithClock(Clock.system(
+                ZoneId.of("America/El_Salvador")));
+        RecurringTransaction recurring = recurrence(ownerId,
+                RecurringFrequency.MONTHLY, LocalDate.now(), null);
+        when(repository.findById(recurringId)).thenReturn(Optional.of(recurring));
+
+        assertThrows(bflow.common.exception.WalletAccessDeniedException.class,
+                () -> service.getRecurringById(recurringId, otherUserId));
+    }
+
+    @Test
     void updateRecurring_allowsIndefiniteSalaryAndPreservesNextRunAndPausedState() {
         UUID userId = UUID.randomUUID();
         UUID recurringId = UUID.randomUUID();
