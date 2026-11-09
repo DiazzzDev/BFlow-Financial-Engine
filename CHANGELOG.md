@@ -21,7 +21,7 @@ This release adds optional Gmail transaction import with privacy-focused content
 ### Added
 
 * **Gmail Transaction Import** — Connect Gmail separately from Google sign-in with explicit read-only consent. The background integration detects transaction confirmations and registers the resulting income or expense in the selected wallet, then notifies the user.
-* **Content-Limited Processing** — Process only supported transaction content and supported USD amounts. For each message, select one source in priority order: compatible PDF, compatible image, then the email text only when no compatible attachment exists. Unsupported attachments do not create separate transactions.
+* **Content-Limited Processing** — Limit imports to supported PDF, JPEG, or PNG attachments and transaction-like email text. For each message, select one source in priority order: compatible PDF, compatible image, then the email text only when no compatible attachment exists. Unsupported attachments do not create separate transactions.
 * **Temporary Receipt Analysis** — Analyze supported PDF and image attachments asynchronously through the existing Textract workflow using private temporary storage, then remove the staged file after processing.
 * **Gmail Data Protection** — Encrypt connection credentials, avoid retaining complete email bodies or Gmail receipt files, and retain only the transaction and technical processing metadata needed to operate the integration and prevent duplicate imports.
 * **Personal Data Export** — Add an authenticated JSON export for account and financial data associated with the requesting user.
