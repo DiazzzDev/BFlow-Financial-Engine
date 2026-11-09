@@ -27,7 +27,7 @@ public class LocaleConfig {
 
     /** Languages the backend currently has translations for. */
     private static final List<Locale> SUPPORTED_LOCALES = List.of(
-            Locale.ENGLISH, new Locale("es")
+            Locale.ENGLISH, Locale.forLanguageTag("es")
     );
 
     /**
@@ -66,7 +66,7 @@ public class LocaleConfig {
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver resolver =
                 new AcceptHeaderLocaleResolver();
-        resolver.setDefaultLocale(new Locale("es"));
+        resolver.setDefaultLocale(Locale.forLanguageTag("es"));
         resolver.setSupportedLocales(SUPPORTED_LOCALES);
         return resolver;
     }

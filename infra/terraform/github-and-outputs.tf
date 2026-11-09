@@ -57,10 +57,11 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = aws_s3_bucket.files.arn
       },
       {
-        Sid      = "SqsValidate"
-        Effect   = "Allow"
-        Action   = "sqs:GetQueueAttributes"
-        Resource = [aws_sqs_queue.ocr_requests.arn, aws_sqs_queue.ocr_results.arn]
+        Sid    = "SqsValidate"
+        Effect = "Allow"
+        Action = "sqs:GetQueueAttributes"
+        Resource = [aws_sqs_queue.ocr_requests.arn, aws_sqs_queue.ocr_results.arn,
+        aws_sqs_queue.gmail_imports.arn]
       },
       {
         Sid      = "SnsValidate"
@@ -170,6 +171,7 @@ output "deployment_variables" {
     RECEIPT_OCR_REQUESTS_QUEUE_URL = aws_sqs_queue.ocr_requests.id
     RECEIPT_OCR_RESULTS_QUEUE_URL  = aws_sqs_queue.ocr_results.id
     RECEIPT_OCR_RESULTS_TOPIC_ARN  = aws_sns_topic.ocr_results.arn
+    GMAIL_IMPORT_QUEUE_URL         = aws_sqs_queue.gmail_imports.id
     TEXTRACT_SNS_ROLE_ARN          = aws_iam_role.textract_sns.arn
     COGNITO_USER_POOL_ID           = var.cognito_user_pool_id
     COGNITO_ISSUER_URI             = var.cognito_user_pool_id == null ? null : "https://cognito-idp.${var.aws_region}.amazonaws.com/${var.cognito_user_pool_id}"
@@ -183,5 +185,6 @@ output "secret_arns" {
     RDS_SECRET_ARN      = aws_secretsmanager_secret.database.arn
     WOMPI_SECRET_ARN    = aws_secretsmanager_secret.wompi.arn
     FIREBASE_SECRET_ARN = aws_secretsmanager_secret.firebase.arn
+    GMAIL_SECRET_ARN    = aws_secretsmanager_secret.gmail.arn
   }
 }

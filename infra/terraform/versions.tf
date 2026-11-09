@@ -20,6 +20,7 @@ locals {
   common_secret_arns = compact([
     aws_secretsmanager_secret.database.arn,
     aws_secretsmanager_secret.wompi.arn,
-    aws_secretsmanager_secret.firebase.arn
+    aws_secretsmanager_secret.firebase.arn,
+    aws_secretsmanager_secret.gmail.arn
   ])
 }

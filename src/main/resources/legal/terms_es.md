@@ -1,16 +1,16 @@
 # TÉRMINOS Y CONDICIONES DE USO BFLOW STUDIO
 
-**Última actualización: 3 de agosto de 2026**
+**Última actualización: 9 de noviembre de 2026**
 
 ---
 
 ## ACUERDO A NUESTROS TÉRMINOS LEGALES
 
-Estos Servicios son operados por Edwin Díaz, quien utiliza el nombre comercial 'BFlow Studio' ('BFlow', 'nosotros', 'nuestro').
+Estos Servicios son operados por Edwin Adrián Díaz Henríquez, quien utiliza el nombre comercial 'BFlow Studio' ('BFlow', 'nosotros', 'nuestro').
 
 Operamos el sitio web [https://bflow-studio.com](https://bflow-studio.com) (el "Sitio"), así como cualquier otro producto o servicio relacionado que se refiera o enlace a estos términos legales (los "Términos Legales") (colectivamente, los "Servicios").
 
-**BFlow** es una aplicación web de gestión de finanzas personales que ayuda a los usuarios a rastrear, organizar y analizar sus ingresos y gastos en múltiples billeteras y fuentes de pago. La plataforma permite a los usuarios registrar manualmente transacciones, categorizar gastos y monitorear la actividad financiera para obtener mejor visibilidad.
+**BFlow** es una aplicación web de gestión de finanzas personales que ayuda a los usuarios a rastrear, organizar y analizar sus ingresos y gastos en múltiples billeteras y fuentes de pago. La plataforma permite a los usuarios registrar transacciones manualmente o mediante funciones opcionales de lectura de recibos y de correos, categorizar gastos y monitorear la actividad financiera para obtener mejor visibilidad.
 
 **Importante:** BFlow no se conecta directamente a cuentas bancarias y está diseñado únicamente para uso personal. La plataforma no proporciona asesoría financiera, de inversión, fiscal o legal y no incluye características tipo banco.
 
@@ -124,11 +124,11 @@ La suscripción inicia únicamente cuando BFlow recibe la confirmación oficial 
 
 Si el pago fue realizado pero la confirmación no ha sido recibida, el estado permanecerá como pendiente hasta recibir la confirmación correspondiente.
 
-Aceptas proporcionar información de compra y cuenta actual, completa y precisa para todas las compras realizadas a través de los Servicios. Además, aceptas actualizar prontamente información de cuenta y pago, incluyendo dirección de correo, método de pago y fecha de vencimiento de tarjeta para que podamos completar tus transacciones. Se agregará impuesto según lo requerido. Podemos cambiar precios en cualquier momento. Todos los pagos serán en dólares estadounidenses.
+Aceptas proporcionar información de compra y cuenta actual, completa y precisa para todas las compras realizadas a través de los Servicios. Además, aceptas actualizar prontamente información de cuenta y pago, incluyendo dirección de correo, método de pago y fecha de vencimiento de tarjeta para que podamos completar tus transacciones. Se agregará impuesto según lo requerido. Los cambios de precio se rigen por la sección 6 y no afectan el período ya pagado. Todos los pagos serán en dólares estadounidenses.
 
-Aceptas pagar todos los cargos a los precios vigentes más gastos de envío aplicables, y nos autorizas a cargar tu método de pago elegido. Nos reservamos el derecho de corregir errores de precios incluso si ya hemos recibido pago.
+Aceptas pagar todos los cargos a los precios vigentes, y nos autorizas a cargar tu método de pago elegido. Si detectamos un error evidente de precio, te lo informaremos antes de aplicar cualquier cobro adicional y podrás cancelar con reembolso.
 
-Nos reservamos el derecho de rechazar cualquier orden. Podemos limitar o cancelar cantidades por persona, hogar u orden. Nos reservamos el derecho de limitar órdenes que parezcan colocadas por distribuidores.
+Nos reservamos el derecho de rechazar cualquier orden.
 
 Todos los pagos de suscripciones son procesados exclusivamente por Wompi El Salvador (ACCELERA S.A. de C.V.). También conocido como "Wompi SV", servicio operado por ACCELERA S.A. de C.V.
 
@@ -196,6 +196,8 @@ Las solicitudes de devolución serán evaluadas conforme a la legislación salva
 
 Para solicitar reembolso, contacta [support@bflow-studio.com](mailto:support@bflow-studio.com) con tus detalles de cuenta y razón.
 
+Además, conforme a la Ley de Protección al Consumidor, gestionaremos la reversión del pago cuando el servicio contratado no haya sido prestado, exista un error de cobro por fallas en los sistemas de pago, o proceda el derecho de retracto aplicable.
+
 ### Cancelación
 
 Puedes cancelar tu suscripción en cualquier momento:
@@ -249,15 +251,16 @@ Como usuario de los Servicios, aceptas no:
 
 BFlow usa inteligencia artificial y sistemas automatizados:
 
-- **AWS Textract**: Extrae automáticamente texto de fotos de recibos e invoices. Ayuda a categorizar y organizar transacciones
+- **AWS Textract**: Extrae automáticamente texto de fotos de recibos e invoices, y de adjuntos de confirmaciones de transacciones cuando conectas Gmail. Ayuda a categorizar y organizar transacciones
 - **AWS Rekognition**: Analiza imágenes para contenido inapropiado (detección NSFW) para mantener seguridad
+- **Conexión opcional de Gmail**: Si la activas, analizamos confirmaciones de transacciones (texto o adjuntos PDF, JPEG o PNG) para detectar ingresos o gastos, conforme a la Política de Privacidad. Esta función evita que tengas que vincular tarjetas o cuentas bancarias a BFlow
 - **Categorización Automatizada**: Algoritmos de ML categorizan transacciones basados en datos de comerciante
 - **Análisis Predictivo**: Proporciona insights de gasto y tendencias financieras
 
 ### Precisión y Responsabilidad
 
 **Importante:** Los sistemas automatizados pueden producir errores. Eres únicamente responsable de:
-- Revisar todas las transacciones categorizadas automáticamente
+- Revisar todas las transacciones categorizadas automáticamente o detectadas desde tus correos
 - Verificar clasificaciones de gastos
 - Corregir cualquier error de clasificación
 - Auditar tus datos financieros
@@ -266,7 +269,7 @@ BFlow es una herramienta de rastreo únicamente y no proporciona asesoría finan
 
 ### Uso de Datos para Mejora de IA
 
-Usamos datos de transacciones agregados y anonimizados para mejorar nuestros modelos. Tus detalles financieros personales nunca se comparten con terceros sin tu consentimiento explícito.
+Usamos datos de transacciones agregados y anonimizados para mejorar nuestros modelos. Tus detalles financieros personales nunca se comparten con terceros sin tu consentimiento explícito. El cuerpo y los adjuntos obtenidos de Gmail no se incluyen en los registros de importación ni en los mensajes de la cola de importación.
 
 ### Transparencia y Acceso a Código
 
@@ -304,7 +307,7 @@ Nos reservamos derecho a remover Contribuciones que: (a) violen estos Términos;
 
 **Retroalimentación y Sugerencias.** Si envías voluntariamente feedback o sugerencias (excluyendo datos financieros personales), nos otorgas licencia perpetua, irrevocable y sin regalías para usarlas sin compensación.
 
-**Sin Renuncia de Derechos.** Retienes todos los derechos morales y de privacidad. BFlow no reclama propiedad de tus datos. Sujeto a leyes de protección de datos, puedes solicitar exportación, eliminación o portabilidad en cualquier momento contactando [support@bflow-studio.com](mailto:support@bflow-studio.com).
+**Sin Renuncia de Derechos.** Retienes todos los derechos morales y de privacidad. BFlow no reclama propiedad de tus datos. Sujeto a las leyes de protección de datos, puedes eliminar tu cuenta desde la configuración y solicitar acceso, portabilidad o eliminación por los canales descritos en la Política de Privacidad.
 
 [Volver a tabla de contenidos](#tabla-de-contenidos)
 
@@ -314,7 +317,7 @@ Nos reservamos derecho a remover Contribuciones que: (a) violen estos Términos;
 
 Como parte de la funcionalidad, puedes vincular tu cuenta con proveedores terceros. Representas que tienes derecho a divulgar información de login sin violar términos aplicables.
 
-[Atendiendo tu solicitud de vinculación de redes sociales - ver sección 5 de la versión inglesa para detalles técnicos completos]
+La conexión opcional de Gmail es independiente del inicio de sesión de Google y requiere tu autorización expresa. Se usa únicamente para detectar confirmaciones de transacciones y registrar un ingreso o gasto conforme a la Política de Privacidad. Puedes desconectarla en cualquier momento.
 
 [Volver a tabla de contenidos](#tabla-de-contenidos)
 
@@ -342,16 +345,16 @@ Nos reservamos derecho, pero no obligación, de: (1) monitorear los Servicios pa
 
 ## 14. ROLES DE DATOS Y POLÍTICA DE PRIVACIDAD
 
-### Rol de BFlow como Controlador de Datos
+### Rol de BFlow como Responsable del Tratamiento
 
 Como usuario de BFlow, debes entender nuestra relación de datos:
 
-- **BFlow es el Controlador de Datos** de tus datos financieros. Determinamos cómo se recopilan, procesan y usan
-- **Responsabilidades del Controlador**: Mantenemos seguridad, manejamos solicitudes, gestionamos retención per Política de Privacidad
-- **Propiedad de Tus Datos**: Retienes propiedad. Tienes derecho a solicitar, exportar o eliminar en cualquier momento
+- **BFlow es el Responsable del Tratamiento** de tus datos personales y financieros. Determinamos cómo se recopilan, procesan y usan
+- **Responsabilidades del Responsable**: Mantenemos seguridad, manejamos solicitudes, gestionamos retención per Política de Privacidad
+- **Propiedad de Tus Datos**: Retienes propiedad. Puedes solicitar acceso, portabilidad o eliminación conforme a la Política de Privacidad
 - **Política de Privacidad**: Revisa nuestra [Política de Privacidad](https://bflow-studio.com/privacy). Aceptas estar vinculado por ella
-- **Transparencia de GitHub**: Nuestro backend abierto en [GitHub](https://github.com/DiazzzDev/BFlow-Backend-Open-Source) para que verifiques nuestras prácticas
-- **Transferencias Internacionales**: Los Servicios están alojados en El Salvador y EE.UU. Si accedes desde otra región, tu uso constituye consentimiento a transferencias
+- **Transparencia de GitHub**: Nuestro backend abierto en [GitHub](https://github.com/DiazzzDev/BFlow-Financial-Engine) para que verifiques nuestras prácticas
+- **Transferencias Internacionales**: Los Servicios utilizan proveedores tecnológicos ubicados en distintas jurisdicciones, incluyendo EE.UU. Si accedes desde otra región, tu uso constituye consentimiento a transferencias
 
 [Volver a tabla de contenidos](#tabla-de-contenidos)
 
@@ -373,13 +376,13 @@ Estos Términos permanecen vigentes hasta terminación.
 
 ### Terminación por Ti
 
-Puedes terminar eliminando tu cuenta. Contacta [support@bflow-studio.com](mailto:support@bflow-studio.com). Al terminar, tus datos se manejarán per Política de Privacidad.
+Puedes terminar eliminando tu cuenta desde su configuración o contactando [support@bflow-studio.com](mailto:support@bflow-studio.com). Al terminar, tus datos se manejarán per Política de Privacidad.
 
 ### Terminación por BFlow
 
 BFlow puede suspender o terminar si: (a) incumples materialmente y no corriges en 14 días; (b) tu cuenta se usa para fraude; (c) violas repetidamente Actividades Prohibidas.
 
-Para fraude inminent, BFlow puede terminar sin aviso.
+Para fraude inminente, BFlow puede terminar sin aviso.
 
 ### Efectos de Terminación
 
@@ -391,7 +394,7 @@ Al terminar: (a) tu licencia termina; (b) retienes propiedad de datos; (c) puede
 
 ## 17. MODIFICACIONES E INTERRUPCIONES
 
-Nos reservamos derecho de cambiar los Servicios sin aviso. No somos responsables por modificaciones, cambios de precio, suspensiones o discontinuancia.
+Podemos modificar los Servicios para mejorarlos o por razones técnicas o legales. Si dejamos de prestar un servicio de pago, te avisaremos con al menos 30 días de anticipación y te reembolsaremos la parte prepagada no utilizada. Los cambios de precio se rigen por la sección 6.
 
 BFlow no puede garantizar disponibilidad 24/7. Podemos experimentar downtime. Asumes riesgo de inaccesibilidad. No tenemos obligación de mantener o proporcionar actualizaciones. Y podrá realizar mantenimientos programados o de emergencia.
 
@@ -415,17 +418,11 @@ Antes de acciones legales, intentaremos resolver de buena fe por correo. Contact
 
 ### Escalación a Procedimientos Judiciales
 
-Si la resolución informal falla, las disputas se resolverán en tribunales de El Salvador.
-
-### Limitaciones en Acciones Legales
-
-- **Statute of Limitations**: Cualquier reclamación debe presentarse dentro de 1 año o es permanentemente barrada
-- **Sin Acciones Colectivas**: Solo disputas individuales; no hay acciones de clase
-- **Sin Jurado**: Renuncias a derecho de jurado donde permitido por ley
+Si la resolución informal falla, las disputas se resolverán en tribunales de El Salvador. Esto no limita tu derecho de acudir a la Defensoría del Consumidor.
 
 ### Excepciones
 
-Infracción de propiedad intelectual y solicitudes de injunctive relief pueden llevarse ante cualquier tribunal competente.
+Las acciones por infracción de propiedad intelectual y las medidas cautelares pueden presentarse ante cualquier tribunal competente.
 
 [Volver a tabla de contenidos](#tabla-de-contenidos)
 
@@ -441,7 +438,7 @@ Podría haber información con errores tipográficos, imprecisiones u omisiones.
 
 ## 21. RENUNCIA DE GARANTÍAS
 
-**Los Servicios se proporcionan "TAL CUAL" y "SEGÚN DISPONIBILIDAD".** A la máxima extensión permitida por ley, BFlow renuncia a todas las garantías expresas o implícitas, incluyendo merchantability, aptitud para propósito, título y no infracción.
+**Los Servicios se proporcionan "TAL CUAL" y "SEGÚN DISPONIBILIDAD".** A la máxima extensión permitida por ley, BFlow renuncia a todas las garantías expresas o implícitas, incluyendo comerciabilidad, aptitud para propósito, título y no infracción.
 
 BFlow no garantiza operación ininterrumpida, sin errores o segura.
 
@@ -495,7 +492,6 @@ Algunas jurisdicciones restringen limitaciones:
 - BFlow permanece responsable por negligencia grave o inconducta intencional
 - Responsabilidad de brechas no está limitada
 - Protecciones obligatorias de consumidor aplican
-- Protecciones EU/GDPR, Brasil/LGPD, California, etc., son preservadas
 
 [Volver a tabla de contenidos](#tabla-de-contenidos)
 
@@ -505,9 +501,7 @@ Algunas jurisdicciones restringen limitaciones:
 
 BFlow recopila y procesa datos personales per Política de Privacidad. Datos pueden transferirse a, almacenarse o procesarse en El Salvador, EE.UU. u otras jurisdicciones.
 
-**Para Usuarios EU (GDPR):** BFlow cumple con requisitos de GDPR. DPA disponibles bajo solicitud. Standard Contractual Clauses (SCCs) incorporadas. Tienes derechos GDPR: acceso, corrección, eliminación, portabilidad per Art. 15-20.
-
-**Para Usuarios LATAM:** BFlow cumple con leyes de protección de datos en El Salvador, Brasil (LGPD), Colombia, México y otros. Datos financieros son clasificados como sensibles.
+**Marco aplicable:** BFlow trata los datos personales conforme a la Ley para la Protección de Datos Personales de El Salvador. Puedes ejercer tus derechos de acceso, rectificación, cancelación, oposición, portabilidad, olvido y limitación (ARCO-POL) según lo descrito en la Política de Privacidad.
 
 **Seguridad:** BFlow usa encriptación, autenticación segura, auditorías regulares. Ningún sistema es 100% seguro. No somos responsables por acceso no autorizado de factores externos.
 

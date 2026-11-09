@@ -63,7 +63,7 @@ public class ReceiptOcrResultProcessor {
      *         ({@code SUCCEEDED}, {@code FAILED} or {@code
      *         PARTIAL_SUCCESS})
      */
-    public void processCompletion(final String jobId, final String status) {
+    public boolean processCompletion(final String jobId, final String status) {
         Optional<ReceiptUpload> maybeReceipt =
                 repositoryReceiptUpload.findByTextractJobId(jobId);
 
@@ -73,7 +73,7 @@ public class ReceiptOcrResultProcessor {
                             + "notification ignored",
                     jobId
             );
-            return;
+            return false;
         }
 
         ReceiptUpload receipt = maybeReceipt.get();
@@ -84,13 +84,13 @@ public class ReceiptOcrResultProcessor {
                             + "already {}",
                     jobId, receipt.getId(), receipt.getStatus()
             );
-            return;
+            return true;
         }
 
         if (STATUS_FAILED.equals(status)) {
             statusTransitionService.markFailed(
                 receipt.getId(), "Textract could not process this document");
-            return;
+            return true;
         }
 
         // SUCCEEDED or PARTIAL_SUCCESS: fetch and map the result.
@@ -115,10 +115,11 @@ public class ReceiptOcrResultProcessor {
             statusTransitionService.markFailed(
                     receipt.getId(), "No receipt fields detected");
             log.info("Textract job {} did not contain receipt fields", jobId);
-            return;
+            return true;
         }
 
         statusTransitionService.markExtracted(
                 receipt.getId(), textractExpenseMapper.map(response));
+        return true;
     }
 }

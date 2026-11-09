@@ -324,4 +324,24 @@ public final class NotificationService {
                         "notification.subscriptionRenewal.message",
                         user.getLanguage(), planName, nextBillingDate));
     }
+
+    /** Creates an in-app notice after an imported Gmail expense is saved. */
+    public void sendExpenseRegistered(final UUID userId, final UUID expenseId) {
+        User user = repositoryUser.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Notification recipient not found"));
+        create(userId, NotificationType.EXPENSE_REGISTERED,
+                messageService.getForLanguage("notification.gmailExpense.title", user.getLanguage()),
+                messageService.getForLanguage("notification.gmailExpense.message", user.getLanguage()),
+                expenseId);
+    }
+
+    /** Creates an in-app notice after an imported Gmail income is saved. */
+    public void sendIncomeRegistered(final UUID userId, final UUID incomeId) {
+        User user = repositoryUser.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Notification recipient not found"));
+        create(userId, NotificationType.INCOME_REGISTERED,
+                messageService.getForLanguage("notification.gmailIncome.title", user.getLanguage()),
+                messageService.getForLanguage("notification.gmailIncome.message", user.getLanguage()),
+                incomeId);
+    }
 }

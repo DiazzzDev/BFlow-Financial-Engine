@@ -21,8 +21,8 @@ containers, OCR messaging, the GitHub OIDC deploy role, budget, optional RDS,
 optional Cognito client, and optional DNS-sync Lambda. Secret **values** do not
 enter Terraform state: create/update them directly in AWS Secrets Manager.
 
-`deploy.sh` and `destroy.sh` are tiny Terraform entry points, not bootstrap
-scripts.
+Run Terraform directly from the repository root with its `-chdir` option.
+This works in PowerShell, Command Prompt, and POSIX shells without a wrapper.
 
 ## First migration
 
@@ -33,20 +33,21 @@ scripts.
 3. Initialise Terraform:
 
    ```bash
-   ./deploy.sh init
+   terraform -chdir=infra/terraform init
    ```
 
 4. `terraform/imports.local.tf` is generated locally from AWS CLI discovery
    and ignored by Git; it includes account-specific resource IDs and ARNs.
-   Run `./deploy.sh plan` to preview imports and any drift. Do not use `apply`
-   until the plan is no-op or contains only intentional drift fixes. Applying
-   an import-only plan records state locally; it does not change AWS.
+   Run `terraform -chdir=infra/terraform plan` to preview imports and any
+   drift. Do not use `apply` until the plan is no-op or contains only
+   intentional drift fixes. Applying an import-only plan records state
+   locally; it does not change AWS.
 
 5. Review the plan, then apply interactively:
 
    ```bash
-   ./deploy.sh plan
-   ./deploy.sh apply
+   terraform -chdir=infra/terraform plan
+   terraform -chdir=infra/terraform apply
    ```
 
 6. Put the database, Wompi, Firebase, and (if enabled) Cloudflare values into
@@ -65,8 +66,10 @@ scripts.
 7. Copy `terraform output deployment_variables`, `secret_arns`, and
    `github_actions_role_arn` to the GitHub `production` environment.
 
-Use `./destroy.sh` only after reviewing Terraform's destruction plan. S3 has
-`force_destroy = false`, so uploaded customer files are never silently deleted.
+Destroying infrastructure is a separate, high-impact operation. Review
+`terraform -chdir=infra/terraform plan -destroy` carefully before running
+`terraform -chdir=infra/terraform destroy`. S3 has `force_destroy = false`, so
+Terraform will not silently remove buckets containing uploaded files.
 
 ## CI/CD
 

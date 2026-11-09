@@ -14,10 +14,11 @@ always-on infrastructure or moving credentials into source control/state.
 
 ## Decision
 
-Terraform under `infra/terraform` is the declarative source of truth. The
-active `infra/deploy.sh` and `infra/destroy.sh` delegate to Terraform. The old
-infrastructure Bash scripts are removed once the migration is committed so
-they cannot overwrite Terraform-managed resources or reintroduce drift.
+Terraform under `infra/terraform` is the declarative source of truth. Operators
+run Terraform directly with `terraform -chdir=infra/terraform <command>`;
+there are no shell wrappers for provisioning or destruction. The old
+infrastructure Bash scripts are removed so they cannot overwrite
+Terraform-managed resources or reintroduce drift.
 
 Terraform owns networking, S3 controls, ECR lifecycle, ECS cluster, IAM/OIDC,
 Secrets Manager secret containers, OCR resources, the budget, and optional

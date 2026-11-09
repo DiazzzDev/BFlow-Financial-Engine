@@ -26,7 +26,10 @@ public final class RateLimitPolicyRegistry {
             new RateLimitPolicy(10, Duration.ofMinutes(5)),
 
             "AUTHENTICATED_API",
-            new RateLimitPolicy(100, Duration.ofMinutes(3))
+            new RateLimitPolicy(100, Duration.ofMinutes(3)),
+
+            "GMAIL_SYNC",
+            new RateLimitPolicy(5, Duration.ofMinutes(15))
     );
 
     /**

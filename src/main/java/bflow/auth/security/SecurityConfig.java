@@ -103,6 +103,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/legal/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/plans/**").permitAll()
                         .requestMatchers("/api/v1/webhooks/wompi").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/integrations/gmail/callback").permitAll()
                         .requestMatchers(
                                 "/api/auth/verify-email"
                         ).permitAll()

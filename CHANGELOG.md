@@ -2,6 +2,50 @@
 
 All notable changes to BFlow are documented here.
 
+## v1.5.1
+
+* **Architecture Diagram** — Published an interactive diagram to help users explore how BFlow is organized: [architecture.bflow-studio.com](https://architecture.bflow-studio.com/).
+
+---
+
+## v1.5.0
+
+This release improves subscriptions, recurring transactions, receipts, and shared wallets.
+
+### Added
+
+* **Subscription Renewals** — Added renewal reminders and a grace period, making it easier to keep a subscription active. Annual renewals preserve the remaining time on the current plan.
+* **Annual Recurring Transactions** — Recurring income and expenses can now be scheduled annually, with safeguards against duplicate processing.
+* **Receipt Improvements** — Receipt uploads and text recognition are more consistent, reducing the need to enter receipt details manually.
+* **Wallet Invitations** — Added a default-wallet experience and clearer notifications for wallet invitations.
+* **Profile Picture Safety** — Uploaded profile pictures are checked before being stored.
+
+### Improved
+
+* **Subscription Payments** — Pro access is granted only after a payment is confirmed. Payment and renewal flows now provide clearer, more reliable checkouts.
+* **Business Transaction Dates** — Transaction dates follow El Salvador's local calendar, and date imports accept common date formats.
+* **Account Deletion** — Financial history remains available to the system where needed after an account is permanently deleted.
+
+---
+
+## v1.0.0
+
+### Added
+
+* **Push Notifications** — Added push notifications to keep users informed about relevant activity.
+* **Yearly Budgets** — Budgets can now be planned and tracked across a full year.
+
+---
+
+## v0.9.0
+
+### Added
+
+* **Account Deletion Controls** — Users can cancel a scheduled deletion within 30 days. After that period, the account is permanently deleted while necessary financial references are preserved.
+* **English and Spanish Support** — Added a foundation for using the application in English and Spanish.
+
+---
+
 ## v0.6.0
 
 This release focuses on collaboration, data integrity, and platform foundations: shared wallets get a richer, more informative experience, receipt handling moves to automated OCR processing, and the first building blocks of an event-driven architecture are in place.
@@ -72,4 +116,4 @@ BFlow is continuously evolving, and user feedback will help guide future develop
 
 ## Version
 
-**BFlow v0.6.0**
+**BFlow v1.5.1**

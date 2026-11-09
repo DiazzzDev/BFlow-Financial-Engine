@@ -363,6 +363,23 @@ class ServiceWalletTest {
     }
 
     @Test
+    void setOpeningBalance_preservesTransactionsWhenResultIsNegative() {
+        wallet.setBalance(BigDecimal.valueOf(-250));
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+
+        serviceWallet.setOpeningBalance(walletId, BigDecimal.ZERO, userId);
+
+        assertEquals(new BigDecimal("0.00"), wallet.getInitialValue());
+        assertEquals(new BigDecimal("-1250.00"), wallet.getBalance());
+        verify(repositoryWallet).save(wallet);
+    }
+
+    @Test
     void setDefaultWallet_ownedWalletClearsPreviousAndMarksTarget() {
         doNothing().when(userService).validateUserActive(userId);
         when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
@@ -427,13 +444,10 @@ class ServiceWalletTest {
     }
 
     @Test
-    void subtractBalance_oneCentOverBalance_throwsInsufficientBalance() {
-        assertThrows(IllegalArgumentException.class,
-                () -> serviceWallet.subtractBalance(
-                        wallet, BigDecimal.valueOf(1000.01)));
+    void subtractBalance_oneCentOverBalance_preservesExpenseAsNegativeBalance() {
+        serviceWallet.subtractBalance(wallet, BigDecimal.valueOf(1000.01));
 
-        // Balance must be untouched on rejection.
-        assertEquals(BigDecimal.valueOf(1000), wallet.getBalance());
+        assertEquals(BigDecimal.valueOf(-0.01).setScale(2), wallet.getBalance().setScale(2));
     }
 
     @Test
@@ -491,15 +505,13 @@ class ServiceWalletTest {
     }
 
     @Test
-    void adjustBalanceForExpenseUpdate_resultingBalanceNegative_throwsAndDoesNotMutate() {
+    void adjustBalanceForExpenseUpdate_resultingBalanceNegative_preservesFinancialHistory() {
         // Wallet has 1000. Old expense was 50, new one is 2000 —
         // adjustment would need 2000 - 50 = 1950 more than exists.
-        assertThrows(IllegalArgumentException.class,
-                () -> serviceWallet.adjustBalanceForExpenseUpdate(
-                        wallet, BigDecimal.valueOf(50),
-                        BigDecimal.valueOf(2000)));
+        serviceWallet.adjustBalanceForExpenseUpdate(
+                wallet, BigDecimal.valueOf(50), BigDecimal.valueOf(2000));
 
-        assertEquals(BigDecimal.valueOf(1000), wallet.getBalance());
+        assertEquals(BigDecimal.valueOf(-950), wallet.getBalance());
     }
 
     // ---- adjustBalanceForIncomeUpdate ----
@@ -539,19 +551,16 @@ class ServiceWalletTest {
     }
 
     @Test
-    void adjustBalanceForIncomeUpdate_resultingBalanceNegative_throwsAndDoesNotMutate() {
-        // Wallet has 1000. Old income was 950, being edited down to 0
-        // would need to remove 950 from a wallet that only has 1000
-        // — fine on its own, but combined with a much larger prior
-        // withdrawal this boundary still needs to hold at zero.
+    void adjustBalanceForIncomeUpdate_resultingBalanceNegative_preservesFinancialHistory() {
+        // A corrected income must not be blocked merely because later
+        // expenses already used it. The resulting negative balance is the
+        // truthful state until more income is recorded.
         wallet.setBalance(BigDecimal.valueOf(500));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> serviceWallet.adjustBalanceForIncomeUpdate(
-                        wallet, BigDecimal.valueOf(2000),
-                        BigDecimal.valueOf(0)));
+        serviceWallet.adjustBalanceForIncomeUpdate(
+                wallet, BigDecimal.valueOf(2000), BigDecimal.ZERO);
 
-        assertEquals(BigDecimal.valueOf(500), wallet.getBalance());
+        assertEquals(BigDecimal.valueOf(-1500), wallet.getBalance());
     }
 
     // ---- reverseTransactionImpact ----

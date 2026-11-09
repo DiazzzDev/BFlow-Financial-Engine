@@ -95,6 +95,23 @@ resource "aws_sqs_queue" "ocr_results_dlq" {
   }
 }
 
+resource "aws_sqs_queue" "gmail_imports" {
+  name                       = "${var.project_name}-gmail-imports"
+  visibility_timeout_seconds = 900
+  message_retention_seconds  = 345600
+  sqs_managed_sse_enabled    = true
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.gmail_imports_dlq.arn
+    maxReceiveCount     = 5
+  })
+}
+
+resource "aws_sqs_queue" "gmail_imports_dlq" {
+  name                      = "${var.project_name}-gmail-imports-dlq"
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+}
+
 resource "aws_sns_topic" "ocr_results" {
   name = "${var.project_name}-receipt-ocr-results"
 
@@ -177,10 +194,22 @@ resource "aws_iam_role_policy" "ecs_task_ocr" {
         Resource = aws_sqs_queue.ocr_results.arn
       },
       {
+        Sid      = "GmailImportQueueAccess"
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+        Resource = aws_sqs_queue.gmail_imports.arn
+      },
+      {
         Sid      = "TextractStartAndGetExpenseAnalysis"
         Effect   = "Allow"
-        Action   = ["textract:StartExpenseAnalysis", "textract:GetExpenseAnalysis"]
+        Action   = ["textract:StartExpenseAnalysis", "textract:GetExpenseAnalysis", "textract:AnalyzeExpense"]
         Resource = "*"
+      },
+      {
+        Sid      = "GmailRefreshTokenProtection"
+        Effect   = "Allow"
+        Action   = ["kms:Encrypt", "kms:Decrypt"]
+        Resource = aws_kms_key.gmail_tokens.arn
       }
     ]
   })

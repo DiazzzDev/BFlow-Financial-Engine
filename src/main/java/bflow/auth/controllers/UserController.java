@@ -5,6 +5,7 @@ import bflow.auth.DTO.user.UserProfileResponse;
 import bflow.auth.services.CurrentUserService;
 import bflow.auth.services.ProfilePictureService;
 import bflow.auth.services.UserService;
+import bflow.auth.services.UserDataExportService;
 import bflow.common.aws.service.StorageObject;
 import bflow.common.i18n.MessageService;
 import bflow.common.response.ApiResponse;
@@ -57,6 +58,9 @@ public final class UserController {
 
     /** Service for resolving localized messages. */
     private final MessageService messageService;
+
+    /** Creates an export containing only the authenticated user's data. */
+    private final UserDataExportService userDataExportService;
 
     /**
      * Updates the current authenticated user's profile.
@@ -193,6 +197,23 @@ public final class UserController {
                 null,
                 request.getRequestURI()
         );
+    }
+
+    @Operation(summary = "Exports the authenticated user's personal data",
+            description = "Downloads a JSON export containing profile data, wallet memberships, "
+                    + "and income and expense records contributed by the authenticated user. "
+                    + "Shared wallet balances and other members' records are not included.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "JSON data export")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "User not authenticated")
+    @GetMapping(value = "/me/export", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String, Object>> exportMyData(
+            final Authentication authentication) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"bflow-data-export.json\"")
+                .body(userDataExportService.export(userId));
     }
 
     /**

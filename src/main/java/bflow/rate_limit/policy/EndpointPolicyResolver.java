@@ -14,6 +14,10 @@ public final class EndpointPolicyResolver {
 
         final String path = request.getRequestURI();
 
+        if (path.equals("/api/v1/integrations/gmail/sync")) {
+            return "GMAIL_SYNC";
+        }
+
         if (path.equals("/api/auth/login")) {
             return "LOGIN";
         }

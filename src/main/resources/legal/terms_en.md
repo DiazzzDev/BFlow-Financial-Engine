@@ -1,12 +1,12 @@
 # TERMS AND CONDITIONS OF USE BFLOW STUDIO
 
-**Last updated: August 3, 2026**
+**Last updated: November 9, 2026**
 
 ---
 
 ## AGREEMENT TO OUR LEGAL TERMS
 
-These Services are operated by Edwin Díaz, who uses the trade name “BFlow Studio” (“BFlow”, “we”, “our”).
+These Services are operated by Edwin Adrián Díaz Henríquez, who uses the trade name “BFlow Studio” (“BFlow”, “we”, “our”).
 
 We operate the website [https://bflow-studio.com](https://bflow-studio.com) (the “Site”), as well as any other product or service related that refers or links to these legal terms (the “Legal Terms”) (collectively, the “Services”).
 
@@ -266,7 +266,7 @@ BFlow is a tracking tool only and does not provide financial, investment, tax, o
 
 ### Use of Data for AI Improvement
 
-We use aggregated and anonymized transaction data to improve our models. Your personal financial details are never shared with third parties without your explicit consent.
+We use aggregated and anonymized transaction data to improve our models. Your personal financial details are never shared with third parties without your explicit consent. Gmail email bodies and attachments are not included in import records or import-queue messages.
 
 ### Transparency and Access to Source Code
 
@@ -304,7 +304,7 @@ We reserve the right to remove Contributions that: (a) violate these Terms; (b) 
 
 **Feedback and Suggestions.** If you voluntarily send feedback or suggestions (excluding personal financial data), you grant us a perpetual, irrevocable, royalty-free license to use them without compensation.
 
-**No Waiver of Rights.** You retain all moral and privacy rights. BFlow does not claim ownership of your data. Subject to data protection laws, you may request export, deletion, or portability at any time by contacting [support@bflow-studio.com](mailto:support@bflow-studio.com).
+**No Waiver of Rights.** You retain all moral and privacy rights. BFlow does not claim ownership of your data. Subject to data-protection laws, you may delete your account from settings and request access, portability, or deletion through the channels described in the Privacy Policy.
 
 [Back to table of contents](#table-of-contents)
 
@@ -313,6 +313,8 @@ We reserve the right to remove Contributions that: (a) violate these Terms; (b) 
 ## 11. SOCIAL MEDIA
 
 As part of the functionality, you may link your account with third-party providers. You represent that you have the right to disclose your login information and/or grant us access without violating applicable terms.
+
+The optional Gmail connection is separate from Google sign-in and requires your express authorization. It is used only to detect transaction confirmations and register an income or expense as described in the Privacy Policy. You may disconnect it at any time.
 
 [Addressing your request to link social media accounts — see Section 5 of the English version for full technical details]
 
@@ -342,15 +344,15 @@ We reserve the right, but not the obligation, to: (1) monitor the Services for v
 
 ## 14. DATA ROLES AND PRIVACY POLICY
 
-### BFlow’s Role as Data Controller
+### BFlow’s Role as Responsible Party for Processing (Responsable del Tratamiento)
 
 As a user of BFlow, you should understand our data relationship:
 
-- **BFlow is the Data Controller** of your financial data. We determine how it is collected, processed, and used.
-- **Controller Responsibilities**: We maintain security, handle requests, and manage retention according to our Privacy Policy.
-- **Ownership of Your Data**: You retain ownership. You can request export, deletion, or portability at any time.
+- **BFlow is the Responsible Party for Processing (Responsable del Tratamiento)** your personal and financial data. We determine how it is collected, processed, and used.
+- **Responsibilities of the Responsable del Tratamiento**: We maintain security, handle requests, and manage retention according to our Privacy Policy.
+- **Ownership of Your Data**: You retain ownership. You may request access, portability, or deletion in accordance with the Privacy Policy.
 - **Privacy Policy**: Please review our [Privacy Policy](https://bflow-studio.com/privacy). You agree to be bound by it.
-- **Transparency on GitHub**: Our open-source backend is available at [GitHub](https://github.com/DiazzzDev/BFlow-Backend-Open-Source) so you can review our practices.
+- **Transparency on GitHub**: Our open-source backend is available at [GitHub](https://github.com/DiazzzDev/BFlow-Financial-Engine) so you can review our practices.
 - **International Transfers**: The Services are hosted in El Salvador and the United States. If you access them from another region, your use constitutes consent to transfers.
 
 [Back to table of contents](#table-of-contents)
@@ -495,7 +497,7 @@ Some jurisdictions restrict limitations:
 - BFlow remains liable for gross negligence or intentional misconduct
 - Liability for data breaches is not limited
 - Mandatory consumer protections apply
-- EU/GDPR, Brazil/LGPD, California, and similar protections are preserved
+- Mandatory consumer protections apply as required by law
 
 [Back to table of contents](#table-of-contents)
 
@@ -505,9 +507,7 @@ Some jurisdictions restrict limitations:
 
 BFlow collects and processes personal data according to the Privacy Policy. Data may be transferred to, stored, or processed in El Salvador, the United States, or other jurisdictions.
 
-**For EU Users (GDPR):** BFlow complies with GDPR requirements. DPAs are available upon request. Standard Contractual Clauses (SCCs) are incorporated. You have GDPR rights including access, correction, deletion, and portability under Articles 15–20.
-
-**For LATAM Users:** BFlow complies with data protection laws in El Salvador, Brazil (LGPD), Colombia, Mexico, and others. Financial data are classified as sensitive.
+**Applicable framework:** BFlow processes personal data in accordance with the **Ley para la Protección de Datos Personales** (Personal Data Protection Law) of El Salvador. You may exercise the rights of access, rectification, cancellation, opposition, portability, erasure, and limitation (ARCO-POL) as described in the Privacy Policy.
 
 **Security:** BFlow uses encryption, secure authentication, and regular audits. No system is 100% secure. We are not responsible for unauthorized access by external factors.
 
@@ -572,137 +572,8 @@ Our open-source backend is available at [https://github.com/DiazzzDev/BFlow-Fina
 
 ---
 
-**Last updated: June 2, 2026**
-
 These Terms and Conditions are effective immediately upon acceptance. We reserve the right to modify these Terms at any time with 14 days’ notice by email.
 
-**Language:** This document was originally drafted in Spanish. This is the main version for Spanish-speaking users. An English version is available for reference.
+**Language:** This document was originally drafted in Spanish. The Spanish version prevails; this English translation is provided for reference.
 
-**Note on language versions:** If there is a conflict between this English version and any translation or version in another language, this English version prevails for users in English-speaking jurisdictions.
-
-
-## 21. DISCLAIMER
-
-**The Services are provided on an "as-is" and "as-available" basis.** To the maximum extent permitted by law, BFlow disclaims all warranties, express or implied, including merchantability, fitness for purpose, title, and non-infringement.
-
-BFlow does not warrant uninterrupted, error-free, or secure operation.
-
-**Financial Data Disclaimer:** BFlow is a tracking tool only. It does not provide financial, investment, tax, or legal advice. You are solely responsible for: (a) data accuracy; (b) independent reconciliation; (c) verification of calculations; (d) consulting professionals for tax/legal/investment matters.
-
-**Data Loss:** While BFlow maintains backups, we do not guarantee against loss from technical failures, cyberattacks, or force majeure events. You are responsible for maintaining independent backups.
-
-**Jurisdictional Variations:** Some jurisdictions prohibit warranty disclaimers. To the extent applicable, these Terms operate to the fullest extent permitted by law.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 22. LIMITATIONS OF LIABILITY
-
-### Cap on Liability
-
-To the maximum extent permitted by law, BFlow's total liability for any and all claims arising from these Terms or the Services is limited to the **greater of:**
-- (a) Amounts you actually paid in the preceding 12 months, OR
-- (b) $50 USD (minimum)
-
-This applies regardless of the type or amount of damages claimed.
-
-### Excluded Damages
-
-To the maximum extent permitted by law, neither party is liable for indirect, incidental, special, consequential, punitive, or exemplary damages, including lost profits, lost revenue, lost data, or business interruption—even if advised of the possibility.
-
-### Exceptions to Liability Cap
-
-These liability limitations do NOT apply to:
-- Indemnification obligations under these Terms
-- Breach of confidentiality
-- Intellectual property infringement or violation
-- Data breaches resulting from gross negligence or willful misconduct
-- Claims that cannot be limited by law
-- Payment processing disputes
-
-Data breach liability is never capped and applies in full.
-
-### Jurisdictional Variations
-
-Some jurisdictions restrict liability limitations. To the extent applicable:
-- BFlow remains liable for gross negligence or willful misconduct
-- Data breach liability is not capped
-- Statutory consumer protections apply as required by law
-- EU/GDPR, Brazilian LGPD, and other mandatory protections are preserved
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 23. DATA PROTECTION AND INTERNATIONAL TRANSFERS
-
-BFlow collects and processes personal data per our [Privacy Policy](https://bflow-studio.com/privacy). Data may be transferred to, stored in, or processed in El Salvador, the US, or other jurisdictions.
-
-**For EU Users (GDPR):** BFlow complies with GDPR requirements. Data Processing Addendum (DPA) amendments available upon request. Standard Contractual Clauses (SCCs) are incorporated for international transfers. You have GDPR rights: access, correction, deletion, and portability per Articles 15-20.
-
-**For LATAM Users:** BFlow complies with data protection laws in El Salvador, Brazil (LGPD), Colombia, Mexico, and other jurisdictions. Financial data is classified as sensitive personal data requiring enhanced protection.
-
-**Security:** BFlow uses encryption, secure authentication, and regular security audits. No system is completely secure. BFlow is not liable for unauthorized access from external factors (force majeure, zero-day exploits, etc.).
-
-**International Transfers Consent:** By using the Services, you consent to your data being transferred and processed in the US, El Salvador, and other jurisdictions as necessary for the Services.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 24. INDEMNIFICATION
-
-You agree to defend, indemnify, and hold us harmless, including our subsidiaries, affiliates, and all of our respective officers, agents, partners, and employees, from and against any loss, damage, liability, claim, or demand, including reasonable attorneys' fees and expenses, made by any third party due to or arising out of: (1) your Contributions; (2) use of the Services; (3) breach of these Terms; (4) any breach of your representations and warranties; (5) your violation of third-party rights, including intellectual property rights; or (6) any harmful act toward another user.
-
-We reserve the right to assume exclusive defense at your expense. You agree to cooperate in our defense. We will notify you of any covered claims.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 25. USER DATA
-
-We maintain certain data that you transmit to the Services for managing performance and usage monitoring. You are solely responsible for all data you transmit. Although we perform regular backups, you are responsible for maintaining independent backups. We are not liable for data loss or corruption except where prohibited by law.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 26. ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES
-
-Visiting the Services, sending us emails, and completing online forms constitute electronic communications. You consent to receive electronic communications, and you agree that all agreements, notices, disclosures, and other communications we provide to you electronically, via email and on the Services, satisfy any legal requirement that such communication be in writing.
-
-**You agree to electronic signatures, contracts, orders, and electronic delivery of notices, policies, and records of transactions.** You waive any rights or requirements under any statutes, regulations, rules, or laws in any jurisdiction which require original signatures, physical records, or non-electronic delivery methods.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 27. MISCELLANEOUS
-
-These Terms and any policies or operating rules posted by us on the Services constitute the entire agreement and understanding between you and us. Our failure to exercise or enforce any right or provision shall not operate as a waiver. These Terms operate to the fullest extent permissible by law.
-
-We may assign any or all of our rights and obligations to others at any time. We shall not be responsible or liable for any loss, damage, delay, or failure to act caused by any cause beyond our reasonable control.
-
-If any provision or part of a provision of these Terms is determined to be unlawful, void, or unenforceable, that provision is deemed severable from these Terms and does not affect the validity and enforceability of any remaining provisions.
-
-There is no joint venture, partnership, employment, or agency relationship created between you and us as a result of these Terms or use of the Services. You agree that these Terms will not be construed against us by virtue of having drafted them.
-
-[Back to table of contents](#table-of-contents)
-
----
-
-## 28. CONTACT US
-
-For questions, concerns, or complaints regarding the Services or these Terms and Conditions, please contact us at:
-
-**BFlow Studio**  
-San Salvador, El Salvador  
-Email: [support@bflow-studio.com](mailto:support@bflow-studio.com)  
-
-Our open-source backend is available at [https://github.com/DiazzzDev/BFlow-Backend-Open-Source](https://github.com/DiazzzDev/BFlow-Backend-Open-Source) for transparency and code audits.
-
----
-
-These Terms and Conditions are effective immediately upon acceptance. We reserve the right to modify these Terms at any time with 14 days' notice to you via email.
+**Note on language versions:** If there is a conflict between this English translation and the Spanish version, the Spanish version prevails.

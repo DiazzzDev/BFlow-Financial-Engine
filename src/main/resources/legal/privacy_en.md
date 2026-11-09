@@ -1,6 +1,6 @@
 # PRIVACY POLICY
 
-**Last updated: August 3, 2026**
+**Last updated: November 9, 2026**
 
 **Operator:** BFlow Studio, an independent software services provider based in El Salvador, owned and operated by Edwin Adrián Díaz Henríquez.
 
@@ -22,7 +22,7 @@ This summary provides the key points of our Privacy Policy. You will find more d
 
 - **What personal information do we process?** We process personal information depending on how you interact with us, the choices you make, and the features you use. [More details](#1-what-information-do-we-collect)
 
-- **Do we process sensitive information?** Under GDPR Article 9, "special category data" includes racial or ethnic origin, political opinions, religious beliefs, union membership, genetic data, biometric data, health data, and sexual orientation. BFlow does not intentionally request these data. However, documents or images you upload may contain them incidentally. We protect them with enhanced security measures. [More details](#1-what-information-do-we-collect)
+- **Do we process sensitive information?** We do not intentionally request sensitive information. However, documents or images you upload may contain it incidentally. We protect it with enhanced security measures. [More details](#1-what-information-do-we-collect)
 
 - **Do we collect information from third parties?** We collect profile information from social login providers (for example, Google) if you choose that method. We also work with third-party providers for hosting, analytics, payments, and security. [More details](#3-when-and-with-whom-do-we-share-your-personal-information)
 
@@ -32,7 +32,7 @@ This summary provides the key points of our Privacy Policy. You will find more d
 
 - **How do we protect your information?** We implement technical and organizational measures. However, no system is 100% secure. [More details](#7-how-do-we-keep-your-information-safe)
 
-- **What are your rights?** This depends on where you are. If you are in the EU, GDPR gives you additional rights. [More details](#9-what-are-your-privacy-rights)
+- **What are your rights?** The Personal Data Protection Law of El Salvador recognizes ARCO-POL rights. [More details](#9-what-are-your-privacy-rights)
 
 - **How can you exercise your rights?** Contact [privacy@bflow-studio.com](mailto:privacy@bflow-studio.com) or visit [https://bflow-studio.com/contact](https://bflow-studio.com/contact).
 
@@ -49,7 +49,7 @@ This summary provides the key points of our Privacy Policy. You will find more d
 7. [HOW DO WE PROTECT YOUR INFORMATION?](#7-how-do-we-protect-your-information)
 8. [DO WE COLLECT INFORMATION FROM MINORS?](#8-do-we-collect-information-from-minors)
 9. [WHAT ARE YOUR PRIVACY RIGHTS?](#9-what-are-your-privacy-rights)
-10. [DO-NOT-TRACK CONTROLS AND GDPR COMPLIANCE](#10-do-not-track-controls-and-gdpr-compliance)
+10. [DO-NOT-TRACK CONTROLS AND INTERNATIONAL TRANSFERS](#10-do-not-track-controls-and-international-transfers)
 11. [DO WE UPDATE THIS POLICY?](#11-do-we-update-this-policy)
 12. [HOW CAN WE BE CONTACTED ABOUT THIS POLICY?](#12-how-can-we-be-contacted-about-this-policy)
 13. [HOW CAN YOU REVIEW, UPDATE, OR DELETE YOUR DATA?](#13-how-can-you-review-update-or-delete-your-data)
@@ -75,9 +75,9 @@ The information we collect depends on how you interact with us. The personal inf
 - Password
 - Contact or authentication data
 
-#### Special category data (GDPR Article 9)
+#### Sensitive information
 
-Under GDPR and other international privacy laws, "special category" or "sensitive" data includes:
+Sensitive information may include:
 - Racial or ethnic origin
 - Political opinions
 - Religious or philosophical beliefs
@@ -99,6 +99,16 @@ All personal information you provide must be true, complete, and accurate. You m
 
 Our use of information from Google APIs complies with the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the [Limited Use requirements](https://developers.google.com/terms/api-services-user-data-policy#limited-use).
 
+#### Optional Gmail connection
+
+If you choose to connect Gmail separately, we request your explicit consent for the read-only `gmail.readonly` permission. We do not modify, send, archive, delete, or mark your emails as read.
+
+We use the minimum transaction-confirmation content needed —email text or a PDF, JPEG, or PNG attachment— to detect a possible income or expense in an authorized wallet. We make one import decision per email: a compatible PDF is preferred, then a compatible image, and email text is used only when no compatible attachment exists. Incompatible attachments, such as JSON, are not processed as separate transactions.
+
+Compatible files remain in private temporary storage only while analysis runs and are then deleted. We do not retain the complete email body or the receipt file obtained from Gmail. We retain the created financial record and the technical processing metadata needed to prevent duplicates and operate the flow (including message and attachment identifiers, user, wallet, and integration references, temporary analysis identifier, status, technical error, and timestamps).
+
+Gmail data are used only to offer this feature. We do not sell Gmail data, use it for advertising, or share it for purposes unrelated to this feature. The email body and attachments are not included in application logs or in import-queue messages. The connection credential is encrypted and is never exposed to the client. You can disconnect Gmail at any time; we will request revocation from Google and delete the stored credential.
+
 [Back to table of contents](#table-of-contents)
 
 ---
@@ -112,8 +122,9 @@ We process your personal information for several reasons. Below is a table showi
 | Data type | Purpose | Legal basis | Retention | Shared with |
 |-----------|---------|-------------|-----------|-------------|
 | Email, username, password | Create and manage account | Contract (Terms of Service) | During account life + 30 days after deletion | None (internal only) |
+| Authorized Gmail data (transactional text, identifiers, and compatible attachments) | Detect and register user-requested income or expenses | Explicit consent for an optional feature | Text and attachments: only during processing; financial record and technical processing metadata: according to the account lifecycle | Google API, AWS (private encrypted processing) |
 | Financial data (transactions, receipts, images) | Provide core functionality | Contract (Terms of Service) | During account life; user may request deletion at any time | AWS (encrypted storage) |
-| Transaction categorization | Improve AI/ML models (anonymized/aggregated) | Legitimate interest (service improvement) | Aggregated indefinitely; identifiers removed within 90 days | AWS only (anonymized) |
+| Transaction categorization | Improve AI/ML models with anonymized or aggregated data | Legitimate interest (service improvement) | According to the applicable categorization-service configuration | AWS only (anonymized) |
 | Email + login activity | Send administrative/transactional emails | Legitimate interest + Contract | During account life + 90 days | Email delivery service (AWS SES) |
 | Payment information (Wompi) | Process subscription payments | Contract (payment processing) | Wompi policy; we retain receipts for 7 years (tax/accounting) | Wompi only |
 | IP address, session data | Fraud detection, security, platform integrity | Legitimate interest (fraud/security prevention) | 90 days or until investigation is resolved | AWS, Cloudflare (DDoS protection) |
@@ -133,7 +144,7 @@ We process your personal information for several reasons. Below is a table showi
 
 ### Third-party service providers
 
-We share data with providers, consultants, contractors, or agents ("third parties") who perform services for us. Under privacy laws such as GDPR, these third parties act as "data processors" and are contractually bound to:
+We share data with providers, consultants, contractors, or agents ("third parties") who perform services for us. They are contractually bound to:
 - Process personal data only under our documented instructions
 - Implement appropriate technical and organizational measures
 - Not share data without our explicit authorization
@@ -141,7 +152,7 @@ We share data with providers, consultants, contractors, or agents ("third partie
 - Help you exercise your privacy rights (access, deletion, portability)
 - Retain data only for the period we indicate and delete or return it when complete
 
-All our agreements with providers include these binding commitments and comply with GDPR Article 28 and equivalent standards.
+Our agreements with providers include these binding commitments and applicable security requirements.
 
 The third parties with whom we share information include:
 
@@ -204,10 +215,10 @@ We use information from Google only for the purposes described in this Policy: a
 We only retain your personal information while necessary for the purposes set out, unless the law requires longer retention (for example, tax or legal requirements).
 
 **Specific retention periods:**
-- **Account data (email, username, password):** During the life of the account; deleted 30 days after deletion
-- **Financial data and transactions:** During the life of the account; users may request deletion at any time
-- **Server logs and IPs:** Retained for 90 days for security analysis; older logs are deleted
-- **Backup copies:** According to our backup schedule; same deletion schedule applies when primary data is deleted
+- **Account data (email, username, password):** During the life of the account; the permanent-deletion process runs after a 30-day grace period. Records needed to preserve shared history or billing may be reassigned to a technical record.
+- **Financial data and transactions:** During the life of the account; you may request deletion where applicable, subject to legal duties and preservation of shared history.
+- **Server logs and IPs:** Retention is governed by the applicable infrastructure configuration; the CloudWatch configuration versioned in this repository is 7 days.
+- **Backup copies:** Retention depends on the provider and applicable infrastructure configuration; we do not state a uniform deletion period until that process is documented and verified.
 
 [Back to table of contents](#table-of-contents)
 
@@ -239,21 +250,22 @@ We do not collect, request data from, or market to persons under 18 years of age
 
 **Summary:** You can review, change, or terminate your account at any time, depending on your location.
 
+### Your ARCO-POL rights
+
+The **Ley para la Protección de Datos Personales** (Personal Data Protection Law) of El Salvador recognizes the rights of **Access, Rectification, Cancellation, Opposition, Portability, Erasure, and Limitation (ARCO-POL)** over your personal data. Some actions are available from your account, and the remaining ones may be requested through the channels below:
+
+- **Access and portability:** download a structured copy through `GET /api/v1/users/me/export` or request assistance at privacy@bflow-studio.com
+- **Rectification:** edit your account data and financial records at any time
+- **Cancellation and erasure:** delete your account from settings; your data are deleted or anonymized as described in section 6
+- **Opposition and limitation:** disable optional features (such as the Gmail connection) or delete your account
+
+If you cannot exercise a right from your account, you may submit a request to [privacy@bflow-studio.com](mailto:privacy@bflow-studio.com) or through [https://bflow-studio.com/contact](https://bflow-studio.com/contact), stating the email associated with your account and the right you wish to exercise. This is a contact channel; we do not send an automatic response or guarantee a response timeframe in this Policy.
+
 ### Withdraw consent
 
 If we rely on your consent to process your personal information, you have the right to withdraw it at any time. Contact us using the details in the section ["HOW CAN WE BE CONTACTED ABOUT THIS POLICY?"](#12-how-can-we-be-contacted-about-this-policy).
 
 However, this will not affect the lawfulness of processing carried out before withdrawal, nor processing based on other legal grounds.
-
-### Account information
-
-If you wish to review, change, or terminate your account:
-- Sign in to your account settings and update it
-- Contact us using the contact information provided
-
-When you request termination of your account, we will deactivate or delete your information from our active databases. However, we may retain information to prevent fraud, resolve issues, conduct investigations, enforce our Terms, or comply with the law.
-
-The deletion of the account means the deletion or anonymization of personal data, except where retention is necessary for legal obligations, fraud prevention, dispute resolution, or protection of BFlow’s rights.
 
 ### Cookies and similar technologies
 
@@ -265,7 +277,7 @@ If you have questions about your privacy rights, you can contact us at [privacy@
 
 ---
 
-## 10. DO-NOT-TRACK CONTROLS AND GDPR COMPLIANCE
+## 10. DO-NOT-TRACK CONTROLS AND INTERNATIONAL TRANSFERS
 
 Most web browsers, some mobile operating systems, and mobile applications include a Do-Not-Track ("DNT") feature that can be activated to signal your preference not to be monitored. We currently do not respond to DNT signals or other mechanisms that automatically communicate your choice not to be tracked. If a standard is adopted in the future that we must follow, we will inform you in a revised version of this Policy.
 
@@ -322,7 +334,7 @@ To request review, update, or deletion of your personal information, please visi
 This Privacy Policy and our processing of your personal information are governed by the laws of El Salvador, including:
 - **Commercial Code of El Salvador**
 - **Consumer Protection Law of El Salvador**
-- **Data Protection and Privacy Regulations** of El Salvador
+- **Ley para la Protección de Datos Personales** (Personal Data Protection Law) of El Salvador
 
 This choice of law applies regardless of your physical location, **except where consumer protection or data protection laws in your jurisdiction provide greater protection, in which case those laws prevail.**
 
@@ -336,7 +348,7 @@ When necessary for the provision of the service, personal data may be processed 
 
 ### Dispute resolution
 
-Any dispute or claim regarding this Privacy Policy or our data practices is governed by the law of El Salvador and the courts of El Salvador, except where GDPR or other mandatory international law creates an exception for your jurisdiction.
+Any dispute or claim regarding this Privacy Policy or our data practices is governed by the law of El Salvador and the courts of El Salvador, without prejudice to mandatory consumer-protection rules that may apply.
 
 [Back to table of contents](#table-of-contents)
 
@@ -350,10 +362,10 @@ For questions or concerns about this Privacy Policy, contact:
 **privacy@bflow-studio.com** (privacy inquiries)
 
 **Website:** [https://bflow-studio.com](https://bflow-studio.com)  
-**Open-source repository:** [https://github.com/DiazzzDev/BFlow-Backend-Open-Source](https://github.com/DiazzzDev/BFlow-Backend-Open-Source)
+**Open-source repository:** [https://github.com/DiazzzDev/BFlow-Financial-Engine](https://github.com/DiazzzDev/BFlow-Financial-Engine)
 
 ---
 
-**Language:** This document was originally drafted in Spanish. This is the main version for Spanish-speaking users. An English version is available for reference.
+**Language:** This document was originally drafted in Spanish. The Spanish version prevails; this English translation is provided for reference.
 
-**Note on language versions:** If there is a conflict between this English version and any translation or version in another language, this English version prevails for users in English-speaking jurisdictions.
+**Note on language versions:** If there is a conflict between this English translation and the Spanish version, the Spanish version prevails.

@@ -25,6 +25,7 @@ import bflow.receipts.messaging.ReceiptOcrRequestListener;
 import bflow.receipts.messaging.ReceiptOcrResultListener;
 import bflow.receipts.repository.RepositoryReceiptUpload;
 import bflow.receipts.service.ReceiptOcrJobStarter;
+import bflow.receipts.service.TextractExpenseJobStarter;
 import bflow.receipts.service.ReceiptOcrRequestPublisher;
 import bflow.receipts.service.ReceiptOcrResultProcessor;
 import bflow.receipts.service.ReceiptStatusTransitionService;
@@ -249,14 +250,15 @@ class ReceiptModuleE2ETest {
         ReceiptStatusTransitionService statusTransitionService =
                 new ReceiptStatusTransitionService(repositoryReceiptUpload);
 
+        TextractExpenseJobStarter textractJobStarter = new TextractExpenseJobStarter(textractClient);
+        ReflectionTestUtils.setField(textractJobStarter, "bucket", BUCKET);
+        ReflectionTestUtils.setField(
+                textractJobStarter, "resultsTopicArn", RESULTS_TOPIC_ARN);
+        ReflectionTestUtils.setField(
+                textractJobStarter, "textractSnsRoleArn", TEXTRACT_SNS_ROLE_ARN);
         jobStarter = new ReceiptOcrJobStarter(
                 repositoryReceiptUpload, statusTransitionService,
-                textractClient);
-        ReflectionTestUtils.setField(jobStarter, "bucket", BUCKET);
-        ReflectionTestUtils.setField(
-                jobStarter, "resultsTopicArn", RESULTS_TOPIC_ARN);
-        ReflectionTestUtils.setField(
-                jobStarter, "textractSnsRoleArn", TEXTRACT_SNS_ROLE_ARN);
+                textractJobStarter);
 
         requestListener = new ReceiptOcrRequestListener(
                 sqsClient, jobStarter, REQUEST_QUEUE_URL, 1, 5, 1);
