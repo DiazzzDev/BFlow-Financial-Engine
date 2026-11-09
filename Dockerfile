@@ -24,6 +24,11 @@ FROM eclipse-temurin:21-jre-noble
 
 WORKDIR /app
 
+# Keep Ubuntu security packages current in the runtime image (including apt CVE fixes).
+RUN apt-get update \
+    && apt-get install --only-upgrade -y apt libapt-pkg6.0t64 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user for security
 RUN groupadd --system spring \
     && useradd --system --gid spring --create-home spring

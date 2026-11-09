@@ -1,9 +1,11 @@
 package bflow.receipts.messaging;
 
 import bflow.receipts.service.ReceiptOcrResultProcessor;
+import bflow.gmail.service.GmailOcrResultProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -23,6 +25,7 @@ public final class ReceiptOcrResultListener
 
     /** Service that fetches and maps the completed job's result. */
     private final ReceiptOcrResultProcessor receiptOcrResultProcessor;
+    private final GmailOcrResultProcessor gmailOcrResultProcessor;
 
     /** Used to parse the SNS envelope and the nested notification. */
     private final ObjectMapper objectMapper;
@@ -39,9 +42,11 @@ public final class ReceiptOcrResultListener
      * @param errorBackoffSeconds pause after a poll failure, in
      *         seconds
      */
+    @Autowired
     public ReceiptOcrResultListener(
             final SqsClient sqsClient,
             final ReceiptOcrResultProcessor resultProcessor,
+            final GmailOcrResultProcessor gmailResultProcessor,
             final ObjectMapper mapper,
             @Value("${aws.sqs.receipt-ocr-results-queue-url}")
             final String queueUrl,
@@ -55,7 +60,22 @@ public final class ReceiptOcrResultListener
         super(sqsClient, queueUrl, waitTimeSeconds, maxMessages,
                 errorBackoffSeconds);
         this.receiptOcrResultProcessor = resultProcessor;
+        this.gmailOcrResultProcessor = gmailResultProcessor;
         this.objectMapper = mapper;
+    }
+
+    /** Compatibility constructor for isolated receipt tests without the Gmail module. */
+    public ReceiptOcrResultListener(
+            final SqsClient sqsClient,
+            final ReceiptOcrResultProcessor resultProcessor,
+            final ObjectMapper mapper,
+            final String queueUrl,
+            final int waitTimeSeconds,
+            final int maxMessages,
+            final int errorBackoffSeconds
+    ) {
+        this(sqsClient, resultProcessor, null, mapper, queueUrl,
+                waitTimeSeconds, maxMessages, errorBackoffSeconds);
     }
 
     @Override
@@ -110,8 +130,10 @@ public final class ReceiptOcrResultListener
             return true;
         }
 
-        receiptOcrResultProcessor.processCompletion(
-                notification.jobId(), notification.status());
+        if (!receiptOcrResultProcessor.processCompletion(notification.jobId(), notification.status())
+                && gmailOcrResultProcessor != null) {
+            gmailOcrResultProcessor.processCompletion(notification.jobId(), notification.status());
+        }
         return true;
     }
 }

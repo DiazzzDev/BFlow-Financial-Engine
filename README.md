@@ -21,6 +21,13 @@ BFlow focuses on intentional financial tracking without requiring bank integrati
 
 ## Architecture overview
 
+Current Stack
+
+- Spring Boot
+- PostgreSQL
+- AWS Services
+- Docker
+
 The architecture overview separates application services, the receipt OCR flow (S3 + SQS + Textract), and the GitHub Actions deployment / Cloudflare DNS update process. It distinguishes Terraform resources from optional or externally managed services and adapts to narrow screens.
 
 - [Open the interactive architecture diagram](https://architecture.bflow-studio.com/).
@@ -48,34 +55,17 @@ BFlow is an open-source financial engine intended to explore modern cloud-native
 MVP in active development.
 
 Implemented:
-- User authentication (AWS Cognito)
 - Multi-wallet support
 - Expense registration
 - Basic transactional consistency
 - Budget rules engine
-- Rate limiter
-- Idempotency layer
 - Payment integration via Wompi
-
-Roadmap:
 - OpenTelemetry integration
 - Shared wallet roles
+- Receipts OCR
 
-## Architecture & Engineering Philosophy
-
-Current Stack
-
-- Spring Boot
-- PostgreSQL
-- AWS Services
-- Docker
-
-The focus is on:
-- Clear business rules
-- Secure multi-user wallet access
-- Transactional consistency
-- Scalability-oriented design
-- Real-world financial logic
+Roadmap:
+- Email read integration
 
 ## Non-Goals (MVP Phase)
 
@@ -90,7 +80,7 @@ The MVP focuses strictly on correctness, security, and domain integrity.
 Once the application is running you can have Swagger UI available at:
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+https://api.bflow-studio.com/swagger-ui/index.html
 ```
 
 ## Why BFlow Exists

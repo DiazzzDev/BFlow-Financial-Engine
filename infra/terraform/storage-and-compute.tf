@@ -172,6 +172,25 @@ resource "aws_secretsmanager_secret" "firebase" {
   }
 }
 
+resource "aws_secretsmanager_secret" "gmail" {
+  name                    = "${var.project_name}/gmail"
+  recovery_window_in_days = 7
+  lifecycle {
+    ignore_changes = [description, force_overwrite_replica_secret, recovery_window_in_days, tags]
+  }
+}
+
+resource "aws_kms_key" "gmail_tokens" {
+  description             = "Encrypts per-user Gmail OAuth refresh tokens stored by BFlow"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "gmail_tokens" {
+  name          = "alias/bflow-gmail-refresh-tokens"
+  target_key_id = aws_kms_key.gmail_tokens.key_id
+}
+
 resource "aws_budgets_budget" "monthly" {
   name         = "${var.project_name}-monthly-budget"
   budget_type  = "COST"

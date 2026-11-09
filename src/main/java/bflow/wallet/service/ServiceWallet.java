@@ -463,8 +463,11 @@ public class ServiceWallet {
      *
      * @param wallet the wallet to update (not null).
      * @param amount the amount to subtract (must be non-negative).
-     * @throws IllegalArgumentException if amount is negative or
-     *         if balance would become negative.
+     * <p>A negative resulting balance represents money owed or expenses
+     * recorded before their corresponding income. BFlow preserves that
+     * financial history instead of rejecting a real expense.</p>
+     *
+     * @throws IllegalArgumentException if amount is negative.
      */
     public void subtractBalance(final Wallet wallet, final BigDecimal amount) {
         if (amount.signum() < 0) {
@@ -472,15 +475,7 @@ public class ServiceWallet {
                     messageService.get("wallet.amount.negative", amount)
             );
         }
-        BigDecimal newBalance = wallet.getBalance().subtract(amount);
-        if (newBalance.signum() < 0) {
-            throw new IllegalArgumentException(
-                    messageService.get(
-                            "wallet.balance.insufficient", wallet.getBalance()
-                    )
-            );
-        }
-        wallet.setBalance(newBalance);
+        wallet.setBalance(wallet.getBalance().subtract(amount));
     }
 
     /**
@@ -491,8 +486,7 @@ public class ServiceWallet {
      * @param wallet the wallet to update (not null).
      * @param oldAmount the previous income amount (not null).
      * @param newAmount the new income amount (not null).
-     * @throws IllegalArgumentException if oldAmount or newAmount
-     *         are negative, or if adjusted balance would be negative.
+     * @throws IllegalArgumentException if oldAmount or newAmount are negative.
      */
     public void adjustBalanceForIncomeUpdate(
             final Wallet wallet,
@@ -509,12 +503,6 @@ public class ServiceWallet {
         BigDecimal difference = newAmount.subtract(oldAmount);
         BigDecimal adjustedBalance = wallet.getBalance().add(difference);
 
-        if (adjustedBalance.signum() < 0) {
-            throw new IllegalArgumentException(
-                    messageService.get("wallet.balance.insufficientForAdjustment")
-            );
-        }
-
         wallet.setBalance(adjustedBalance);
     }
 
@@ -530,8 +518,7 @@ public class ServiceWallet {
      * @param wallet the wallet to update (not null).
      * @param oldAmount the previous expense amount (not null).
      * @param newAmount the new expense amount (not null).
-     * @throws IllegalArgumentException if oldAmount or newAmount
-     *         are negative, or if adjusted balance would be negative.
+     * @throws IllegalArgumentException if oldAmount or newAmount are negative.
      */
     public void adjustBalanceForExpenseUpdate(
             final Wallet wallet,
@@ -549,12 +536,6 @@ public class ServiceWallet {
         BigDecimal adjustedBalance = wallet.getBalance()
                 .add(oldAmount)
                 .subtract(newAmount);
-
-        if (adjustedBalance.signum() < 0) {
-            throw new IllegalArgumentException(
-                    messageService.get("wallet.balance.insufficientForAdjustment")
-            );
-        }
 
         wallet.setBalance(adjustedBalance);
     }
@@ -660,12 +641,6 @@ public class ServiceWallet {
         BigDecimal newInitial = amount.setScale(2, RoundingMode.HALF_EVEN);
         BigDecimal newBalance = wallet.getBalance()
                 .add(newInitial.subtract(wallet.getInitialValue()));
-
-        if (newBalance.signum() < 0) {
-            throw new IllegalArgumentException(
-                    messageService.get("wallet.balance.insufficient",
-                            wallet.getBalance()));
-        }
 
         wallet.setInitialValue(newInitial);
         wallet.setBalance(newBalance);

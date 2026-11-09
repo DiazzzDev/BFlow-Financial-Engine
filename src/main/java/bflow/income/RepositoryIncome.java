@@ -20,6 +20,8 @@ import java.util.UUID;
 
 @Repository
 public interface RepositoryIncome extends JpaRepository<Income, UUID> {
+    /** Lists transactions contributed by a user for their data export. */
+    List<Income> findByContributorIdOrderByDateAscCreatedAtAsc(UUID contributorId);
     /**
     * Retrieves incomes belonging to a specific wallet.
     *

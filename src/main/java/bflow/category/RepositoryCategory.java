@@ -1,6 +1,7 @@
 package bflow.category;
 
 import bflow.category.entity.Category;
+import bflow.category.enums.CategoryType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
@@ -15,4 +16,7 @@ public interface RepositoryCategory extends JpaRepository<Category, UUID> {
      * @return an Optional containing the category if found
      */
     Optional<Category> findByNameIgnoreCase(String name);
+
+    Optional<Category> findFirstByNameIgnoreCaseAndType(
+            String name, CategoryType type);
 }

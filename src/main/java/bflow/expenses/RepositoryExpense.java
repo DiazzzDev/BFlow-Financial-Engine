@@ -21,6 +21,8 @@ import java.util.UUID;
 
 @Repository
 public interface RepositoryExpense extends JpaRepository<Expense, UUID> {
+    /** Lists transactions contributed by a user for their data export. */
+    List<Expense> findByContributorIdOrderByDateAscCreatedAtAsc(UUID contributorId);
     /**
     * Retrieves expenses belonging to a specific wallet.
     *

@@ -37,6 +37,9 @@ public interface RepositoryWalletUser extends JpaRepository<WalletUser, UUID>,
             WalletRole role
     );
 
+    /** Selects the member's default wallet, with oldest membership as stable fallback. */
+    Optional<WalletUser> findFirstByUserIdOrderByDefaultWalletDescCreatedAtAsc(UUID userId);
+
     /**
      * Finds an owner wallet without imposing a display order.
      *

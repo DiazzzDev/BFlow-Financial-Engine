@@ -50,7 +50,7 @@ public class MessageService {
             final Object... args
     ) {
         Locale locale = language == SupportedLanguage.EN
-                ? Locale.ENGLISH : new Locale("es");
+                ? Locale.ENGLISH : Locale.forLanguageTag("es");
         return messageSource.getMessage(code, args, locale);
     }
 }

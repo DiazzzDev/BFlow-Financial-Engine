@@ -5,14 +5,7 @@ import bflow.receipts.enums.ReceiptStatus;
 import bflow.receipts.repository.RepositoryReceiptUpload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.textract.TextractClient;
-import software.amazon.awssdk.services.textract.model.DocumentLocation;
-import software.amazon.awssdk.services.textract.model.NotificationChannel;
-import software.amazon.awssdk.services.textract.model.S3Object;
-import software.amazon.awssdk.services.textract.model.StartExpenseAnalysisRequest;
-import software.amazon.awssdk.services.textract.model.StartExpenseAnalysisResponse;
 
 import java.util.UUID;
 
@@ -32,25 +25,8 @@ public class ReceiptOcrJobStarter {
     /** Persists the PROCESSING transition in its own transaction. */
     private final ReceiptStatusTransitionService statusTransitionService;
 
-    /** Textract client used to submit the job. */
-    private final TextractClient textractClient;
-
-    /** Bucket the receipt's underlying file lives in. */
-    @Value("${aws.s3.bucket}")
-    private String bucket;
-
-    /** SNS topic Textract publishes the completion notification to. */
-    @Value("${aws.sns.receipt-ocr-results-topic-arn}")
-    private String resultsTopicArn;
-
-    /**
-     * IAM role Textract assumes to publish to {@link
-     * #resultsTopicArn}. Must trust {@code textract.amazonaws.com}
-     * and have {@code sns:Publish} on that topic — see {@code
-     * infra/textract-ocr/02-configure-iam.sh}.
-     */
-    @Value("${aws.textract.sns-role-arn}")
-    private String textractSnsRoleArn;
+    /** Shared S3-backed asynchronous Textract submission service. */
+    private final TextractExpenseJobStarter textractExpenseJobStarter;
 
     /**
      * Starts an {@code AnalyzeExpense} job for the given receipt and
@@ -84,30 +60,14 @@ public class ReceiptOcrJobStarter {
 
         String objectKey = receipt.getStoredFile().getObjectKey();
 
-        StartExpenseAnalysisRequest request = StartExpenseAnalysisRequest
-                .builder()
-                .documentLocation(DocumentLocation.builder()
-                        .s3Object(S3Object.builder()
-                                .bucket(bucket)
-                                .name(objectKey)
-                                .build())
-                        .build())
-                .notificationChannel(NotificationChannel.builder()
-                        .snsTopicArn(resultsTopicArn)
-                        .roleArn(textractSnsRoleArn)
-                        .build())
-                .clientRequestToken(receiptId.toString())
-                .build();
-
-        StartExpenseAnalysisResponse response =
-                textractClient.startExpenseAnalysis(request);
+        String jobId = textractExpenseJobStarter.start(objectKey, receiptId.toString());
 
         statusTransitionService.markProcessing(
-                receiptId, response.jobId());
+                receiptId, jobId);
 
         log.info(
                 "Submitted Textract job {} for receipt {}",
-                response.jobId(), receiptId
+                jobId, receiptId
         );
     }
 }

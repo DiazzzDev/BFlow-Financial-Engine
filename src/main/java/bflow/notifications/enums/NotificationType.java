@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
         allowableValues = {"BUDGET_SUCCESS", "BUDGET_GROUP_SUCCESS",
         "BUDGET_WARNING", "BUDGET_CRITICAL", "BUDGET_EXCEEDED",
         "GOAL_REACHED", "NEW_CONTRIBUTOR", "ACCOUNT_LOCKED",
-        "WALLET_INVITATION", "SUBSCRIPTION_RENEWAL"})
+        "WALLET_INVITATION", "SUBSCRIPTION_RENEWAL", "EXPENSE_REGISTERED", "INCOME_REGISTERED"})
 public enum NotificationType {
     /**
      * Budget success notification.
@@ -49,5 +49,11 @@ public enum NotificationType {
     WALLET_INVITATION,
 
     /** Reminder that a paid plan is approaching its billing date. */
-    SUBSCRIPTION_RENEWAL
+    SUBSCRIPTION_RENEWAL,
+
+    /** Expense automatically imported from a Gmail attachment. */
+    EXPENSE_REGISTERED,
+
+    /** Income automatically imported from Gmail. */
+    INCOME_REGISTERED
 }

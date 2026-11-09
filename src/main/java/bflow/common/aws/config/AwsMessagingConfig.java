@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.textract.TextractClient;
 import software.amazon.awssdk.services.rekognition.RekognitionClient;
+import software.amazon.awssdk.services.kms.KmsClient;
 
 /**
  * AWS configuration for the messaging clients used by the async
@@ -73,5 +74,11 @@ public class AwsMessagingConfig {
         return RekognitionClient.builder()
                 .region(Region.of(region))
                 .build();
+    }
+
+    /** KMS encrypts OAuth refresh tokens; the task role supplies credentials. */
+    @Bean
+    public KmsClient kmsClient() {
+        return KmsClient.builder().region(Region.of(region)).build();
     }
 }

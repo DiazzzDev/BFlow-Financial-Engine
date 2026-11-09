@@ -135,6 +135,10 @@
           "value": "${RECEIPT_OCR_RESULTS_TOPIC_ARN}"
         },
         {
+          "name": "GMAIL_IMPORT_QUEUE_URL",
+          "value": "${GMAIL_IMPORT_QUEUE_URL}"
+        },
+        {
           "name": "TEXTRACT_SNS_ROLE_ARN",
           "value": "${TEXTRACT_SNS_ROLE_ARN}"
         }
@@ -170,20 +174,20 @@
           "valueFrom": "${WOMPI_SECRET_ARN}:WOMPI_CLIENT_SECRET::"
         },
         {
-          "name": "WOMPI_APP_ID",
-          "valueFrom": "${WOMPI_SECRET_ARN}:WOMPI_APP_ID::"
-        },
-        {
-          "name": "WOMPI_API_SECRET",
-          "valueFrom": "${WOMPI_SECRET_ARN}:WOMPI_API_SECRET::"
-        },
-        {
           "name": "FIREBASE_PROJECT_ID",
           "valueFrom": "${FIREBASE_SECRET_ARN}:FIREBASE_PROJECT_ID::"
         },
         {
           "name": "FIREBASE_SERVICE_ACCOUNT_JSON_BASE64",
           "valueFrom": "${FIREBASE_SECRET_ARN}:FIREBASE_SERVICE_ACCOUNT_JSON_BASE64::"
+        },
+        {
+          "name": "GMAIL_CLIENT_ID",
+          "valueFrom": "${GMAIL_SECRET_ARN}:GMAIL_CLIENT_ID::"
+        },
+        {
+          "name": "GMAIL_CLIENT_SECRET",
+          "valueFrom": "${GMAIL_SECRET_ARN}:GMAIL_CLIENT_SECRET::"
         }
       ],
 

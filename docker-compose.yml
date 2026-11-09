@@ -24,8 +24,6 @@ services:
       # Wompi (PAYWALL)
       WOMPI_CLIENT_ID: ${WOMPI_CLIENT_ID:-dummy-wompi-client-id}
       WOMPI_CLIENT_SECRET: ${WOMPI_CLIENT_SECRET:-dummy-wompi-client-secret}
-      WOMPI_APP_ID: ${WOMPI_APP_ID:-dummy-wompi-app-id}
-      WOMPI_API_SECRET: ${WOMPI_API_SECRET:-dummy-wompi-api-secret}
       # Branding / Auth
       LOGO_URL: ${LOGO_URL:-https://via.placeholder.com/150}
       COGNITO_ISSUER_URI: ${COGNITO_ISSUER_URI:-https://cognito-idp.us-east-1.amazonaws.com/dummy-user-pool-id}

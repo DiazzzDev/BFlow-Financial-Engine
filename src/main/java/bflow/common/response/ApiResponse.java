@@ -1,6 +1,8 @@
 package bflow.common.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 import java.time.Instant;
@@ -39,11 +41,18 @@ public final class ApiResponse<T> {
      * responses and for the legacy two-argument {@link #error} calls
      * that predate this field.
      */
+    @Schema(description = "Machine-readable error category. Omitted for "
+            + "success and some legacy error handlers.", nullable = true)
     private final ErrorCode code;
     /**
      * Field-level validation errors, populated only when
      * {@code code} is {@link ErrorCode#VALIDATION_ERROR}.
      */
+    @ArraySchema(arraySchema = @Schema(description = "Zero or more field-level "
+            + "validation failures. Present for VALIDATION_ERROR responses; "
+            + "each item identifies the request field, stable validation "
+            + "code, and localized message."),
+            schema = @Schema(implementation = FieldErrorResponse.class))
     private final List<FieldErrorResponse> errors;
 
     /**

@@ -99,10 +99,14 @@ aws:
   sqs:
     receipt-ocr-requests-queue-url: ${RECEIPT_OCR_REQUESTS_QUEUE_URL}
     receipt-ocr-results-queue-url: ${RECEIPT_OCR_RESULTS_QUEUE_URL}
+    gmail-import-queue-url: ${GMAIL_IMPORT_QUEUE_URL:}
   sns:
     receipt-ocr-results-topic-arn: ${RECEIPT_OCR_RESULTS_TOPIC_ARN}
   textract:
     sns-role-arn: ${TEXTRACT_SNS_ROLE_ARN}
+  gmail:
+    client-id: ${GMAIL_CLIENT_ID:}
+    client-secret: ${GMAIL_CLIENT_SECRET:}
   cognito:
     user-pool-id: ${COGNITO_USER_POOL_ID}
 
@@ -123,8 +127,8 @@ wompi:
   product-image-url: ${WOMPI_PRODUCT_IMAGE_URL:${LOGO_URL:}}
   client-id: ${WOMPI_CLIENT_ID}
   client-secret: ${WOMPI_CLIENT_SECRET}
-  app-id: ${WOMPI_APP_ID}
-  api-secret: ${WOMPI_API_SECRET}
+  app-id: ${WOMPI_CLIENT_ID}
+  api-secret: ${WOMPI_CLIENT_SECRET}
 
 management:
   info:
@@ -143,7 +147,7 @@ management:
 info:
   app:
     name: BFlow
-    version: 0.1.0
+    version: 1.6.0
     description: Finance management API
 
 support:

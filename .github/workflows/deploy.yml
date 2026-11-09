@@ -43,6 +43,7 @@ jobs:
           RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
           WOMPI_SECRET_ARN: ${{ secrets.WOMPI_SECRET_ARN }}
           FIREBASE_SECRET_ARN: ${{ secrets.FIREBASE_SECRET_ARN }}
+          GMAIL_SECRET_ARN: ${{ secrets.GMAIL_SECRET_ARN }}
 
           AWS_REGION: ${{ vars.AWS_REGION }}
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
@@ -64,6 +65,7 @@ jobs:
           RECEIPT_OCR_REQUESTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_REQUESTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_RESULTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_TOPIC_ARN: ${{ vars.RECEIPT_OCR_RESULTS_TOPIC_ARN }}
+          GMAIL_IMPORT_QUEUE_URL: ${{ vars.GMAIL_IMPORT_QUEUE_URL }}
           TEXTRACT_SNS_ROLE_ARN: ${{ vars.TEXTRACT_SNS_ROLE_ARN }}
           FIREBASE_ENABLED: ${{ vars.FIREBASE_ENABLED || 'false' }}
 
@@ -75,6 +77,7 @@ jobs:
             RDS_SECRET_ARN
             WOMPI_SECRET_ARN
             FIREBASE_SECRET_ARN
+            GMAIL_SECRET_ARN
             AWS_REGION
             ECR_REPOSITORY
             ECS_CLUSTER_NAME
@@ -93,6 +96,7 @@ jobs:
             RECEIPT_OCR_REQUESTS_QUEUE_URL
             RECEIPT_OCR_RESULTS_QUEUE_URL
             RECEIPT_OCR_RESULTS_TOPIC_ARN
+            GMAIL_IMPORT_QUEUE_URL
             TEXTRACT_SNS_ROLE_ARN
           )
 
@@ -292,12 +296,14 @@ jobs:
           RDS_SECRET_ARN: ${{ secrets.RDS_SECRET_ARN }}
           WOMPI_SECRET_ARN: ${{ secrets.WOMPI_SECRET_ARN }}
           FIREBASE_SECRET_ARN: ${{ secrets.FIREBASE_SECRET_ARN }}
+          GMAIL_SECRET_ARN: ${{ secrets.GMAIL_SECRET_ARN }}
           COGNITO_ISSUER_URI: ${{ vars.COGNITO_ISSUER_URI }}
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
           S3_BUCKET: ${{ vars.S3_BUCKET }}
           RECEIPT_OCR_REQUESTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_REQUESTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_QUEUE_URL: ${{ vars.RECEIPT_OCR_RESULTS_QUEUE_URL }}
           RECEIPT_OCR_RESULTS_TOPIC_ARN: ${{ vars.RECEIPT_OCR_RESULTS_TOPIC_ARN }}
+          GMAIL_IMPORT_QUEUE_URL: ${{ vars.GMAIL_IMPORT_QUEUE_URL }}
           TEXTRACT_SNS_ROLE_ARN: ${{ vars.TEXTRACT_SNS_ROLE_ARN }}
           FIREBASE_ENABLED: ${{ vars.FIREBASE_ENABLED || 'false' }}
           OTEL_ENABLED: ${{ vars.OTEL_ENABLED || 'false' }}

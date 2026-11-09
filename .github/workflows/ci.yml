@@ -53,8 +53,6 @@ jobs:
           LOGO_URL: https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png
           WOMPI_CLIENT_ID: ci-placeholder
           WOMPI_CLIENT_SECRET: ci-placeholder
-          WOMPI_APP_ID: ci-placeholder
-          WOMPI_API_SECRET: ci-placeholder
         run: ./mvnw -B verify
 
       - name: Check style
@@ -99,8 +97,6 @@ jobs:
       LOGO_URL: https://res.cloudinary.com/dmv1q774l/image/upload/v1778910438/Bflow-logo-v1_yq5uyb.png
       WOMPI_CLIENT_ID: ci-placeholder
       WOMPI_CLIENT_SECRET: ci-placeholder
-      WOMPI_APP_ID: ci-placeholder
-      WOMPI_API_SECRET: ci-placeholder
     steps:
       - uses: actions/checkout@v7
       - name: Run browser-level legal document journey
