@@ -65,87 +65,25 @@ public class GmailIntegrationService {
     }
 
     public GmailSyncResponse sync(final UUID userId, final GmailSyncRequest request) {
-        UUID walletId = request.walletId() == null
-                ? walletUserRepository.findFirstByUserIdOrderByDefaultWalletDescCreatedAtAsc(userId)
-                    .map(membership -> membership.getWallet().getId())
-                    .orElseThrow(() -> new WalletAccessDeniedException(messageService.get("gmail.wallet.accessDenied")))
-                : request.walletId();
+        UUID walletId = resolveWalletId(userId, request);
         walletUserRepository.findByWalletIdAndUserId(walletId, userId)
                 .orElseThrow(() -> new WalletAccessDeniedException(
                         messageService.get("gmail.wallet.accessDenied")));
         GmailIntegration integration = integrationRepository.findByUserIdAndStatus(userId, "CONNECTED")
                 .orElseThrow(() -> new IllegalStateException(messageService.get("gmail.connection.required")));
-        String accessToken;
-        try {
-            accessToken = oauthService.accessToken(integration);
-        } catch (RuntimeException ex) {
-            if (isRevoked(ex)) {
-                integration.setStatus("REVOKED");
-                integrationRepository.save(integration);
-            }
-            throw new IllegalStateException(messageService.get("gmail.authorization.invalid"));
-        }
-
+        String accessToken = accessToken(integration);
         if (!request.dryRun() && !walletId.equals(integration.getWalletId())) {
             integration.setWalletId(walletId);
             integrationRepository.save(integration);
         }
 
-        List<String> messages;
-        try {
-            messages = gmailApiClient.listMessageIds(
-                    accessToken, request.lookbackDays(), request.maxMessages());
-        } catch (IOException failure) {
-            throw new IllegalStateException(messageService.get("gmail.provider.unavailable"), failure);
-        }
-        int compatibleItems = 0;
-        int duplicates = 0;
-        int queued = 0;
-        int errors = 0;
+        List<String> messages = discoverMessages(accessToken, request);
+        SyncTotals totals = new SyncTotals();
         for (String messageId : messages) {
-            try {
-                if (importRepository.existsByUserIdAndMessageId(userId, messageId)) {
-                    duplicates++;
-                    continue;
-                }
-                Optional<GmailApiClient.AttachmentRef> attachment = gmailApiClient
-                        .listAttachments(accessToken, messageId).stream()
-                        .filter(this::isEligibleAttachment)
-                        .sorted(Comparator.comparingInt(this::attachmentPriority)
-                                .thenComparing(GmailApiClient.AttachmentRef::size,
-                                        Comparator.reverseOrder()))
-                        .findFirst();
-                if (attachment.isPresent()) {
-                    compatibleItems++;
-                    if (!request.dryRun()) {
-                        enqueue(userId, walletId, integration, messageId,
-                                attachment.get().attachmentId(), attachment.get().mimeType());
-                        queued++;
-                    }
-                    continue;
-                }
-                for (GmailApiClient.TextPartRef textPart
-                        : gmailApiClient.listTextParts(accessToken, messageId)) {
-                    if (textPart.size() <= 0 || textPart.size() > 128 * 1024
-                            || !emailTransactionParser.isTransactionEmail(textPart.preview())) {
-                        continue;
-                    }
-                    compatibleItems++;
-                    if (!request.dryRun()) {
-                        enqueue(userId, walletId, integration, messageId,
-                                textPart.partId(), textPart.mimeType());
-                        queued++;
-                    }
-                    break;
-                }
-            } catch (DataIntegrityViolationException duplicate) {
-                duplicates++;
-            } catch (IOException | RuntimeException partialFailure) {
-                errors++;
-                log.warn("Gmail message discovery failed for user {}", userId);
-            }
+            totals.add(processMessage(userId, walletId, integration, accessToken, messageId, request.dryRun()));
         }
-        return new GmailSyncResponse(messages.size(), compatibleItems, duplicates, queued, errors);
+        return new GmailSyncResponse(messages.size(), totals.compatible, totals.duplicates,
+                totals.queued, totals.errors);
     }
 
     @Transactional
@@ -169,6 +107,110 @@ public class GmailIntegrationService {
         return ex.getMessage() != null
                 && (ex.getMessage().toLowerCase().contains("invalid_grant")
                 || ex.getMessage().toLowerCase().contains("revoked"));
+    }
+
+    private UUID resolveWalletId(final UUID userId, final GmailSyncRequest request) {
+        if (request.walletId() != null) return request.walletId();
+        return walletUserRepository.findFirstByUserIdOrderByDefaultWalletDescCreatedAtAsc(userId)
+                .map(membership -> membership.getWallet().getId())
+                .orElseThrow(() -> new WalletAccessDeniedException(messageService.get("gmail.wallet.accessDenied")));
+    }
+
+    private String accessToken(final GmailIntegration integration) {
+        try {
+            return oauthService.accessToken(integration);
+        } catch (RuntimeException failure) {
+            if (isRevoked(failure)) {
+                integration.setStatus("REVOKED");
+                integrationRepository.save(integration);
+            }
+            throw new IllegalStateException(messageService.get("gmail.authorization.invalid"));
+        }
+    }
+
+    private List<String> discoverMessages(final String accessToken, final GmailSyncRequest request) {
+        try {
+            return gmailApiClient.listMessageIds(accessToken, request.lookbackDays(), request.maxMessages());
+        } catch (IOException failure) {
+            throw new IllegalStateException(messageService.get("gmail.provider.unavailable"), failure);
+        }
+    }
+
+    private MessageResult processMessage(final UUID userId, final UUID walletId,
+            final GmailIntegration integration, final String accessToken, final String messageId,
+            final boolean dryRun) {
+        try {
+            if (importRepository.existsByUserIdAndMessageId(userId, messageId)) return MessageResult.duplicateResult();
+            Optional<GmailApiClient.AttachmentRef> attachment = preferredAttachment(accessToken, messageId);
+            if (attachment.isPresent()) {
+                GmailApiClient.AttachmentRef selected = attachment.get();
+                return enqueueIfNeeded(userId, walletId, integration, messageId,
+                        selected.attachmentId(), selected.mimeType(), dryRun);
+            }
+            return processTextBody(userId, walletId, integration, accessToken, messageId, dryRun);
+        } catch (DataIntegrityViolationException duplicate) {
+            return MessageResult.duplicateResult();
+        } catch (IOException | RuntimeException partialFailure) {
+            log.warn("Gmail message discovery failed for user {}", userId);
+            return MessageResult.errorResult();
+        }
+    }
+
+    private Optional<GmailApiClient.AttachmentRef> preferredAttachment(
+            final String accessToken, final String messageId) throws IOException {
+        return gmailApiClient.listAttachments(accessToken, messageId).stream()
+                .filter(this::isEligibleAttachment)
+                .sorted(Comparator.comparingInt(this::attachmentPriority)
+                        .thenComparing(GmailApiClient.AttachmentRef::size, Comparator.reverseOrder()))
+                .findFirst();
+    }
+
+    private MessageResult processTextBody(final UUID userId, final UUID walletId,
+            final GmailIntegration integration, final String accessToken, final String messageId,
+            final boolean dryRun) throws IOException {
+        Optional<GmailApiClient.TextPartRef> transactionPart = gmailApiClient
+                .listTextParts(accessToken, messageId).stream()
+                .filter(this::isEligibleTextPart)
+                .findFirst();
+        if (transactionPart.isEmpty()) return MessageResult.none();
+        GmailApiClient.TextPartRef part = transactionPart.get();
+        return enqueueIfNeeded(userId, walletId, integration, messageId,
+                part.partId(), part.mimeType(), dryRun);
+    }
+
+    private boolean isEligibleTextPart(final GmailApiClient.TextPartRef textPart) {
+        return textPart.size() > 0 && textPart.size() <= 128 * 1024
+                && emailTransactionParser.isTransactionEmail(textPart.preview());
+    }
+
+    private MessageResult enqueueIfNeeded(final UUID userId, final UUID walletId,
+            final GmailIntegration integration, final String messageId,
+            final String partId, final String mimeType, final boolean dryRun) {
+        if (dryRun) return MessageResult.compatibleOnly();
+        enqueue(userId, walletId, integration, messageId, partId, mimeType);
+        return MessageResult.queuedResult();
+    }
+
+    private record MessageResult(int compatible, int duplicates, int queued, int errors) {
+        private static MessageResult none() { return new MessageResult(0, 0, 0, 0); }
+        private static MessageResult duplicateResult() { return new MessageResult(0, 1, 0, 0); }
+        private static MessageResult errorResult() { return new MessageResult(0, 0, 0, 1); }
+        private static MessageResult compatibleOnly() { return new MessageResult(1, 0, 0, 0); }
+        private static MessageResult queuedResult() { return new MessageResult(1, 0, 1, 0); }
+    }
+
+    private static final class SyncTotals {
+        private int compatible;
+        private int duplicates;
+        private int queued;
+        private int errors;
+
+        private void add(final MessageResult result) {
+            compatible += result.compatible();
+            duplicates += result.duplicates();
+            queued += result.queued();
+            errors += result.errors();
+        }
     }
 
     private boolean isEligibleAttachment(final GmailApiClient.AttachmentRef attachment) {

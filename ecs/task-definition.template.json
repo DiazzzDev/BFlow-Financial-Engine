@@ -188,7 +188,7 @@
         {
           "name": "GMAIL_CLIENT_SECRET",
           "valueFrom": "${GMAIL_SECRET_ARN}:GMAIL_CLIENT_SECRET::"
-        },
+        }
       ],
 
       "logConfiguration": {

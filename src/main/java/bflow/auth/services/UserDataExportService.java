@@ -63,39 +63,40 @@ public class UserDataExportService {
     }
 
     private Map<String, Object> expense(final Expense value) {
-        Map<String, Object> item = transaction(value.getId(), value.getTitle(),
-                value.getDescription(), value.getAmount(), value.getDate(),
-                value.getWallet(), value.getCategory(), value.getSource(), value.getCreatedAt());
+        Map<String, Object> item = transaction(new TransactionExport(value.getId(), value.getTitle(),
+                value.getDescription(), value.getAmount(), value.getDate(), value.getWallet(),
+                value.getCategory(), value.getSource(), value.getCreatedAt()));
         item.put("recurring", value.getRecurring());
         item.put("recurrencePattern", value.getRecurrencePattern());
         return item;
     }
 
     private Map<String, Object> income(final Income value) {
-        Map<String, Object> item = transaction(value.getId(), value.getTitle(),
-                value.getDescription(), value.getAmount(), value.getDate(),
-                value.getWallet(), value.getCategory(), value.getSource(), value.getCreatedAt());
+        Map<String, Object> item = transaction(new TransactionExport(value.getId(), value.getTitle(),
+                value.getDescription(), value.getAmount(), value.getDate(), value.getWallet(),
+                value.getCategory(), value.getSource(), value.getCreatedAt()));
         item.put("recurring", value.getRecurring());
         item.put("recurrencePattern", value.getRecurrencePattern());
         return item;
     }
 
-    private Map<String, Object> transaction(final UUID id, final String title,
-            final String description, final java.math.BigDecimal amount,
-            final java.time.LocalDate date, final bflow.wallet.entities.Wallet wallet,
-            final bflow.category.entity.Category category, final String source,
-            final java.time.Instant createdAt) {
+    private Map<String, Object> transaction(final TransactionExport value) {
         Map<String, Object> item = new LinkedHashMap<>();
-        item.put("id", id);
-        item.put("title", title);
-        item.put("description", description);
-        item.put("amount", amount);
-        item.put("date", date);
-        item.put("walletId", wallet.getId());
-        item.put("categoryId", category == null ? null : category.getId());
-        item.put("categoryName", category == null ? null : category.getName());
-        item.put("source", source);
-        item.put("createdAt", createdAt);
+        item.put("id", value.id());
+        item.put("title", value.title());
+        item.put("description", value.description());
+        item.put("amount", value.amount());
+        item.put("date", value.date());
+        item.put("walletId", value.wallet().getId());
+        item.put("categoryId", value.category() == null ? null : value.category().getId());
+        item.put("categoryName", value.category() == null ? null : value.category().getName());
+        item.put("source", value.source());
+        item.put("createdAt", value.createdAt());
         return item;
     }
+
+    private record TransactionExport(UUID id, String title, String description,
+            java.math.BigDecimal amount, java.time.LocalDate date,
+            bflow.wallet.entities.Wallet wallet, bflow.category.entity.Category category,
+            String source, java.time.Instant createdAt) { }
 }

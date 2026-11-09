@@ -17,13 +17,18 @@ import java.util.regex.Pattern;
 @Component
 public class GmailEmailTransactionParser {
     private static final Pattern AMOUNT = Pattern.compile(
-            "(?i)(?:total|monto|importe|amount|valor)\\s*[:=]?\\s*(?:USD|US\\$|\\$|€|₡)?\\s*([0-9][0-9.,]{0,16})");
+            "(?iu)(?:total|monto|importe|amount|valor)\\h*+[:=]?+\\h*+(?:USD|US\\$|\\$)?+\\h*+(\\d[\\d.,]{0,16}+)");
     private static final Pattern CURRENCY_AMOUNT = Pattern.compile(
-            "(?i)(?:(?:USD|US dollars?|\\$)\\s*([0-9][0-9.,]{0,16})|"
-                    + "([0-9][0-9.,]{0,16})\\s*(?:USD|US dollars?|d[oó]lares?|dollars?))");
-    private static final Pattern MERCHANT = Pattern.compile(
-            "(?i)(?:comercio|merchant|establecimiento|producto|product)\\s*[:=]\\s*(.{2,80}?)(?=\\s+(?:fecha|total|monto|importe|cantidad|código|codigo|detalle)\\s*[:=]|$)");
-    private static final Pattern DATE = Pattern.compile("\\b(\\d{1,2}/\\d{1,2}/\\d{4})\\b");
+            "(?iu)(?:(?:USD|US dollars?|\\$)\\h*+(\\d[\\d.,]{0,16}+)|"
+                    + "(\\d[\\d.,]{0,16}+)\\h*+(?:USD|US dollars?|d[oó]lares?|dollars?))");
+    private static final Pattern MERCHANT_LABEL = Pattern.compile(
+            "(?iu)(?:comercio|merchant|establecimiento|producto|product)\\h*+[:=]\\h*+",
+            Pattern.CANON_EQ);
+    private static final Pattern NEXT_FIELD_LABEL = Pattern.compile(
+            "(?iu)\\h++(?:fecha|total|monto|importe|cantidad|c[oó]digo|detalle)\\h*+[:=]",
+            Pattern.CANON_EQ);
+    private static final Pattern DATE = Pattern.compile("\\b(\\d{1,2}/\\d{1,2}/\\d{4})\\b",
+            Pattern.UNICODE_CHARACTER_CLASS);
     private static final List<String> INCOME_WORDS = List.of(
             "recibiste", "has recibido", "dinero recibido", "pago recibido", "pago acreditado",
             "depósito", "deposito", "depósito recibido", "deposito recibido", "abono",
@@ -64,7 +69,9 @@ public class GmailEmailTransactionParser {
         if (labelled.find()) return amount(labelled.group(1));
         Matcher currency = CURRENCY_AMOUNT.matcher(text);
         if (!currency.find()) return null;
-        return amount(currency.group(1) == null ? currency.group(2) : currency.group(1));
+        String capturedAmount = currency.group(1);
+        if (capturedAmount == null) capturedAmount = currency.group(2);
+        return amount(capturedAmount);
     }
 
     private ReceiptTransactionType extractDirection(final String text) {
@@ -75,8 +82,14 @@ public class GmailEmailTransactionParser {
     }
 
     private String title(final String text) {
-        Matcher merchant = MERCHANT.matcher(text);
-        String title = merchant.find() ? merchant.group(1) : "Movimiento desde Gmail";
+        Matcher merchant = MERCHANT_LABEL.matcher(text);
+        if (!merchant.find()) return "Movimiento desde Gmail";
+        int valueStart = merchant.end();
+        int valueEnd = Math.min(valueStart + 80, text.length());
+        Matcher nextField = NEXT_FIELD_LABEL.matcher(text);
+        nextField.region(valueStart, valueEnd);
+        if (nextField.find()) valueEnd = nextField.start();
+        String title = text.substring(valueStart, valueEnd);
         title = title.replaceAll("[^\\p{L}0-9 .,'\\-()!?&@#%/+:_]", " ")
                 .replaceAll("\\s+", " ").trim().replaceAll("[.,;:]+$", "").trim();
         return title.isBlank() ? "Movimiento desde Gmail" : title.substring(0, Math.min(50, title.length()));
@@ -98,8 +111,8 @@ public class GmailEmailTransactionParser {
     }
 
     private String plainText(final String value) {
-        return HtmlUtils.htmlUnescape(value.replaceAll("(?is)<[^>]+>", " "))
-                .replace('\u00a0', ' ').replaceAll("\\s+", " ").trim();
+        return HtmlUtils.htmlUnescape(value.replaceAll("(?is)<[^>]{1,4096}>", " "))
+                .replace('\u00a0', ' ').replaceAll("\\s++", " ").trim();
     }
 
     public record ParsedEmailTransaction(ReceiptTransactionType type, String title,

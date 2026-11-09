@@ -112,8 +112,8 @@ class GmailIntegrationServiceTest {
         when(walletUserRepository.findByWalletIdAndUserId(walletId, userId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.sync(userId,
-                new GmailSyncRequest(walletId, 14, 20, true)))
+        GmailSyncRequest request = new GmailSyncRequest(walletId, 14, 20, true);
+        assertThatThrownBy(() -> service.sync(userId, request))
                 .isInstanceOf(RuntimeException.class);
         verify(gmailApiClient, never()).listMessageIds(anyString(), org.mockito.ArgumentMatchers.anyInt(),
                 org.mockito.ArgumentMatchers.anyInt());
@@ -134,8 +134,8 @@ class GmailIntegrationServiceTest {
         when(messageService.get("gmail.authorization.invalid"))
                 .thenReturn("Gmail authorization is invalid or revoked");
 
-        assertThatThrownBy(() -> service.sync(userId,
-                new GmailSyncRequest(walletId, 14, 20, false)))
+        GmailSyncRequest request = new GmailSyncRequest(walletId, 14, 20, false);
+        assertThatThrownBy(() -> service.sync(userId, request))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("invalid or revoked");
 

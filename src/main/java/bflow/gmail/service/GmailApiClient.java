@@ -11,7 +11,6 @@ import com.google.api.services.gmail.model.MessagePartBody;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;

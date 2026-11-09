@@ -61,11 +61,11 @@ public class GmailOAuthService {
         byte[] entropy = new byte[32];
         secureRandom.nextBytes(entropy);
         String state = Base64.getUrlEncoder().withoutPadding().encodeToString(entropy);
-        GmailOAuthState record = new GmailOAuthState();
-        record.setStateHash(sha256(state));
-        record.setUser(userRepository.getReferenceById(userId));
-        record.setExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES));
-        stateRepository.save(record);
+        GmailOAuthState oauthState = new GmailOAuthState();
+        oauthState.setStateHash(sha256(state));
+        oauthState.setUser(userRepository.getReferenceById(userId));
+        oauthState.setExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES));
+        stateRepository.save(oauthState);
         return flow().newAuthorizationUrl().setRedirectUri(redirectUri())
                 .setState(state).set("prompt", "consent").build();
     }
@@ -77,8 +77,8 @@ public class GmailOAuthService {
         if (stateRepository.consumeValid(stateHash, Instant.now()) != 1) {
             return settingsUrl("invalid_oauth");
         }
-        GmailOAuthState record = stateRepository.findById(stateHash).orElse(null);
-        if (record == null) return settingsUrl("invalid_oauth");
+        GmailOAuthState oauthState = stateRepository.findById(stateHash).orElse(null);
+        if (oauthState == null) return settingsUrl("invalid_oauth");
         String step = "exchange_code";
         try {
             GoogleTokenResponse tokens = flow().newTokenRequest(code)
@@ -86,7 +86,7 @@ public class GmailOAuthService {
             if (tokens.getRefreshToken() == null || tokens.getRefreshToken().isBlank()) {
                 return settingsUrl("missing_refresh_token");
             }
-            User user = record.getUser();
+            User user = oauthState.getUser();
             GmailIntegration integration = integrationRepository.findByUserId(user.getId())
                     .orElseGet(GmailIntegration::new);
             integration.setUser(user);
@@ -149,7 +149,7 @@ public class GmailOAuthService {
     }
 
     public String settingsUrl(final String result) {
-        return frontendUrl.replaceAll("/+$", "") + "/settings?gmail=" + result;
+        return trimTrailingSlashes(frontendUrl) + "/settings?gmail=" + result;
     }
 
     private GoogleAuthorizationCodeFlow flow() {
@@ -167,7 +167,13 @@ public class GmailOAuthService {
     }
 
     private String redirectUri() {
-        return baseUrl.replaceAll("/+$", "") + "/api/v1/integrations/gmail/callback";
+        return trimTrailingSlashes(baseUrl) + "/api/v1/integrations/gmail/callback";
+    }
+
+    private String trimTrailingSlashes(final String value) {
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '/') end--;
+        return value.substring(0, end);
     }
 
     private void ensureConfigured() {
