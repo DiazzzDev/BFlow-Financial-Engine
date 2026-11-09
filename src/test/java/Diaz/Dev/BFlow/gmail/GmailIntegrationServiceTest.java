@@ -6,6 +6,8 @@ import bflow.common.i18n.MessageService;
 import bflow.gmail.dto.GmailSyncRequest;
 import bflow.gmail.entity.GmailImport;
 import bflow.gmail.entity.GmailIntegration;
+import bflow.gmail.enums.GmailIntegrationStatus;
+import bflow.gmail.enums.GmailImportStatus;
 import bflow.gmail.repository.GmailImportRepository;
 import bflow.gmail.repository.GmailIntegrationRepository;
 import bflow.gmail.service.GmailApiClient;
@@ -220,5 +222,111 @@ class GmailIntegrationServiceTest {
                 GmailImportQueuePublisher.ImportJob.class);
         verify(queuePublisher, times(1)).publish(job.capture());
         assertThat(job.getValue().attachmentId()).isEqualTo("invoice-pdf");
+    }
+
+    @Test
+    void fallsBackToOneTransactionBodyWhenNoCompatibleAttachmentExists() throws Exception {
+        GmailIntegration integration = connectedIntegration();
+        authorizedWallet();
+        User user = new User();
+        user.setId(userId);
+        when(integrationRepository.findByUserIdAndStatus(userId, "CONNECTED"))
+                .thenReturn(Optional.of(integration));
+        when(oauthService.accessToken(integration)).thenReturn("access-token");
+        when(gmailApiClient.listMessageIds("access-token", 14, 20)).thenReturn(List.of("message-body"));
+        when(gmailApiClient.listAttachments("access-token", "message-body")).thenReturn(List.of());
+        when(gmailApiClient.listTextParts("access-token", "message-body")).thenReturn(List.of(
+                new GmailApiClient.TextPartRef("body:root", "text/plain", 64,
+                        "Payment received. Amount: USD 14.20")));
+        when(emailTransactionParser.isTransactionEmail("Payment received. Amount: USD 14.20")).thenReturn(true);
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(importRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            GmailImport item = invocation.getArgument(0);
+            item.setId(UUID.randomUUID());
+            return item;
+        });
+
+        var response = service.sync(userId, new GmailSyncRequest(walletId, 14, 20, false));
+
+        assertThat(response.compatibleAttachments()).isEqualTo(1);
+        assertThat(response.queuedForProcessing()).isEqualTo(1);
+        ArgumentCaptor<GmailImportQueuePublisher.ImportJob> job = ArgumentCaptor.forClass(
+                GmailImportQueuePublisher.ImportJob.class);
+        verify(queuePublisher).publish(job.capture());
+        assertThat(job.getValue().attachmentId()).isEqualTo("body:root");
+    }
+
+    @Test
+    void choosesDefaultWalletWhenRequestDoesNotSpecifyOne() throws Exception {
+        GmailIntegration integration = connectedIntegration();
+        WalletUser walletUser = authorizedWallet();
+        when(walletUserRepository.findFirstByUserIdOrderByDefaultWalletDescCreatedAtAsc(userId))
+                .thenReturn(Optional.of(walletUser));
+        when(integrationRepository.findByUserIdAndStatus(userId, "CONNECTED"))
+                .thenReturn(Optional.of(integration));
+        when(oauthService.accessToken(integration)).thenReturn("access-token");
+        when(gmailApiClient.listMessageIds("access-token", 7, 5)).thenReturn(List.of());
+
+        var response = service.sync(userId, new GmailSyncRequest(null, 7, 5, true));
+
+        assertThat(response.messagesFound()).isZero();
+        verify(walletUserRepository).findFirstByUserIdOrderByDefaultWalletDescCreatedAtAsc(userId);
+    }
+
+    @Test
+    void ignoresOversizedAndEmptyTextPartsWithoutParsingTheirContents() throws Exception {
+        GmailIntegration integration = connectedIntegration();
+        authorizedWallet();
+        when(integrationRepository.findByUserIdAndStatus(userId, "CONNECTED"))
+                .thenReturn(Optional.of(integration));
+        when(oauthService.accessToken(integration)).thenReturn("access-token");
+        when(gmailApiClient.listMessageIds("access-token", 14, 20)).thenReturn(List.of("message"));
+        when(gmailApiClient.listAttachments("access-token", "message")).thenReturn(List.of());
+        when(gmailApiClient.listTextParts("access-token", "message")).thenReturn(List.of(
+                new GmailApiClient.TextPartRef("body:empty", "text/plain", 0, "private body"),
+                new GmailApiClient.TextPartRef("body:large", "text/plain", 128 * 1024 + 1, "private body")));
+
+        var response = service.sync(userId, new GmailSyncRequest(walletId, 14, 20, true));
+
+        assertThat(response.compatibleAttachments()).isZero();
+        assertThat(response.queuedForProcessing()).isZero();
+        org.mockito.Mockito.verifyNoInteractions(emailTransactionParser);
+    }
+
+    @Test
+    void reportsConnectionStatesAndMapsOnlyCurrentUsersImports() {
+        GmailIntegration revoked = new GmailIntegration();
+        revoked.setStatus("REVOKED");
+        when(integrationRepository.findByUserId(userId)).thenReturn(Optional.of(revoked));
+        assertThat(service.status(userId)).isEqualTo(new bflow.gmail.dto.GmailStatusResponse(
+                false, GmailIntegrationStatus.REVOKED));
+        when(integrationRepository.findByUserId(walletId)).thenReturn(Optional.empty());
+        assertThat(service.status(walletId).status()).isEqualTo(GmailIntegrationStatus.DISCONNECTED);
+
+        GmailImport pending = new GmailImport();
+        pending.setId(UUID.randomUUID());
+        pending.setStatus("QUEUED");
+        when(importRepository.findTop100ByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(pending));
+        assertThat(service.imports(userId)).singleElement()
+                .extracting(bflow.gmail.dto.GmailImportResponse::status)
+                .isEqualTo(GmailImportStatus.QUEUED);
+    }
+
+    private GmailIntegration connectedIntegration() {
+        GmailIntegration integration = new GmailIntegration();
+        integration.setId(UUID.randomUUID());
+        integration.setStatus("CONNECTED");
+        integration.setWalletId(walletId);
+        return integration;
+    }
+
+    private WalletUser authorizedWallet() {
+        Wallet wallet = new Wallet();
+        wallet.setId(walletId);
+        WalletUser walletUser = new WalletUser();
+        walletUser.setWallet(wallet);
+        when(walletUserRepository.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        return walletUser;
     }
 }
