@@ -3,6 +3,7 @@ package bflow.recurring.services;
 import bflow.auth.services.UserService;
 import bflow.category.RepositoryCategory;
 import bflow.category.entity.Category;
+import bflow.category.enums.CategoryType;
 import bflow.common.aws.service.EmailTemplateService;
 import bflow.common.exception.ResourceNotFoundException;
 import bflow.common.exception.WalletAccessDeniedException;
@@ -163,6 +164,17 @@ public class RecurringExecutionService {
                 .toList();
     }
 
+    /** Lists all recurrence states for a wallet after checking membership. */
+    public List<RecurringResponse> getWalletRecurring(
+            final UUID walletId, final UUID userId
+    ) {
+        repositoryWalletUser.findByWalletIdAndUserId(walletId, userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        messageService.get("wallet.accessDenied")));
+        return repository.findByWalletIdOrderByNextExecutionDateAsc(walletId)
+                .stream().map(this::mapToResponse).toList();
+    }
+
     /**
      * Create a new recurring transaction.
      *
@@ -226,6 +238,71 @@ public class RecurringExecutionService {
         RecurringTransaction saved = repository.save(recurring);
 
         return mapToResponse(saved);
+    }
+
+    /**
+     * Updates a recurrence without creating or posting a financial movement.
+     * The schedule is recalculated only when its frequency, interval or start
+     * date changes, preserving an already advanced next execution otherwise.
+     */
+    public RecurringResponse updateRecurring(
+            final UUID id, final RecurringRequest request, final UUID userId
+    ) {
+        RecurringTransaction recurring = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("recurring.notFound")));
+        if (!recurring.getUser().getId().equals(userId)) {
+            throw new WalletAccessDeniedException(
+                    messageService.get("wallet.accessDenied"));
+        }
+
+        WalletUser walletUser = repositoryWalletUser
+                .findByWalletIdAndUserId(request.getWalletId(), userId)
+                .orElseThrow(() -> new WalletAccessDeniedException(
+                        messageService.get("wallet.accessDenied")));
+        Category category = repositoryCategory.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("category.notFound")));
+        validateCategoryType(category, request.getType());
+
+        boolean scheduleChanged = recurring.getFrequency() != request.getFrequency()
+                || !recurring.getIntervalValue().equals(request.getIntervalValue())
+                || !recurring.getStartDate().equals(request.getStartDate());
+
+        recurring.setTitle(request.getTitle());
+        recurring.setDescription(request.getDescription());
+        recurring.setAmount(request.getAmount());
+        recurring.setWallet(walletUser.getWallet());
+        recurring.setCategory(category);
+        recurring.setType(request.getType());
+        recurring.setFrequency(request.getFrequency());
+        recurring.setIntervalValue(request.getIntervalValue());
+        recurring.setStartDate(request.getStartDate());
+        recurring.setEndDate(request.getEndDate());
+
+        if (scheduleChanged) {
+            recurring.setNextExecutionDate(resolveFirstExecutionDate(
+                    request.getStartDate(), request.getFrequency(),
+                    request.getIntervalValue()));
+        }
+        if (recurring.getEndDate() != null
+                && recurring.getNextExecutionDate().isAfter(recurring.getEndDate())) {
+            recurring.setActive(false);
+        }
+
+        return mapToResponse(repository.save(recurring));
+    }
+
+    private void validateCategoryType(
+            final Category category, final bflow.recurring.enums.RecurringType type
+    ) {
+        CategoryType expected = CategoryType.valueOf(type.name());
+        if (category.getType() != expected) {
+            String key = expected == CategoryType.EXPENSE
+                    ? "category.invalidType.expense" : "category.invalidType.income";
+            throw new IllegalArgumentException(
+                    messageService.get(key, category.getType()));
+        }
     }
 
     /**

@@ -49,6 +49,11 @@ public interface RepositoryRecurringTransaction
      */
     List<RecurringTransaction> findByUserId(UUID userId);
 
+    /** Find all recurring transactions assigned to a wallet. */
+    List<RecurringTransaction> findByWalletIdOrderByNextExecutionDateAsc(
+            UUID walletId
+    );
+
     /**
      * Counts the number of active recurring transactions
      * owned by the specified user.
