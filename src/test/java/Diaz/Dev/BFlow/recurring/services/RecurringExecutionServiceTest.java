@@ -140,6 +140,7 @@ class RecurringExecutionServiceTest {
         WalletUser walletUser = walletUser(userId);
         Category savedCategory = new Category();
         savedCategory.setId(request.getCategoryId());
+        savedCategory.setType(CategoryType.EXPENSE);
         Wallet expectedWallet = walletUser.getWallet();
 
         doNothing().when(userService).validateUserActive(userId);
@@ -180,6 +181,67 @@ class RecurringExecutionServiceTest {
     }
 
     @Test
+    void createRecurring_withoutCategoryPersistsUncategorizedRecurrence() {
+        UUID userId = UUID.randomUUID();
+        RecurringExecutionService service = new RecurringExecutionService(
+                repository, executor, emailTemplateService, userService,
+                repositoryCategory, repositoryWalletUser, planLimitService,
+                messageService, Clock.system(ZoneId.of("America/El_Salvador")));
+        RecurringRequest request = request(LocalDate.now(), null);
+        request.setCategoryId(null);
+        WalletUser walletUser = walletUser(userId);
+
+        doNothing().when(userService).validateUserActive(userId);
+        when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
+        when(repositoryWalletUser.findByWalletIdAndUserId(
+                request.getWalletId(), userId)).thenReturn(Optional.of(walletUser));
+        when(repository.save(any(RecurringTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecurringResponse response = service.createRecurring(request, userId);
+
+        ArgumentCaptor<RecurringTransaction> captor =
+                ArgumentCaptor.forClass(RecurringTransaction.class);
+        verify(repository).save(captor.capture());
+        assertNull(captor.getValue().getCategory());
+        assertNull(response.getCategoryId());
+        verify(repositoryCategory, never()).findById(any());
+    }
+
+    @Test
+    void createRecurring_defaultsWalletAndStartDateWhenOmitted() {
+        UUID userId = UUID.randomUUID();
+        LocalDate today = LocalDate.of(2026, 11, 10);
+        Clock clock = Clock.fixed(Instant.parse("2026-11-10T12:00:00Z"),
+                ZoneId.of("America/El_Salvador"));
+        RecurringExecutionService service = serviceWithClock(clock);
+        RecurringRequest request = request(null, null);
+        request.setWalletId(null);
+        request.setCategoryId(null);
+        WalletUser defaultWallet = walletUser(userId);
+
+        when(repositoryWalletUser
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER))
+                .thenReturn(Optional.of(defaultWallet));
+        when(repository.save(any(RecurringTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecurringResponse response = service.createRecurring(request, userId);
+
+        ArgumentCaptor<RecurringTransaction> saved =
+                ArgumentCaptor.forClass(RecurringTransaction.class);
+        verify(repository).save(saved.capture());
+        assertEquals(defaultWallet.getWallet(), saved.getValue().getWallet());
+        assertEquals(today, saved.getValue().getStartDate());
+        assertNull(saved.getValue().getCategory());
+        assertEquals(today, response.getStartDate());
+        verify(repositoryWalletUser, never())
+                .findByWalletIdAndUserId(any(), eq(userId));
+        verify(repositoryCategory, never()).findById(any());
+    }
+
+    @Test
     void createRecurring_pastDailyStartAdvancesByWholeIntervals() {
         UUID userId = UUID.randomUUID();
         Clock clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"),
@@ -193,6 +255,7 @@ class RecurringExecutionServiceTest {
         request.setIntervalValue(3);
         WalletUser walletUser = walletUser(userId);
         Category category = new Category();
+        category.setType(CategoryType.EXPENSE);
         doNothing().when(userService).validateUserActive(userId);
         when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
         when(repositoryWalletUser.findByWalletIdAndUserId(
@@ -250,8 +313,10 @@ class RecurringExecutionServiceTest {
         when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
         when(repositoryWalletUser.findByWalletIdAndUserId(
                 request.getWalletId(), userId)).thenReturn(Optional.of(walletUser));
+        Category category = new Category();
+        category.setType(CategoryType.EXPENSE);
         when(repositoryCategory.findById(request.getCategoryId()))
-                .thenReturn(Optional.of(new Category()));
+                .thenReturn(Optional.of(category));
         when(repository.save(any(RecurringTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -279,8 +344,10 @@ class RecurringExecutionServiceTest {
         when(repository.countByUserIdAndActiveTrue(userId)).thenReturn(0L);
         when(repositoryWalletUser.findByWalletIdAndUserId(
                 request.getWalletId(), userId)).thenReturn(Optional.of(walletUser));
+        Category category = new Category();
+        category.setType(CategoryType.EXPENSE);
         when(repositoryCategory.findById(request.getCategoryId()))
-                .thenReturn(Optional.of(new Category()));
+                .thenReturn(Optional.of(category));
         when(repository.save(any(RecurringTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

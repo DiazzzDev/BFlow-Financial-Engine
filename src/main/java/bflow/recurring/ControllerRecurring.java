@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -64,13 +66,22 @@ public class ControllerRecurring {
     @Operation(
             summary = "Create a new recurring transaction.",
             description = "Creates a scheduled income or expense. title, amount, "
-                    + "walletId, categoryId, type, frequency, and startDate are "
-                    + "required. intervalValue defaults to 1 when omitted. "
-                    + "endDate is nullable; omit it or send null for an "
-                    + "indefinite recurrence."
+                    + "type, and frequency are required. walletId defaults "
+                    + "to the user's default owned wallet and startDate defaults "
+                    + "to today in America/El_Salvador. categoryId and endDate "
+                    + "are optional; intervalValue defaults to 1."
     )
     @PostMapping
     public RecurringResponse create(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Recurring transaction details. Wallet and "
+                            + "start date can be omitted to use their defaults; "
+                            + "category and end date can be omitted.",
+                    content = @Content(examples = @ExampleObject(
+                            name = "Minimal monthly expense",
+                            value = "{\"title\":\"Rent\",\"amount\":750.00,"
+                                    + "\"type\":\"EXPENSE\",\"frequency\":\"MONTHLY\"}"
+                    )))
             @Valid @RequestBody final RecurringRequest request,
             final Authentication authentication
     ) {
@@ -136,8 +147,10 @@ public class ControllerRecurring {
     /** Replaces editable recurrence details while preserving its active/paused state. */
     @Operation(summary = "Update a recurring transaction.",
             description = "Replaces title, description, amount, wallet, category, "
-                    + "type, frequency, interval, start date and end date. endDate "
-                    + "is optional; omit or send null for an indefinite recurrence. "
+                    + "type, frequency, interval, start date and end date. Omitted "
+                    + "walletId and startDate use the user's default wallet and "
+                    + "today's business date. Omit categoryId to uncategorize. "
+                    + "endDate is optional; omit or send null for an indefinite recurrence. "
                     + "Changing the schedule recalculates the next occurrence on or after today. "
                     + "The active/paused state is preserved.")
     @ApiResponses({
@@ -150,6 +163,14 @@ public class ControllerRecurring {
     @PutMapping("/{id}")
     public RecurringResponse update(
             @PathVariable final UUID id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updated recurrence details.",
+                    content = @Content(examples = @ExampleObject(
+                            name = "Monthly expense without category",
+                            value = "{\"title\":\"Rent\",\"amount\":750.00,"
+                                    + "\"type\":\"EXPENSE\",\"frequency\":\"MONTHLY\","
+                                    + "\"categoryId\":null,\"endDate\":null}"
+                    )))
             @Valid @RequestBody final RecurringRequest request,
             final Authentication authentication
     ) {

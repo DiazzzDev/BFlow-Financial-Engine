@@ -290,6 +290,31 @@ class ServiceIncomeTest {
     }
 
     @Test
+    void testCreateIncome_defaultsMissingDateToBusinessToday() {
+        LocalDate today = LocalDate.of(2026, 11, 10);
+        IncomeRequest request = new IncomeRequest();
+        request.setWalletId(walletId);
+        request.setTitle("Salary");
+        request.setAmount(new BigDecimal("2500.00"));
+
+        when(transactionDatePolicy.today()).thenReturn(today);
+        when(repositoryUser.findById(userId)).thenReturn(Optional.of(user));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+        when(repositoryIncome.saveAndFlush(any(Income.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        serviceIncome.newIncome(request, userId);
+
+        ArgumentCaptor<Income> saved = ArgumentCaptor.forClass(Income.class);
+        verify(repositoryIncome).saveAndFlush(saved.capture());
+        assertEquals(today, saved.getValue().getDate());
+        verify(transactionDatePolicy).validateRequired(today);
+    }
+
+    @Test
     void testCreateIncome_lastMomentOfMonth() {
         IncomeRequest request = new IncomeRequest();
         request.setWalletId(walletId);

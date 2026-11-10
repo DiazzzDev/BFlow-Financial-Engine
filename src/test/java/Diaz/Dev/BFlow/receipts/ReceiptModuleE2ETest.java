@@ -439,9 +439,9 @@ class ReceiptModuleE2ETest {
         assertThat(statusResponse.getStatusCode().value()).isEqualTo(200);
 
         // Confirm into an Expense.
-        ExpenseResponse expenseResponse = new ExpenseResponse();
         UUID expenseId = UUID.randomUUID();
-        expenseResponse.setId(expenseId.toString());
+        ExpenseResponse expenseResponse = ExpenseResponse.withId(
+                expenseId.toString());
         ArgumentCaptor<ExpenseRequest> expenseCaptor =
                 ArgumentCaptor.forClass(ExpenseRequest.class);
         when(serviceExpense.newExpense(expenseCaptor.capture(), eq(userId)))
@@ -476,8 +476,8 @@ class ReceiptModuleE2ETest {
         UUID receiptId = registerReceipt();
         driveToExtracted(receiptId);
 
-        ExpenseResponse expenseResponse = new ExpenseResponse();
-        expenseResponse.setId(UUID.randomUUID().toString());
+        ExpenseResponse expenseResponse = ExpenseResponse.withId(
+                UUID.randomUUID().toString());
         ArgumentCaptor<ExpenseRequest> expenseCaptor =
                 ArgumentCaptor.forClass(ExpenseRequest.class);
         when(serviceExpense.newExpense(expenseCaptor.capture(), eq(userId)))
@@ -599,9 +599,9 @@ class ReceiptModuleE2ETest {
         UUID receiptId = registerReceipt();
         driveToExtracted(receiptId);
 
-        ExpenseResponse expenseResponse = new ExpenseResponse();
         UUID expenseId = UUID.randomUUID();
-        expenseResponse.setId(expenseId.toString());
+        ExpenseResponse expenseResponse = ExpenseResponse.withId(
+                expenseId.toString());
         ArgumentCaptor<ExpenseRequest> expenseCaptor =
                 ArgumentCaptor.forClass(ExpenseRequest.class);
         when(serviceExpense.newExpense(expenseCaptor.capture(), eq(userId)))
@@ -629,9 +629,9 @@ class ReceiptModuleE2ETest {
         UUID receiptId = registerReceipt();
         driveToExtracted(receiptId);
 
-        IncomeResponse incomeResponse = new IncomeResponse();
         UUID incomeId = UUID.randomUUID();
-        incomeResponse.setId(incomeId.toString());
+        IncomeResponse incomeResponse = IncomeResponse.withId(
+                incomeId.toString());
         ArgumentCaptor<IncomeRequest> incomeCaptor =
                 ArgumentCaptor.forClass(IncomeRequest.class);
         when(serviceIncome.newIncome(incomeCaptor.capture(), eq(userId)))
@@ -812,8 +812,8 @@ class ReceiptModuleE2ETest {
         UUID receiptId = registerReceipt();
         driveToExtracted(receiptId);
 
-        ExpenseResponse expenseResponse = new ExpenseResponse();
-        expenseResponse.setId(UUID.randomUUID().toString());
+        ExpenseResponse expenseResponse = ExpenseResponse.withId(
+                UUID.randomUUID().toString());
         when(serviceExpense.newExpense(any(), eq(userId)))
                 .thenReturn(expenseResponse);
 

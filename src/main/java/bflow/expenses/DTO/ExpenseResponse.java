@@ -1,112 +1,64 @@
 package bflow.expenses.DTO;
 
 import bflow.category.DTO.CategoryResponse;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * DTO for expense response in API calls.
- */
-@Getter
-@Setter
-public class ExpenseResponse {
+/** Immutable API response for an expense. */
+public record ExpenseResponse(
+        String id,
+        String title,
+        String description,
+        BigDecimal amount,
+        LocalDate date,
+        CategoryResponse category,
+        Boolean recurring,
+        String walletId,
+        String walletName,
+        String contributorId,
+        String contributorName,
+        String source,
+        Instant createdAt,
+        Integer editCount,
+        Integer categorizationChanges,
+        Double confidenceScore,
+        String recurrencePattern,
+        String recurringTransactionId,
+        String receiptFileId
+) {
+    /** Empty response for interaction tests that only need a stub value. */
+    public static ExpenseResponse empty() {
+        return new ExpenseResponse(null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null);
+    }
 
-    /**
-     * The unique identifier for the expense.
-     */
-    private String id;
+    /** Creates a minimal response for stubbing a persisted expense. */
+    public static ExpenseResponse withId(final String id) {
+        return new ExpenseResponse(id, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null);
+    }
 
-    /**
-     * The title of the expense.
-     */
-    private String title;
-
-    /**
-     * The description of the expense.
-     */
-    private String description;
-
-    /**
-     * The amount of the expense.
-     */
-    private BigDecimal amount;
-
-    /**
-     * The date when the expense occurred.
-     */
-    private LocalDate date;
-
-    /**
-     * The category of the expense.
-     */
-    private CategoryResponse category;
-
-    /**
-     * Flag indicating if the expense is recurring.
-     */
-    private Boolean recurring;
-
-    /**
-     * The ID of the wallet containing this expense.
-     */
-    private String walletId;
-
-    /**
-     * The name of the wallet containing this expense.
-     */
-    private String walletName;
-
-    /**
-     * The ID of the user who contributed this expense.
-     */
-    private String contributorId;
-
-    /**
-     * The name of the user who contributed this expense.
-     */
-    private String contributorName;
-
-    /**
-     * The source of the expense (e.g., manual, receipt, voice, import).
-     */
-    private String source;
-
-    /**
-     * The timestamp when the expense was created.
-     */
-    private Instant createdAt;
-
-    /**
-     * The number of times this expense entry has been edited.
-     */
-    private Integer editCount;
-
-    /**
-     * The number of times the expense category has been changed.
-     */
-    private Integer categorizationChanges;
-
-    /**
-     * The confidence score for the expense categorization.
-     */
-    private Double confidenceScore;
-
-    /**
-     * Recurrence pattern of the transaction, if applicable.
-     */
-    private String recurrencePattern;
-
-    /**
-     * Identifier of the recurring transaction associated with this expense.
-     */
-    private String recurringTransactionId;
-
-    /**
-     * Identifier of the receipt file associated with this expense.
-     */
-    private String receiptFileId;
+    public String getId() { return id; }
+    public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public BigDecimal getAmount() { return amount; }
+    public LocalDate getDate() { return date; }
+    public CategoryResponse getCategory() { return category; }
+    public Boolean getRecurring() { return recurring; }
+    public String getWalletId() { return walletId; }
+    public String getWalletName() { return walletName; }
+    public String getContributorId() { return contributorId; }
+    public String getContributorName() { return contributorName; }
+    public String getSource() { return source; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Integer getEditCount() { return editCount; }
+    public Integer getCategorizationChanges() { return categorizationChanges; }
+    public Double getConfidenceScore() { return confidenceScore; }
+    public String getRecurrencePattern() { return recurrencePattern; }
+    public String getRecurringTransactionId() { return recurringTransactionId; }
+    public String getReceiptFileId() { return receiptFileId; }
 }

@@ -5,7 +5,6 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.budget.services.BudgetService;
 import bflow.category.entity.Category;
-import bflow.category.enums.CategoryType;
 import bflow.category.RepositoryCategory;
 import bflow.category.CategoryValidator;
 import bflow.common.exception.FileAccessDeniedException;
@@ -121,6 +120,9 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        if (request.getDate() == null) {
+            request.setDate(transactionDatePolicy.today());
+        }
         transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
@@ -178,6 +180,9 @@ public class ServiceExpense {
             final ExpenseRequest request,
             final UUID userId
     ) {
+        if (request.getDate() == null) {
+            request.setDate(transactionDatePolicy.today());
+        }
         transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
@@ -209,18 +214,7 @@ public class ServiceExpense {
         BigDecimal oldAmount = expense.getAmount();
         BigDecimal newAmount = request.getAmount();
 
-        Category category = repositoryCategory.findById(request.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageService.get("category.notFound")
-                ));
-
-        if (category.getType() != CategoryType.EXPENSE) {
-            throw new IllegalArgumentException(
-                    messageService.get(
-                            "category.invalidType.expense", category.getType()
-                    )
-            );
-        }
+        Category category = resolveExpenseCategory(request.getCategoryId());
 
         if (oldWalletId.equals(newWalletId)) {
             serviceWallet.adjustBalanceForExpenseUpdate(
@@ -266,7 +260,7 @@ public class ServiceExpense {
 
         serviceBudget.evaluateBudgetsForExpenseEvent(
                 newWallet.getId(),
-                category.getId()
+                category == null ? null : category.getId()
         );
 
         if (!oldWalletId.equals(newWalletId)) {

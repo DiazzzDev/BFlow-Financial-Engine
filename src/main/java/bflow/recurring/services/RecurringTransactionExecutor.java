@@ -152,7 +152,8 @@ public class RecurringTransactionExecutor {
         request.setAmount(recurring.getAmount());
         request.setDate(LocalDate.now(clock));
         request.setWalletId(recurring.getWallet().getId());
-        request.setCategoryId(recurring.getCategory().getId());
+        request.setCategoryId(recurring.getCategory() == null
+                ? null : recurring.getCategory().getId());
         request.setSource("recurring");
         request.setRecurring(true);
 
@@ -166,7 +167,8 @@ public class RecurringTransactionExecutor {
         request.setAmount(recurring.getAmount());
         request.setDate(LocalDate.now(clock));
         request.setWalletId(recurring.getWallet().getId());
-        request.setCategoryId(recurring.getCategory().getId());
+        request.setCategoryId(recurring.getCategory() == null
+                ? null : recurring.getCategory().getId());
         request.setSource("recurring");
         request.setRecurring(true);
 

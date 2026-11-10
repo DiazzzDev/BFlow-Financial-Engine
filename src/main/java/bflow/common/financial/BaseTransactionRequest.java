@@ -7,6 +7,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -34,6 +35,7 @@ public abstract class BaseTransactionRequest {
     private static final int AMOUNT_FRACTION_DIGITS = 2;
 
     /** Title of the transaction. */
+    @Schema(description = "Transaction title.", example = "Coffee")
     @NotBlank(message = "{transaction.title.required}")
     @Size(
             min = TITLE_MIN_LENGTH, max = TITLE_MAX_LENGTH,
@@ -46,6 +48,8 @@ public abstract class BaseTransactionRequest {
     private String title;
 
     /** Optional description. */
+    @Schema(description = "Optional note for the transaction.",
+            nullable = true, example = "Latte")
     @Size(
             max = DESCRIPTION_MAX_LENGTH,
             message = "{transaction.description.size}"
@@ -57,6 +61,8 @@ public abstract class BaseTransactionRequest {
     private String description;
 
     /** Transaction amount. */
+    @Schema(description = "Positive transaction amount with up to two decimal places.",
+            example = "4.50")
     @NotNull(message = "{transaction.amount.required}")
     @Digits(
             integer = AMOUNT_INTEGER_DIGITS, fraction = AMOUNT_FRACTION_DIGITS,
@@ -69,21 +75,27 @@ public abstract class BaseTransactionRequest {
     )
     private BigDecimal amount;
 
-    /** Transaction date. */
-    @NotNull(message = "{transaction.date.required}")
+    /** Transaction date; defaults to today in the business time zone. */
+    @Schema(description = "Optional transaction date in ISO-8601 format. "
+            + "When omitted or null, the backend uses today's date in "
+            + "America/El_Salvador.", nullable = true, example = "2026-11-10")
     @ValidTransactionDate(allowNull = true)
     private LocalDate date;
 
     /** Associated wallet id. */
+    @Schema(description = "Wallet that owns this transaction.",
+            example = "123e4567-e89b-12d3-a456-426614174000")
     @NotNull(message = "{transaction.walletId.required}")
     private UUID walletId;
 
-    /** Indicates the money source. */
-    @NotBlank
-    private String source;
+    /** Internal transaction origin; manual when omitted. */
+    @Schema(description = "Transaction origin. Defaults to manual when "
+            + "omitted.", defaultValue = "manual", example = "manual")
+    private String source = "manual";
 
-    /** Indicates if transaction recurs. */
-    @NotNull(message = "{transaction.recurring.required}")
+    /** Indicates if transaction recurs. Defaults to false when omitted. */
+    @Schema(description = "Whether to create this transaction as recurring.",
+            defaultValue = "false", example = "false")
     private Boolean recurring = false;
 
     /** Recurrence pattern. */
@@ -91,10 +103,26 @@ public abstract class BaseTransactionRequest {
             regexp = "^(DAILY|WEEKLY|MONTHLY|YEARLY)?$",
             message = "{transaction.recurrencePattern.invalid}"
     )
+    @Schema(description = "Optional recurrence pattern. Required only when "
+            + "recurring is true.", nullable = true,
+            allowableValues = {"DAILY", "WEEKLY", "MONTHLY", "YEARLY"},
+            example = "MONTHLY")
     private String recurrencePattern;
 
-    /** Associated category id. */
-    @NotNull(message = "{transaction.categoryId.required}")
+    /** Optional associated category id. */
+    @Schema(description = "Optional category UUID. Omit or send null to "
+            + "save without a category; categorization can be done later.",
+            nullable = true,
+            example = "123e4567-e89b-12d3-a456-426614174001")
     private UUID categoryId;
+
+    /**
+     * Provides a safe source default for omitted or null values.
+     *
+     * @return supplied origin, or {@code manual} for user-entered requests
+     */
+    public String getSource() {
+        return source == null || source.isBlank() ? "manual" : source;
+    }
 
 }

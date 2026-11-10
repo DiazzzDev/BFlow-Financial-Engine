@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -54,11 +56,22 @@ public class ControllerIncome {
      */
     @Operation(
             summary = "Creates a new income entry for the authenticated user's wallet.",
-            description = "Creates a new income entry for the authenticated user's wallet."
+            description = "Creates an income. Required: title, amount, and "
+                    + "walletId. date defaults to today in America/El_Salvador; "
+                    + "categoryId and description are optional."
     )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<IncomeResponse> createIncome(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Income details. Omit date to use today's "
+                            + "business date and omit categoryId for an "
+                            + "uncategorized income.",
+                    content = @Content(examples = @ExampleObject(
+                            name = "Minimal income",
+                            value = "{\"title\":\"Salary\",\"amount\":2500.00,"
+                                    + "\"walletId\":\"123e4567-e89b-12d3-a456-426614174000\"}"
+                    )))
             @Valid @RequestBody final IncomeRequest request,
             final Authentication authentication
     ) {
@@ -84,11 +97,22 @@ public class ControllerIncome {
      */
     @Operation(
             summary = "Updates an existing income entry for the authenticated user.",
-            description = "Updates an existing income entry for the authenticated user."
+            description = "Replaces the editable income fields. Required: "
+                    + "title, amount, and walletId. date defaults to today in "
+                    + "America/El_Salvador; categoryId and description are optional."
     )
     @PutMapping("/{id}")
     public ApiResponse<IncomeResponse> updateIncome(
             @PathVariable final String id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updated income details; categoryId may be "
+                            + "omitted to remove its category.",
+                    content = @Content(examples = @ExampleObject(
+                            name = "Income without category",
+                            value = "{\"title\":\"Salary\",\"amount\":2500.00,"
+                                    + "\"walletId\":\"123e4567-e89b-12d3-a456-426614174000\","
+                                    + "\"categoryId\":null}"
+                    )))
             @Valid @RequestBody final IncomeRequest request,
             final Authentication authentication
     ) {

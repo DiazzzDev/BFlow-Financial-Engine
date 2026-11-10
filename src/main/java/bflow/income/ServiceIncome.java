@@ -4,7 +4,6 @@ import bflow.auth.entities.User;
 import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.UserService;
 import bflow.category.entity.Category;
-import bflow.category.enums.CategoryType;
 import bflow.category.RepositoryCategory;
 import bflow.category.CategoryValidator;
 import bflow.common.exception.ResourceNotFoundException;
@@ -109,6 +108,9 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
+        if (request.getDate() == null) {
+            request.setDate(transactionDatePolicy.today());
+        }
         transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
@@ -153,6 +155,9 @@ public class ServiceIncome {
             final IncomeRequest request,
             final UUID userId
     ) {
+        if (request.getDate() == null) {
+            request.setDate(transactionDatePolicy.today());
+        }
         transactionDatePolicy.validateRequired(request.getDate());
         userService.validateUserActive(userId);
 
@@ -182,18 +187,7 @@ public class ServiceIncome {
         BigDecimal oldAmount = income.getAmount();
         BigDecimal newAmount = request.getAmount();
 
-        Category category = repositoryCategory.findById(request.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageService.get("category.notFound")
-                ));
-
-        if (category.getType() != CategoryType.INCOME) {
-            throw new IllegalArgumentException(
-                    messageService.get(
-                            "category.invalidType.income", category.getType()
-                    )
-            );
-        }
+        Category category = resolveIncomeCategory(request.getCategoryId());
 
         if (oldWalletId.equals(newWalletId)) {
             serviceWallet.adjustBalanceForIncomeUpdate(

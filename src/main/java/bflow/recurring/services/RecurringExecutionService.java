@@ -18,6 +18,7 @@ import bflow.subscription.services.PlanLimitService;
 import bflow.wallet.entities.Wallet;
 import bflow.wallet.entities.WalletUser;
 import bflow.wallet.repository.RepositoryWalletUser;
+import bflow.wallet.enums.WalletRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.factory.Mappers;
@@ -206,23 +207,13 @@ public class RecurringExecutionService {
                 userId, FeatureCodes.RECURRING_TRANSACTIONS,
                 repository.countByUserIdAndActiveTrue(userId));
 
-        WalletUser walletUser = repositoryWalletUser
-                .findByWalletIdAndUserId(request.getWalletId(), userId)
-                .orElseThrow(() ->
-                        new WalletAccessDeniedException(
-                                messageService.get("wallet.accessDenied")
-                        )
-                );
+        WalletUser walletUser = resolveWalletUser(
+                request.getWalletId(), userId);
 
         Wallet wallet = walletUser.getWallet();
 
-        Category category = repositoryCategory
-                .findById(request.getCategoryId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                messageService.get("category.notFound")
-                        )
-                );
+        Category category = resolveCategory(
+                request.getCategoryId(), request.getType());
 
         RecurringTransaction recurring = new RecurringTransaction();
 
@@ -238,9 +229,11 @@ public class RecurringExecutionService {
         recurring.setFrequency(request.getFrequency());
         recurring.setIntervalValue(request.getIntervalValue());
 
-        recurring.setStartDate(request.getStartDate());
+        LocalDate startDate = request.getStartDate() == null
+                ? LocalDate.now(clock) : request.getStartDate();
+        recurring.setStartDate(startDate);
         LocalDate nextExecutionDate = resolveFirstExecutionDate(
-                request.getStartDate(), request.getFrequency(),
+                startDate, request.getFrequency(),
                 request.getIntervalValue()
         );
         recurring.setNextExecutionDate(nextExecutionDate);
@@ -270,18 +263,16 @@ public class RecurringExecutionService {
                     messageService.get("wallet.accessDenied"));
         }
 
-        WalletUser walletUser = repositoryWalletUser
-                .findByWalletIdAndUserId(request.getWalletId(), userId)
-                .orElseThrow(() -> new WalletAccessDeniedException(
-                        messageService.get("wallet.accessDenied")));
-        Category category = repositoryCategory.findById(request.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageService.get("category.notFound")));
-        validateCategoryType(category, request.getType());
+        WalletUser walletUser = resolveWalletUser(
+                request.getWalletId(), userId);
+        Category category = resolveCategory(
+                request.getCategoryId(), request.getType());
 
+        LocalDate startDate = request.getStartDate() == null
+                ? LocalDate.now(clock) : request.getStartDate();
         boolean scheduleChanged = recurring.getFrequency() != request.getFrequency()
                 || !recurring.getIntervalValue().equals(request.getIntervalValue())
-                || !recurring.getStartDate().equals(request.getStartDate());
+                || !recurring.getStartDate().equals(startDate);
 
         recurring.setTitle(request.getTitle());
         recurring.setDescription(request.getDescription());
@@ -291,12 +282,12 @@ public class RecurringExecutionService {
         recurring.setType(request.getType());
         recurring.setFrequency(request.getFrequency());
         recurring.setIntervalValue(request.getIntervalValue());
-        recurring.setStartDate(request.getStartDate());
+        recurring.setStartDate(startDate);
         recurring.setEndDate(request.getEndDate());
 
         if (scheduleChanged) {
             recurring.setNextExecutionDate(resolveFirstExecutionDate(
-                    request.getStartDate(), request.getFrequency(),
+                    startDate, request.getFrequency(),
                     request.getIntervalValue()));
         }
         if (recurring.getEndDate() != null
@@ -317,6 +308,47 @@ public class RecurringExecutionService {
             throw new IllegalArgumentException(
                     messageService.get(key, category.getType()));
         }
+    }
+
+    /**
+     * Resolves and validates an optional recurrence category.
+     *
+     * @param categoryId optional category identifier
+     * @param type recurrence transaction type
+     * @return the validated category, or null when omitted
+     */
+    private Category resolveCategory(
+            final UUID categoryId,
+            final bflow.recurring.enums.RecurringType type
+    ) {
+        if (categoryId == null) {
+            return null;
+        }
+        Category category = repositoryCategory.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("category.notFound")));
+        validateCategoryType(category, type);
+        return category;
+    }
+
+    /**
+     * Resolves the explicitly selected wallet, or the caller's default owned
+     * wallet when a recurring request omits its wallet.
+     */
+    private WalletUser resolveWalletUser(
+            final UUID walletId,
+            final UUID userId
+    ) {
+        if (walletId != null) {
+            return repositoryWalletUser.findByWalletIdAndUserId(walletId, userId)
+                    .orElseThrow(() -> new WalletAccessDeniedException(
+                            messageService.get("wallet.accessDenied")));
+        }
+        return repositoryWalletUser
+                .findFirstByUserIdAndRoleOrderByDefaultWalletDescCreatedAtAsc(
+                        userId, WalletRole.OWNER)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageService.get("noWalletFound")));
     }
 
     /**

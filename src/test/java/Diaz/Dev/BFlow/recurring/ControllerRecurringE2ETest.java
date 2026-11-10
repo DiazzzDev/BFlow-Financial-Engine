@@ -72,10 +72,9 @@ class ControllerRecurringE2ETest {
     @Test
     void getRecurrenceByIdUsesAuthenticatedUser() throws Exception {
         UUID recurrenceId = UUID.randomUUID();
-        RecurringResponse response = new RecurringResponse();
-        response.setId(recurrenceId);
-        response.setTitle("Salary");
-        response.setEndDate(null);
+        RecurringResponse response = new RecurringResponse(
+                recurrenceId, "Salary", null, null, null, null, null, null,
+                null, null, null, null);
         when(recurringService.getRecurringById(recurrenceId, userId))
                 .thenReturn(response);
 
@@ -93,19 +92,11 @@ class ControllerRecurringE2ETest {
         UUID recurrenceId = UUID.randomUUID();
         UUID walletId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        RecurringResponse response = new RecurringResponse();
-        response.setId(recurrenceId);
-        response.setTitle("Salary");
-        response.setAmount(new BigDecimal("2000.00"));
-        response.setType(RecurringType.INCOME);
-        response.setFrequency(RecurringFrequency.MONTHLY);
-        response.setIntervalValue(1);
-        response.setStartDate(LocalDate.of(2026, 1, 1));
-        response.setEndDate(null);
-        response.setNextExecutionDate(LocalDate.of(2026, 11, 1));
-        response.setActive(true);
-        response.setWalletId(walletId);
-        response.setCategoryId(categoryId);
+        RecurringResponse response = new RecurringResponse(
+                recurrenceId, "Salary", new BigDecimal("2000.00"),
+                RecurringType.INCOME, RecurringFrequency.MONTHLY, 1,
+                LocalDate.of(2026, 1, 1), null,
+                LocalDate.of(2026, 11, 1), true, walletId, categoryId);
         when(recurringService.updateRecurring(eq(recurrenceId), any(), eq(userId)))
                 .thenReturn(response);
 

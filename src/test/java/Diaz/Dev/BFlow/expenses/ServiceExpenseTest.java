@@ -300,6 +300,31 @@ class ServiceExpenseTest {
         verify(serviceBudget).evaluateBudgetsForExpenseEvent(walletId, null);
     }
 
+    @Test
+    void testCreateExpense_defaultsMissingDateToBusinessToday() {
+        LocalDate today = LocalDate.of(2026, 11, 10);
+        ExpenseRequest request = new ExpenseRequest();
+        request.setWalletId(walletId);
+        request.setTitle("Coffee");
+        request.setAmount(new BigDecimal("4.50"));
+
+        when(transactionDatePolicy.today()).thenReturn(today);
+        when(repositoryUser.findById(userId)).thenReturn(Optional.of(user));
+        when(repositoryWalletUser.findByWalletIdAndUserId(walletId, userId))
+                .thenReturn(Optional.of(walletUser));
+        when(repositoryWallet.findByIdForUpdate(walletId))
+                .thenReturn(Optional.of(wallet));
+        when(repositoryExpense.saveAndFlush(any(Expense.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        serviceExpense.newExpense(request, userId);
+
+        ArgumentCaptor<Expense> saved = ArgumentCaptor.forClass(Expense.class);
+        verify(repositoryExpense).saveAndFlush(saved.capture());
+        assertEquals(today, saved.getValue().getDate());
+        verify(transactionDatePolicy).validateRequired(today);
+    }
+
     /**
      * Confirms the expense is never persisted and the wallet balance
      * is never touched when the wallet cannot cover the requested amount.

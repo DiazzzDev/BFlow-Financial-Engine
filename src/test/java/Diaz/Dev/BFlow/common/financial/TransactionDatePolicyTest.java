@@ -149,6 +149,16 @@ class TransactionDatePolicyTest {
         assertNoDateViolation(validator, TODAY.minusDays(1));
     }
 
+    @Test
+    void expenseAndIncomeRequestDatesMayBeOmittedForServiceDefaults() {
+        Validator validator = requestValidator();
+        assertThat(validator.validateProperty(new ExpenseRequest(), "date"))
+                .isEmpty();
+        assertThat(validator.validateProperty(
+                new bflow.income.DTO.IncomeRequest(), "date"))
+                .isEmpty();
+    }
+
     private Validator requestValidator() {
         ValidatorFactory defaultFactory =
                 Validation.buildDefaultValidatorFactory();
