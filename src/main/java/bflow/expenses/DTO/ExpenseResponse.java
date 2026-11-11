@@ -1,6 +1,7 @@
 package bflow.expenses.DTO;
 
 import bflow.category.DTO.CategoryResponse;
+import bflow.common.financial.TransactionResponseAccessors;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,7 +28,7 @@ public record ExpenseResponse(
         String recurrencePattern,
         String recurringTransactionId,
         String receiptFileId
-) {
+) implements TransactionResponseAccessors {
     /** Empty response for interaction tests that only need a stub value. */
     public static ExpenseResponse empty() {
         return new ExpenseResponse(null, null, null, null, null, null, null,
@@ -42,23 +43,5 @@ public record ExpenseResponse(
                 null, null);
     }
 
-    public String getId() { return id; }
-    public String getTitle() { return title; }
-    public String getDescription() { return description; }
-    public BigDecimal getAmount() { return amount; }
-    public LocalDate getDate() { return date; }
-    public CategoryResponse getCategory() { return category; }
-    public Boolean getRecurring() { return recurring; }
-    public String getWalletId() { return walletId; }
-    public String getWalletName() { return walletName; }
-    public String getContributorId() { return contributorId; }
-    public String getContributorName() { return contributorName; }
-    public String getSource() { return source; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Integer getEditCount() { return editCount; }
-    public Integer getCategorizationChanges() { return categorizationChanges; }
-    public Double getConfidenceScore() { return confidenceScore; }
-    public String getRecurrencePattern() { return recurrencePattern; }
-    public String getRecurringTransactionId() { return recurringTransactionId; }
     public String getReceiptFileId() { return receiptFileId; }
 }

@@ -2,6 +2,7 @@ package bflow.recurring.DTO;
 
 import bflow.recurring.enums.RecurringFrequency;
 import bflow.recurring.enums.RecurringType;
+import bflow.common.financial.BaseTransactionDetailsRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
@@ -9,10 +10,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,13 +23,7 @@ import java.util.UUID;
  */
 @Getter
 @Setter
-public final class RecurringRequest {
-
-    private static final int TITLE_MIN_LENGTH = 1;
-
-    private static final int TITLE_MAX_LENGTH = 50;
-
-    private static final int DESCRIPTION_MAX_LENGTH = 100;
+public final class RecurringRequest extends BaseTransactionDetailsRequest {
 
     private static final int AMOUNT_INTEGER_DIGITS = 13;
 
@@ -40,33 +32,6 @@ public final class RecurringRequest {
     private static final int DEFAULT_INTERVAL = 1;
 
     private static final int MAX_INTERVAL = 365;
-
-    /** The transaction title. */
-    @Schema(description = "Short label for the recurring transaction.",
-            example = "Rent")
-    @NotBlank(message = "{transaction.title.required}")
-    @Size(
-            min = TITLE_MIN_LENGTH, max = TITLE_MAX_LENGTH,
-            message = "{transaction.title.size}"
-    )
-    @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]+$",
-            message = "{transaction.title.invalidCharacters}"
-    )
-    private String title;
-
-    /** The transaction description (optional). */
-    @Schema(description = "Optional note for the recurring transaction.",
-            nullable = true, example = "Apartment rent")
-    @Size(
-            max = DESCRIPTION_MAX_LENGTH,
-            message = "{transaction.description.size}"
-    )
-    @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]*$",
-            message = "{transaction.description.invalidCharacters}"
-    )
-    private String description;
 
     /** The transaction amount. */
     @Schema(description = "Positive amount with up to two decimal places.",

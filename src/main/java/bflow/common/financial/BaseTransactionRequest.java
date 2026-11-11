@@ -1,11 +1,9 @@
 package bflow.common.financial;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -16,49 +14,14 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public abstract class BaseTransactionRequest {
-
-
-    /** Minimum length for expense title. */
-    private static final int TITLE_MIN_LENGTH = 1;
-
-    /** Maximum length for expense title. */
-    private static final int TITLE_MAX_LENGTH = 50;
-
-    /** Maximum length for expense description. */
-    private static final int DESCRIPTION_MAX_LENGTH = 100;
+public abstract class BaseTransactionRequest
+        extends BaseTransactionDetailsRequest {
 
     /** Maximum integer digits for expense amount. */
     private static final int AMOUNT_INTEGER_DIGITS = 13;
 
     /** Fraction digits for expense amount (decimal places). */
     private static final int AMOUNT_FRACTION_DIGITS = 2;
-
-    /** Title of the transaction. */
-    @Schema(description = "Transaction title.", example = "Coffee")
-    @NotBlank(message = "{transaction.title.required}")
-    @Size(
-            min = TITLE_MIN_LENGTH, max = TITLE_MAX_LENGTH,
-            message = "{transaction.title.size}"
-    )
-    @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]+$",
-            message = "{transaction.title.invalidCharacters}"
-    )
-    private String title;
-
-    /** Optional description. */
-    @Schema(description = "Optional note for the transaction.",
-            nullable = true, example = "Latte")
-    @Size(
-            max = DESCRIPTION_MAX_LENGTH,
-            message = "{transaction.description.size}"
-    )
-    @Pattern(
-            regexp = "^[\\p{L}0-9 .,'\\-()!?&@#%/+:_]*$",
-            message = "{transaction.description.invalidCharacters}"
-    )
-    private String description;
 
     /** Transaction amount. */
     @Schema(description = "Positive transaction amount with up to two decimal places.",
