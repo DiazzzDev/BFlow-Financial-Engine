@@ -59,8 +59,7 @@ class GmailExpenseRegistrarTest {
         item.setWallet(wallet);
         Category category = new Category();
         category.setId(categoryId);
-        ExpenseResponse response = new ExpenseResponse();
-        response.setId(expenseId.toString());
+        ExpenseResponse response = ExpenseResponse.withId(expenseId.toString());
         when(importRepository.findById(importId)).thenReturn(Optional.of(item));
         when(categoryRepository.findFirstByNameIgnoreCaseAndType("OTHER", CategoryType.EXPENSE))
                 .thenReturn(Optional.of(category));

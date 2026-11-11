@@ -126,7 +126,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -147,12 +147,28 @@ class RecurringTransactionExecutorTest {
     }
 
     @Test
+    void executeSingle_uncategorizedExpenseKeepsCategoryOptional() {
+        recurring.setCategory(null);
+        when(repository.findByIdForUpdate(recurringId))
+                .thenReturn(Optional.of(recurring));
+        when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
+                .thenReturn(ExpenseResponse.empty());
+
+        executor.executeSingle(recurringId);
+
+        ArgumentCaptor<ExpenseRequest> request =
+                ArgumentCaptor.forClass(ExpenseRequest.class);
+        verify(serviceExpense).newExpense(request.capture(), any());
+        assertNull(request.getValue().getCategoryId());
+    }
+
+    @Test
     void executeSingle_incomeType_callsServiceIncomeNotExpense() {
         recurring.setType(RecurringType.INCOME);
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceIncome.newIncome(any(IncomeRequest.class), any()))
-                .thenReturn(new IncomeResponse());
+                .thenReturn(IncomeResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -182,7 +198,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -195,7 +211,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -212,7 +228,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -226,7 +242,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
         executor.executeSingle(recurringId);
@@ -255,7 +271,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -272,7 +288,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -289,7 +305,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -308,7 +324,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -323,7 +339,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -341,7 +357,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -359,7 +375,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -375,7 +391,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceExpense.newExpense(any(ExpenseRequest.class), any()))
-                .thenReturn(new ExpenseResponse());
+                .thenReturn(ExpenseResponse.empty());
 
         executor.executeSingle(recurringId);
 
@@ -419,7 +435,7 @@ class RecurringTransactionExecutorTest {
         when(repository.findByIdForUpdate(recurringId))
                 .thenReturn(Optional.of(recurring));
         when(serviceIncome.newIncome(any(IncomeRequest.class), any()))
-                .thenReturn(new IncomeResponse());
+                .thenReturn(IncomeResponse.empty());
 
         executor.executeSingle(recurringId);
 

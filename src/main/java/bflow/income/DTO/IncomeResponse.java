@@ -1,107 +1,45 @@
 package bflow.income.DTO;
 
 import bflow.category.DTO.CategoryResponse;
-import lombok.Getter;
-import lombok.Setter;
+import bflow.common.financial.TransactionResponseAccessors;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Data Transfer Object for income responses.
- */
-@Getter
-@Setter
-public class IncomeResponse {
+/** Immutable API response for an income. */
+public record IncomeResponse(
+        String id,
+        String title,
+        String description,
+        BigDecimal amount,
+        LocalDate date,
+        CategoryResponse category,
+        String walletId,
+        String walletName,
+        String contributorId,
+        String contributorName,
+        String source,
+        Instant createdAt,
+        Integer editCount,
+        Integer categorizationChanges,
+        Double confidenceScore,
+        Boolean recurring,
+        String recurrencePattern,
+        String recurringTransactionId
+) implements TransactionResponseAccessors {
+    /** Empty response for interaction tests that only need a stub value. */
+    public static IncomeResponse empty() {
+        return new IncomeResponse(null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null);
+    }
 
-    /**
-     * The unique identifier of the income.
-     */
-    private String id;
+    /** Creates a minimal response for stubbing a persisted income. */
+    public static IncomeResponse withId(final String id) {
+        return new IncomeResponse(id, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null);
+    }
 
-    /**
-     * The title or name of the income source.
-     */
-    private String title;
-
-    /**
-     * A detailed description of the income.
-     */
-    private String description;
-
-    /**
-     * The monetary amount of the income.
-     */
-    private BigDecimal amount;
-
-    /**
-     * The date when the income was received.
-     */
-    private LocalDate date;
-
-    /**
-     * The type of income (e.g., SALARY, BONUS).
-     */
-    private CategoryResponse category;
-
-    /**
-     * The unique identifier of the associated wallet.
-     */
-    private String walletId;
-
-    /**
-     * The name of the associated wallet.
-     */
-    private String walletName;
-
-    /**
-     * The unique identifier of the income contributor.
-     */
-    private String contributorId;
-
-    /**
-     * The name of the income contributor.
-     */
-    private String contributorName;
-
-    /**
-     * The source of the income (e.g., manual, receipt, voice, import).
-     */
-    private String source;
-
-    /**
-     * The timestamp when the income was created.
-     */
-    private Instant createdAt;
-
-    /**
-     * The number of times this income entry has been edited.
-     */
-    private Integer editCount;
-
-    /**
-     * The number of times the income category has been changed.
-     */
-    private Integer categorizationChanges;
-
-    /**
-     * The confidence score for the income categorization.
-     */
-    private Double confidenceScore;
-
-    /**
-     * Indicates whether this income is a recurring transaction.
-     */
-    private Boolean recurring;
-
-    /**
-     * The recurrence pattern of the income, if applicable.
-     */
-    private String recurrencePattern;
-
-    /**
-     * The unique identifier of the associated recurring transaction.
-     */
-    private String recurringTransactionId;
 }
-

@@ -62,6 +62,23 @@ public final class UserController {
     /** Creates an export containing only the authenticated user's data. */
     private final UserDataExportService userDataExportService;
 
+    /** Retrieves the current authenticated user's own profile. */
+    @Operation(summary = "Gets the authenticated user's profile",
+            description = "Returns the profile of the currently authenticated user.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Profile retrieved")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "User not authenticated")
+    @GetMapping("/me")
+    public ApiResponse<UserProfileResponse> getCurrentProfile(
+            final Authentication authentication,
+            final HttpServletRequest request) {
+        UUID userId = currentUserService.getCurrentUserId(authentication);
+        UserProfileResponse profile = userService.getProfile(userId);
+        return ApiResponse.success(
+                messageService.get("user.profile.retrieved"),
+                profile,
+                request.getRequestURI());
+    }
+
     /**
      * Updates the current authenticated user's profile.
      * @param authentication the current user's authentication object.
