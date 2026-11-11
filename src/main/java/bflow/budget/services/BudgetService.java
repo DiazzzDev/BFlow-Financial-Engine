@@ -590,7 +590,7 @@ public class BudgetService {
         }
 
         Currency currency = budget.getWallet() == null
-                ? null : budget.getWallet().getCurrency();
+                ? budget.getCurrency() : budget.getWallet().getCurrency();
 
         BudgetDetailView detailView = new BudgetDetailView(
                 budget,
