@@ -11,11 +11,14 @@ import bflow.subscription.services.PaymentService;
 import bflow.subscription.services.SubscriptionReconciliationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -24,8 +27,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SubscriptionRenewalScheduler {
 
-    /** Grace period before a monthly subscription is considered overdue. */
-    private static final int MONTHLY_GRACE_DAYS = 3;
+    /** Billing calendar used to determine when an unpaid billing day ends. */
+    private static final ZoneId WOMPI_ZONE = ZoneId.of("America/El_Salvador");
 
     /** Reminder window for annual renewals. */
     private static final int ANNUAL_REMINDER_WINDOW_DAYS = 14;
@@ -52,15 +55,15 @@ public class SubscriptionRenewalScheduler {
     /**
      * Flag overdue subscriptions when Wompi failed to confirm payment.
      */
-    @Scheduled(cron = "0 0 6 * * *")
+    @Scheduled(cron = "0 */15 * * * *")
+    @SchedulerLock(name = "flagOverdueSubscriptions")
     @Transactional
     public void flagOverdueSubscriptions() {
         log.info("flagOverdueSubscriptions: iniciando");
 
-        Instant threshold = Instant.now().minus(
-                MONTHLY_GRACE_DAYS,
-                ChronoUnit.DAYS
-        );
+        Instant threshold = LocalDate.now(WOMPI_ZONE)
+                .atStartOfDay(WOMPI_ZONE)
+                .toInstant();
 
         List<Subscription> overdue = repositorySubscription
                 .findAllByStatusAndNextBillingAtBefore(
@@ -74,11 +77,7 @@ public class SubscriptionRenewalScheduler {
         );
 
         for (Subscription subscription : overdue) {
-            SubscriptionStatus newStatus =
-                    subscription.getPlan().getBillingPeriod()
-                            == BillingPeriod.YEARLY
-                            ? SubscriptionStatus.EXPIRED
-                            : SubscriptionStatus.PAST_DUE;
+            SubscriptionStatus newStatus = SubscriptionStatus.EXPIRED;
 
             subscription.setStatus(newStatus);
             repositorySubscription.save(subscription);
@@ -98,6 +97,7 @@ public class SubscriptionRenewalScheduler {
      * expiring.
      */
     @Scheduled(cron = "0 30 6 * * *")
+    @SchedulerLock(name = "sendRenewalReminders")
     @Transactional
     public void sendRenewalReminders() {
         Instant now = Instant.now();
@@ -150,6 +150,7 @@ public class SubscriptionRenewalScheduler {
      * Reconcile pending enrolments shortly after Wompi confirms the card.
      */
     @Scheduled(cron = "0 */15 * * * *")
+    @SchedulerLock(name = "reconcilePendingSubscriptions")
     @Transactional
     public void reconcilePending() {
         subscriptionReconciliationService.reconcilePendingActivations();

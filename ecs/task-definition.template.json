@@ -18,6 +18,14 @@
 
       "essential": true,
 
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -fsS http://127.0.0.1:8081/actuator/health || exit 1"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 300
+      },
+
       "portMappings": [
         {
           "containerPort": 8080,

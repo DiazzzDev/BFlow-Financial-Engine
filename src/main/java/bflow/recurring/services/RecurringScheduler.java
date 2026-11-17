@@ -1,6 +1,7 @@
 package bflow.recurring.services;
 
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ public class RecurringScheduler {
      * Execute due recurring transactions every 10 seconds.
      */
     @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "recurringTransactions")
     public void runRecurring() {
         recurringExecutionService.executeDueTransactions();
     }

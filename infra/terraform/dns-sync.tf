@@ -68,24 +68,23 @@ resource "aws_lambda_function" "dns_sync" {
   }
 }
 
-resource "aws_cloudwatch_event_rule" "ecs_task_running" {
+resource "aws_cloudwatch_event_rule" "ecs_service_steady_state" {
   count       = var.dns_sync_enabled ? 1 : 0
-  name        = "${var.project_name}-ecs-task-state-change"
-  description = "Sync Cloudflare DNS when the ECS task receives a public IP"
+  name        = "${var.project_name}-ecs-service-steady-state"
+  description = "Sync Cloudflare DNS after the ECS service is healthy and stable"
   event_pattern = jsonencode({
     source      = ["aws.ecs"]
-    detail-type = ["ECS Task State Change"]
+    detail-type = ["ECS Service Action"]
     detail = {
+      eventName  = ["SERVICE_STEADY_STATE"]
       clusterArn = [aws_ecs_cluster.main.arn]
-      lastStatus = ["RUNNING"]
-      launchType = ["FARGATE"]
     }
   })
 }
 
 resource "aws_cloudwatch_event_target" "dns_sync" {
   count = var.dns_sync_enabled ? 1 : 0
-  rule  = aws_cloudwatch_event_rule.ecs_task_running[0].name
+  rule  = aws_cloudwatch_event_rule.ecs_service_steady_state[0].name
   arn   = aws_lambda_function.dns_sync[0].arn
 }
 
@@ -95,5 +94,5 @@ resource "aws_lambda_permission" "eventbridge" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.dns_sync[0].function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.ecs_task_running[0].arn
+  source_arn    = aws_cloudwatch_event_rule.ecs_service_steady_state[0].arn
 }

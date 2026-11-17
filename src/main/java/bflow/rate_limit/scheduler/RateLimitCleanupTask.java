@@ -2,6 +2,7 @@ package bflow.rate_limit.scheduler;
 
 import bflow.rate_limit.service.BucketStorageService;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,7 @@ public class RateLimitCleanupTask {
      */
     @Scheduled(fixedRate = INITIAL_DELAY_MINUTES * DELAY_SECONDS
             * SECONDS_TO_MILLIS)
+    @SchedulerLock(name = "rateLimitBucketCleanup")
     public void cleanup() {
         storageService.cleanup();
     }

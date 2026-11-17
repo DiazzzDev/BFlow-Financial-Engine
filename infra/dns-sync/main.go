@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -27,12 +28,11 @@ const (
 	cloudflareAPIBase     = "https://api.cloudflare.com/client/v4"
 )
 
-// ecsTaskDetail mirrors the fields we need from an "ECS Task State Change"
-// EventBridge event. We only decode what we use — the ENI itself is
-// resolved separately via a live ECS query, not from this payload.
-type ecsTaskDetail struct {
-	LastStatus string `json:"lastStatus"`
-	Group      string `json:"group"`
+// ecsServiceActionDetail contains the fields used to validate a steady-state
+// service event before querying ECS for its healthy task.
+type ecsServiceActionDetail struct {
+	EventName  string `json:"eventName"`
+	ClusterArn string `json:"clusterArn"`
 }
 
 type cloudflareConfig struct {
@@ -91,19 +91,26 @@ func main() {
 }
 
 func (d *handlerDeps) handle(ctx context.Context, event events.CloudWatchEvent) (syncResult, error) {
-	var detail ecsTaskDetail
+	if event.Source != "aws.ecs" || event.DetailType != "ECS Service Action" {
+		return syncResult{Status: "skipped: unexpected event type"}, nil
+	}
+
+	var detail ecsServiceActionDetail
 	if err := json.Unmarshal(event.Detail, &detail); err != nil {
 		return syncResult{}, fmt.Errorf("decoding event detail: %w", err)
 	}
 
-	if detail.LastStatus != "RUNNING" {
-		fmt.Printf("Ignoring event: lastStatus=%s\n", detail.LastStatus)
-		return syncResult{Status: "skipped: not RUNNING"}, nil
+	if detail.EventName != "SERVICE_STEADY_STATE" {
+		fmt.Printf("Ignoring event: eventName=%s\n", detail.EventName)
+		return syncResult{Status: "skipped: service not steady"}, nil
 	}
 
-	expectedGroup := "service:" + d.ecsServiceName
-	if detail.Group != expectedGroup {
-		fmt.Printf("Ignoring event: group=%s (expected %s)\n", detail.Group, expectedGroup)
+	if !strings.HasSuffix(detail.ClusterArn, "/"+d.ecsClusterName) {
+		fmt.Printf("Ignoring event: clusterArn=%s\n", detail.ClusterArn)
+		return syncResult{Status: "skipped: different service"}, nil
+	}
+	if !containsServiceResource(event.Resources, d.ecsClusterName, d.ecsServiceName) {
+		fmt.Printf("Ignoring event resources: %v\n", event.Resources)
 		return syncResult{Status: "skipped: different service"}, nil
 	}
 
@@ -147,6 +154,24 @@ func (d *handlerDeps) handle(ctx context.Context, event events.CloudWatchEvent) 
 	return syncResult{Status: "updated", PublicIP: publicIP, PreviousIP: currentIP}, nil
 }
 
+func containsServiceResource(resources []string, clusterName, serviceName string) bool {
+	resourceSuffix := clusterName + "/" + serviceName
+	for _, resource := range resources {
+		if strings.HasSuffix(resource, ":service/"+resourceSuffix) ||
+			strings.HasSuffix(resource, "/service/"+resourceSuffix) ||
+			strings.HasSuffix(resource, ":service/"+serviceName) ||
+			strings.HasSuffix(resource, "/service/"+serviceName) {
+			return true
+		}
+	}
+	return false
+}
+
+func isHealthyRunningTask(task *ecstypes.Task) bool {
+	return task != nil && task.LastStatus != nil && *task.LastStatus == "RUNNING" &&
+		task.HealthStatus == ecstypes.HealthStatusHealthy
+}
+
 // currentTaskENI resolves the ENI of the most recently started RUNNING
 // task for the service, retrying on empty results.
 //
@@ -178,7 +203,7 @@ func (d *handlerDeps) currentTaskENI(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-// lookupNewestTaskENI queries ECS directly for the RUNNING tasks of
+// lookupNewestTaskENI queries ECS directly for healthy RUNNING tasks of
 // the service and returns the ENI of the most recently started one.
 //
 // This deliberately ignores the ENI carried in the triggering event.
@@ -213,6 +238,9 @@ func (d *handlerDeps) lookupNewestTaskENI(ctx context.Context) (string, error) {
 	var newest *ecstypes.Task
 	for i := range describeOutput.Tasks {
 		task := &describeOutput.Tasks[i]
+		if !isHealthyRunningTask(task) {
+			continue
+		}
 		if newest == nil || taskTimestamp(task).After(taskTimestamp(newest)) {
 			newest = task
 		}

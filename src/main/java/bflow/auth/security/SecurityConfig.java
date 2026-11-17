@@ -98,7 +98,9 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/actuator/info",
-                                "/actuator/startup"
+                                "/actuator/startup",
+                                "/actuator/metrics",
+                                "/actuator/metrics/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/legal/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/plans/**").permitAll()

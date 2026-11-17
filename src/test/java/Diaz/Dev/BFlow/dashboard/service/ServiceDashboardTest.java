@@ -491,6 +491,7 @@ class ServiceDashboardTest {
                 .thenReturn(List.of(firstWalletId));
         Income salary = income("Salary", LocalDate.of(2026, 10, 4),
                 Instant.parse("2026-10-04T15:00:00Z"));
+        salary.setDescription("Monthly salary");
         when(repositoryIncome.searchRecent(
                 eq(List.of(firstWalletId)), eq("%salary%"), any(Pageable.class)))
                 .thenReturn(List.of(salary));
@@ -500,6 +501,7 @@ class ServiceDashboardTest {
 
         assertEquals(1, result.size());
         assertEquals("INCOME", result.getFirst().type());
+        assertEquals("Monthly salary", result.getFirst().description());
         assertEquals(new BigDecimal("20.00"), result.getFirst().amount());
         verify(repositoryExpense, org.mockito.Mockito.never())
                 .searchRecent(any(), any(), any());
@@ -556,6 +558,7 @@ class ServiceDashboardTest {
         Expense expense = expense("Market purchase",
                 LocalDate.of(2026, 10, 4),
                 Instant.parse("2026-10-04T18:00:00Z"));
+        expense.setDescription("Weekly groceries");
         when(repositoryExpense.searchRecent(
                 eq(List.of(firstWalletId)),
                 eq("%" + "a".repeat(100) + "%"),
@@ -568,6 +571,7 @@ class ServiceDashboardTest {
         assertEquals(1, result.size());
         assertEquals("EXPENSE", result.getFirst().type());
         assertEquals("Market purchase", result.getFirst().name());
+        assertEquals("Weekly groceries", result.getFirst().description());
         assertEquals(BigDecimal.TEN.negate(), result.getFirst().amount());
         ArgumentCaptor<Pageable> pageable =
                 ArgumentCaptor.forClass(Pageable.class);

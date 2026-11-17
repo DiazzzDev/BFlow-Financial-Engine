@@ -3,6 +3,7 @@ package bflow.rate_limit.strategy;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,11 +25,14 @@ public final class UserKeyResolver implements KeyResolver {
             return null;
         }
 
-        final Object principal = authentication.getPrincipal();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+            final String subject = jwtAuthentication.getToken().getSubject();
+            return subject == null || subject.isBlank()
+                    ? null
+                    : "user:" + subject;
+        }
 
-        /*
-         * Replace this with your actual JWT principal implementation.
-         */
+        final Object principal = authentication.getPrincipal();
         if (principal instanceof String userId) {
             return "user:" + userId;
         }

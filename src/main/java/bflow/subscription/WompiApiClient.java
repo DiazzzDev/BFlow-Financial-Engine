@@ -54,6 +54,10 @@ public class WompiApiClient {
     @Value("${wompi.product-image-url:}")
     private String productImageUrl;
 
+    /** Webhook destination configured for payment links created by BFlow. */
+    @Value("${wompi.webhook-url}")
+    private String webhookUrl;
+
     /** REST client configured against the Wompi API. */
     private RestClient restClient;
 
@@ -280,7 +284,8 @@ public class WompiApiClient {
                 "identificadorEnlaceComercio", identificadorEnlaceComercio,
                 "monto", monto,
                 "nombreProducto", nombreProducto,
-                "formaPago", formaPago
+                "formaPago", formaPago,
+                "configuracion", Map.of("urlWebhook", webhookUrl)
         );
         return restClient.post()
         .uri("/EnlacePago")
