@@ -72,7 +72,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       {
         Sid      = "ECRAuth"
         Effect   = "Allow"
-        Action   = "ecr:GetAuthorizationToken"
+        Action   = "ecr:GetAuthorizationToken" # nosemgrep: terraform.lang.security.iam.no-iam-creds-exposure.no-iam-creds-exposure -- ECR requires Resource="*" for this token action; all image push actions remain scoped to the single BFlow repository.
         Resource = "*"
       },
       {
@@ -107,7 +107,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       {
         Sid      = "IAMValidateAndPassEcsRoles"
         Effect   = "Allow"
-        Action   = ["iam:GetRole", "iam:PassRole"]
+        Action   = ["iam:GetRole", "iam:PassRole"] # nosemgrep: terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure -- These permissions are limited to the two ECS task roles needed by the deployment workflow.
         Resource = [aws_iam_role.ecs_execution.arn, aws_iam_role.ecs_task.arn]
       }
     ]

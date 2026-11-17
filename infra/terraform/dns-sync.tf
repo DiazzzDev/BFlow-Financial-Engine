@@ -1,4 +1,4 @@
-resource "aws_secretsmanager_secret" "cloudflare_dns" {
+resource "aws_secretsmanager_secret" "cloudflare_dns" { # nosemgrep: terraform.aws.security.aws-secretsmanager-secret-unencrypted.aws-secretsmanager-secret-unencrypted -- AWS-managed Secrets Manager key encrypts this secret at rest; a customer-managed key is intentionally omitted to avoid extra key-management cost.
   count                   = var.dns_sync_enabled ? 1 : 0
   name                    = "${var.project_name}/cloudflare-dns"
   recovery_window_in_days = 7
@@ -35,12 +35,17 @@ resource "aws_iam_role_policy" "dns_sync" {
       },
       {
         Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
+        Action   = ["secretsmanager:GetSecretValue"] # nosemgrep: terraform.lang.security.iam.no-iam-data-exfiltration.no-iam-data-exfiltration -- Access is restricted to the single Cloudflare secret ARN below and only this Lambda role can assume the role.
         Resource = aws_secretsmanager_secret.cloudflare_dns[0].arn
       },
       {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
         Resource = "*"
       }
     ]
@@ -59,7 +64,11 @@ resource "aws_lambda_function" "dns_sync" {
   timeout          = 15
   memory_size      = 128
 
-  environment {
+  tracing_config {
+    mode = "Active"
+  }
+
+  environment { # nosemgrep: terraform.aws.security.aws-lambda-environment-unencrypted.aws-lambda-environment-unencrypted -- Lambda encrypts environment variables with its AWS-managed key; no plaintext secret values are stored here.
     variables = {
       ECS_CLUSTER_NAME      = var.ecs_cluster_name
       ECS_SERVICE_NAME      = var.ecs_service_name

@@ -24,7 +24,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   availability_zone       = var.availability_zones[count.index]
   cidr_block              = var.public_subnet_cidrs[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = true # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address -- These subnets host the single-container ECS service with public egress; task security groups control inbound access, and private-subnet NAT would add fixed monthly cost.
   tags                    = { Name = "${var.project_name}-public-${substr(var.availability_zones[count.index], -1, 1)}" }
 
   lifecycle {

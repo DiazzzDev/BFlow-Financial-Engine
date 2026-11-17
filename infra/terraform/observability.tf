@@ -242,7 +242,7 @@ resource "aws_sns_topic_policy" "alerts" {
   })
 }
 
-resource "aws_cloudwatch_log_group" "dns_sync" {
+resource "aws_cloudwatch_log_group" "dns_sync" { # nosemgrep: terraform.aws.security.aws-cloudwatch-log-group-unencrypted.aws-cloudwatch-log-group-unencrypted -- CloudWatch Logs uses AWS-owned encryption at rest; customer-managed keys are intentionally omitted to avoid additional key-management cost.
   name              = "/aws/lambda/bflow-dns-sync"
   retention_in_days = var.log_retention_days
 
