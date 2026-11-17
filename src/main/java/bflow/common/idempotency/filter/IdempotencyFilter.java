@@ -102,7 +102,7 @@ public final class IdempotencyFilter extends OncePerRequestFilter {
 
             response.setStatus(record.getStatusCode());
             response.setContentType("application/json");
-            response.getWriter().write(record.getResponseBody());
+            response.getWriter().write(record.getResponseBody()); // nosemgrep: java.lang.security.audit.xss.no-direct-response-writer.no-direct-response-writer -- Replays a previously serialized application/json response captured from this API; the content is not rendered as HTML.
             return;
         }
 

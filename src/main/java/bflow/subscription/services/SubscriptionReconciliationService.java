@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -21,8 +23,8 @@ public class SubscriptionReconciliationService {
     /** Time allowed for Wompi to expose a just-completed enrolment. */
     private static final int PENDING_GRACE_MINUTES = 5;
 
-    /** Maximum number of days for a customer to complete enrolment. */
-    private static final int MAX_PENDING_ENROLLMENT_DAYS = 30;
+    /** Billing calendar used by Wompi and the BFlow merchant account. */
+    private static final ZoneId WOMPI_ZONE = ZoneId.of("America/El_Salvador");
 
     /** Repository used to access subscription data. */
     private final RepositorySubscription repositorySubscription;
@@ -50,6 +52,10 @@ public class SubscriptionReconciliationService {
         );
 
         for (Subscription subscription : stale) {
+            if (checkoutDayHasPassed(subscription)) {
+                expirePendingCheckout(subscription);
+                continue;
+            }
             if (subscription.getProviderLinkId() == null) {
                 log.warn(
                         "Subscription {} sin providerLinkId, no se puede "
@@ -105,19 +111,6 @@ public class SubscriptionReconciliationService {
             final Subscription subscription,
             final WompiApiClient.SubscriberInfo match
     ) {
-        Instant hardCutoff = subscription.getCreatedAt()
-                .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
-        if (Instant.now().isAfter(hardCutoff)) {
-            deactivateExpiredEnrollment(subscription);
-            subscription.setStatus(SubscriptionStatus.EXPIRED);
-            repositorySubscription.save(subscription);
-            log.warn("Subscription {} expirada tras {} días sin webhook "
-                            + "de transacción aprobada (estado Wompi={})",
-                    subscription.getId(), MAX_PENDING_ENROLLMENT_DAYS,
-                    match.estado());
-            return;
-        }
-
         log.info("Subscription {} sigue pendiente: enrolamiento Wompi={} "
                         + "pero falta el webhook de pago aprobado",
                 subscription.getId(), match.estado());
@@ -129,22 +122,32 @@ public class SubscriptionReconciliationService {
      * @param subscription the pending subscription
      */
     private void handleNoMatch(final Subscription subscription) {
-        Instant hardCutoff = subscription.getCreatedAt()
-                .plus(MAX_PENDING_ENROLLMENT_DAYS, ChronoUnit.DAYS);
-        if (Instant.now().isAfter(hardCutoff)) {
-            deactivateExpiredEnrollment(subscription);
-            subscription.setStatus(SubscriptionStatus.EXPIRED);
-            repositorySubscription.save(subscription);
-            log.info(
-                    "Subscription {} marcada EXPIRED: no se completó la "
-                            + "afiliación Wompi en {} días",
-                    subscription.getId(), MAX_PENDING_ENROLLMENT_DAYS
-            );
-            return;
-        }
-
         log.info("Subscription {} sigue pendiente: afiliación Wompi aún "
                         + "no encontrada", subscription.getId());
+    }
+
+    /**
+     * A checkout remains valid until its El Salvador calendar day ends.
+     * Reconciliation marks it EXPIRED on the following day if still unpaid.
+     */
+    private boolean checkoutDayHasPassed(final Subscription subscription) {
+        LocalDate checkoutDate = subscription.getCreatedAt()
+                .atZone(WOMPI_ZONE)
+                .toLocalDate();
+        return LocalDate.now(WOMPI_ZONE).isAfter(checkoutDate);
+    }
+
+    private void expirePendingCheckout(final Subscription subscription) {
+        if (subscription.getProviderLinkId() != null) {
+            deactivateExpiredEnrollment(subscription);
+        }
+        subscription.setStatus(SubscriptionStatus.EXPIRED);
+        repositorySubscription.save(subscription);
+        log.info(
+                "Subscription {} marcada EXPIRED: checkout sin pago "
+                        + "confirmado al cierre del día",
+                subscription.getId()
+        );
     }
 
     private void deactivateExpiredEnrollment(

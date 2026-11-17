@@ -3,6 +3,7 @@ package bflow.common.idempotency.scheduler;
 import bflow.common.idempotency.repository.RepositoryIdempotency;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class IdempotencyCleanupTask {
     * Runs automatically every hour according to the configured cron expression.
     */
     @Scheduled(cron = "0 0 */4 * * *")
+    @SchedulerLock(name = "idempotencyCleanup")
     @Transactional
     public void purgeExpiredKeys() {
         int deleted = repositoryIdempotency.deleteExpired(Instant.now());

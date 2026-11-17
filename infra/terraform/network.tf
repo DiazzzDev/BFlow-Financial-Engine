@@ -19,7 +19,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public" { # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address -- This subnet provides required ECS public egress without NAT; the task security group controls inbound access.
   count                   = 2
   vpc_id                  = aws_vpc.main.id
   availability_zone       = var.availability_zones[count.index]

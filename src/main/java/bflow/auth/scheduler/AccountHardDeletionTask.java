@@ -6,6 +6,7 @@ import bflow.auth.repository.RepositoryUser;
 import bflow.auth.services.ServiceAccountHardDelete;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,7 @@ public class AccountHardDeletionTask {
     private final ServiceAccountHardDelete hardDeleteService;
 
     @Scheduled(cron = "0 0 3 * * *")
+    @SchedulerLock(name = "accountHardDeletion")
     public void run() {
         Instant cutoff = Instant.now().minus(Duration.ofDays(GRACE_PERIOD_DAYS));
 

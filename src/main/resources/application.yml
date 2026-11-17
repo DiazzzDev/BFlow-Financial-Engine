@@ -52,7 +52,7 @@ spring:
   data:
     jpa:
       repositories:
-        bootstrap-mode: deferred
+        bootstrap-mode: lazy
 
 server:
   port: ${PORT:8080}
@@ -129,8 +129,12 @@ wompi:
   client-secret: ${WOMPI_CLIENT_SECRET}
   app-id: ${WOMPI_CLIENT_ID}
   api-secret: ${WOMPI_CLIENT_SECRET}
+  webhook-url: ${WOMPI_WEBHOOK_URL:https://api.bflow-studio.com/api/v1/webhooks/wompi}
 
 management:
+  server:
+    port: 8081
+    address: 127.0.0.1
   info:
     env:
       enabled: true
@@ -139,8 +143,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,startup
   endpoint:
+    startup:
+      enabled: true
     health:
       show-details: when_authorized
 

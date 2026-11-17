@@ -17,6 +17,8 @@ public record RecentActivityItem(
         @Schema(description = "EXPENSE or INCOME.",
                 allowableValues = {"EXPENSE", "INCOME"}) String type,
         @Schema(description = "Transaction title.") String name,
+        @Schema(nullable = true, description = "Transaction description.")
+        String description,
         @Schema(description = "Business date; use it for 'hoy'/'ayer' labels.")
         LocalDate date,
         @Schema(description = "When the transaction was registered.")

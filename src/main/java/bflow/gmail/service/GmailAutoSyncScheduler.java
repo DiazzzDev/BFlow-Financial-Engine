@@ -5,6 +5,7 @@ import bflow.gmail.repository.GmailIntegrationRepository;
 import bflow.gmail.dto.GmailSyncRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ public class GmailAutoSyncScheduler {
     private final GmailIntegrationService integrationService;
 
     @Scheduled(fixedDelay = 600_000, initialDelay = 60_000)
+    @SchedulerLock(name = "gmailAutoSync")
     public void synchronizeConnectedAccounts() {
         for (GmailIntegration integration
                 : integrationRepository.findAllByStatusAndWalletIdIsNotNull("CONNECTED")) {

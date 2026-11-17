@@ -13,7 +13,7 @@
 	"postStartCommand": "if [ -n \"${NGROK_AUTHTOKEN:-}\" ]; then ngrok config add-authtoken \"$NGROK_AUTHTOKEN\"; fi",
 	"customizations": {
 		"vscode": {
-			"extensions": ["golang.Go"]
+			"extensions": ["golang.Go", "hashicorp.terraform"]
 		}
 	}
 }

@@ -28,7 +28,7 @@ resource "aws_ecr_lifecycle_policy" "backend" {
   })
 }
 
-resource "aws_cloudwatch_log_group" "application" {
+resource "aws_cloudwatch_log_group" "application" { # nosemgrep: terraform.aws.security.aws-cloudwatch-log-group-unencrypted.aws-cloudwatch-log-group-unencrypted -- CloudWatch Logs uses AWS-owned encryption at rest; customer-managed keys are intentionally omitted to avoid additional key-management cost.
   name              = var.cloudwatch_log_group_name
   retention_in_days = var.log_retention_days
 
@@ -115,24 +115,25 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_instance" "postgres" {
-  count                       = var.db_provider == "rds" ? 1 : 0
-  identifier                  = var.rds_instance_identifier
-  engine                      = "postgres"
-  engine_version              = var.rds_engine_version
-  instance_class              = var.rds_instance_class
-  allocated_storage           = var.rds_allocated_storage_gb
-  storage_type                = "gp3"
-  db_name                     = var.rds_database_name
-  username                    = var.rds_master_username
-  manage_master_user_password = true
-  db_subnet_group_name        = aws_db_subnet_group.main[0].name
-  vpc_security_group_ids      = [aws_security_group.rds[0].id]
-  backup_retention_period     = var.rds_backup_retention_days
-  publicly_accessible         = false
-  storage_encrypted           = true
-  multi_az                    = false
-  deletion_protection         = false
-  skip_final_snapshot         = true
+  count                           = var.db_provider == "rds" ? 1 : 0
+  identifier                      = var.rds_instance_identifier
+  engine                          = "postgres"
+  engine_version                  = var.rds_engine_version
+  instance_class                  = var.rds_instance_class
+  allocated_storage               = var.rds_allocated_storage_gb
+  storage_type                    = "gp3"
+  db_name                         = var.rds_database_name
+  username                        = var.rds_master_username
+  manage_master_user_password     = true
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+  db_subnet_group_name            = aws_db_subnet_group.main[0].name
+  vpc_security_group_ids          = [aws_security_group.rds[0].id]
+  backup_retention_period         = var.rds_backup_retention_days
+  publicly_accessible             = false
+  storage_encrypted               = true
+  multi_az                        = false
+  deletion_protection             = false
+  skip_final_snapshot             = true
 
   lifecycle {
     precondition {
@@ -145,7 +146,7 @@ resource "aws_db_instance" "postgres" {
 # Terraform owns the secret containers and IAM access, never their values.
 # Supply values through the Secrets Manager console/CLI so local Terraform state
 # cannot disclose database, Wompi, Firebase, or Cloudflare credentials.
-resource "aws_secretsmanager_secret" "database" {
+resource "aws_secretsmanager_secret" "database" { # nosemgrep: terraform.aws.security.aws-secretsmanager-secret-unencrypted.aws-secretsmanager-secret-unencrypted -- AWS-managed Secrets Manager key encrypts this secret at rest; a customer-managed key is intentionally omitted to avoid extra key-management cost.
   name                    = "${var.project_name}/database"
   recovery_window_in_days = 7
 
@@ -154,7 +155,7 @@ resource "aws_secretsmanager_secret" "database" {
   }
 }
 
-resource "aws_secretsmanager_secret" "wompi" {
+resource "aws_secretsmanager_secret" "wompi" { # nosemgrep: terraform.aws.security.aws-secretsmanager-secret-unencrypted.aws-secretsmanager-secret-unencrypted -- AWS-managed Secrets Manager key encrypts this secret at rest; a customer-managed key is intentionally omitted to avoid extra key-management cost.
   name                    = "${var.project_name}/wompi"
   recovery_window_in_days = 7
 
@@ -163,7 +164,7 @@ resource "aws_secretsmanager_secret" "wompi" {
   }
 }
 
-resource "aws_secretsmanager_secret" "firebase" {
+resource "aws_secretsmanager_secret" "firebase" { # nosemgrep: terraform.aws.security.aws-secretsmanager-secret-unencrypted.aws-secretsmanager-secret-unencrypted -- AWS-managed Secrets Manager key encrypts this secret at rest; a customer-managed key is intentionally omitted to avoid extra key-management cost.
   name                    = "${var.project_name}/firebase"
   recovery_window_in_days = 7
 
@@ -172,7 +173,7 @@ resource "aws_secretsmanager_secret" "firebase" {
   }
 }
 
-resource "aws_secretsmanager_secret" "gmail" {
+resource "aws_secretsmanager_secret" "gmail" { # nosemgrep: terraform.aws.security.aws-secretsmanager-secret-unencrypted.aws-secretsmanager-secret-unencrypted -- AWS-managed Secrets Manager key encrypts this secret at rest; a customer-managed key is intentionally omitted to avoid extra key-management cost.
   name                    = "${var.project_name}/gmail"
   recovery_window_in_days = 7
   lifecycle {

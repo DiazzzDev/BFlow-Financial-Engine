@@ -4,6 +4,7 @@ import bflow.wallet.enums.WalletInvitationStatus;
 import bflow.wallet.repository.RepositoryWalletInvitation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class WalletInvitationCleanupTask {
      * passed to EXPIRED, and logs how many were updated.
      */
     @Scheduled(cron = "0 */12 * * * *")
+    @SchedulerLock(name = "walletInvitationCleanup")
     @Transactional
     public void expireOverdueInvitations() {
         int expired = repositoryWalletInvitation.expireOverdueInvitations(

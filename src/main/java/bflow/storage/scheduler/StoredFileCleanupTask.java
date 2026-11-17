@@ -4,6 +4,7 @@ import bflow.common.aws.service.StorageService;
 import bflow.storage.repository.RepositoryStoredFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -62,6 +63,7 @@ public class StoredFileCleanupTask {
      * removed.
      */
     @Scheduled(cron = "0 0 */12 * * *")
+    @SchedulerLock(name = "storedFileCleanup")
     @Transactional
     public void purgeOrphanedFiles() {
         Instant pendingCutoff = Instant.now()
