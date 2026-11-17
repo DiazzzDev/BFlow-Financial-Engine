@@ -33,7 +33,7 @@ public class SubscriptionRenewalScheduler {
     /** Reminder window for annual renewals. */
     private static final int ANNUAL_REMINDER_WINDOW_DAYS = 14;
 
-    /** Reminder window before the monthly grace period begins. */
+    /** Reminder window before the monthly billing date. */
     private static final int MONTHLY_REMINDER_WINDOW_DAYS = 3;
 
     /** Repository used to access subscriptions. */

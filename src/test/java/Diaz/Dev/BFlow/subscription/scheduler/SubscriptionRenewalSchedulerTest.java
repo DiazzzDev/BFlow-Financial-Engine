@@ -43,7 +43,7 @@ class SubscriptionRenewalSchedulerTest {
     @InjectMocks private SubscriptionRenewalScheduler scheduler;
 
     @Test
-    void flagOverdueSubscriptions_marksMonthlyPastDueAndYearlyExpired() {
+    void flagOverdueSubscriptions_expiresMonthlyAndYearlySubscriptions() {
         Subscription monthly = subscription(BillingPeriod.MONTHLY);
         Subscription yearly = subscription(BillingPeriod.YEARLY);
         when(repositorySubscription.findAllByStatusAndNextBillingAtBefore(
@@ -52,7 +52,7 @@ class SubscriptionRenewalSchedulerTest {
 
         scheduler.flagOverdueSubscriptions();
 
-        assertEquals(SubscriptionStatus.PAST_DUE, monthly.getStatus());
+        assertEquals(SubscriptionStatus.EXPIRED, monthly.getStatus());
         assertEquals(SubscriptionStatus.EXPIRED, yearly.getStatus());
         verify(repositorySubscription).save(monthly);
         verify(repositorySubscription).save(yearly);
@@ -87,7 +87,7 @@ class SubscriptionRenewalSchedulerTest {
     }
 
     @Test
-    void sendRenewalRemindersAlsoCoversMonthlySubscriptionsBeforeGracePeriod() {
+    void sendRenewalRemindersAlsoCoversMonthlySubscriptionsBeforeBillingDate() {
         Subscription monthly = subscription(BillingPeriod.MONTHLY);
         when(repositorySubscription.findRenewalReminderCandidates(
                 eq(BillingPeriod.YEARLY), eq(SubscriptionStatus.ACTIVE),

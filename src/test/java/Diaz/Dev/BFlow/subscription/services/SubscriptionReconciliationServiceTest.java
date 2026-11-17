@@ -16,7 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,9 +79,8 @@ class SubscriptionReconciliationServiceTest {
     }
 
     @Test
-    void noEnrollmentDuringFirstThirtyDaysRemainsPending() {
-        Subscription subscription = pendingSubscription(
-                Instant.now().minus(2, ChronoUnit.DAYS));
+    void noEnrollmentDuringCheckoutDayRemainsPending() {
+        Subscription subscription = pendingSubscription(todayAtNoon());
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
                 eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
@@ -93,9 +93,8 @@ class SubscriptionReconciliationServiceTest {
     }
 
     @Test
-    void inactiveWompiEnrollmentDuringFirstThirtyDaysRemainsPending() {
-        Subscription subscription = pendingSubscription(
-                Instant.now().minus(2, ChronoUnit.DAYS));
+    void inactiveWompiEnrollmentDuringCheckoutDayRemainsPending() {
+        Subscription subscription = pendingSubscription(todayAtNoon());
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
                 eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
@@ -108,14 +107,11 @@ class SubscriptionReconciliationServiceTest {
     }
 
     @Test
-    void noEnrollmentExpiresOnlyAfterThirtyDays() {
-        Subscription subscription = pendingSubscription(
-                Instant.now().minus(31, ChronoUnit.DAYS));
+    void noEnrollmentExpiresOnTheDayAfterCheckout() {
+        Subscription subscription = pendingSubscription(yesterdayAtNoon());
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
                 eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
-        when(wompiApiClient.getSubscribers("provider-link"))
-                .thenReturn(List.of());
 
         service.reconcilePendingActivations();
 
@@ -123,6 +119,7 @@ class SubscriptionReconciliationServiceTest {
                 .isEqualTo(SubscriptionStatus.EXPIRED);
         verify(wompiApiClient).deactivateRecurringLink("provider-link");
         verify(repositorySubscription).save(subscription);
+        verify(wompiApiClient, never()).getSubscribers(any());
     }
 
     @Test
@@ -142,9 +139,25 @@ class SubscriptionReconciliationServiceTest {
     }
 
     @Test
+    void checkoutWithoutProviderLinkExpiresAfterCheckoutDay() {
+        Subscription subscription = pendingSubscription(yesterdayAtNoon());
+        subscription.setProviderLinkId(null);
+        when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
+                eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
+                .thenReturn(List.of(subscription));
+
+        service.reconcilePendingActivations();
+
+        org.assertj.core.api.Assertions.assertThat(subscription.getStatus())
+                .isEqualTo(SubscriptionStatus.EXPIRED);
+        verify(repositorySubscription).save(subscription);
+        verify(wompiApiClient, never()).getSubscribers(any());
+        verify(wompiApiClient, never()).deactivateRecurringLink(any());
+    }
+
+    @Test
     void providerFailureDoesNotExpireOrChangePendingCheckout() {
-        Subscription subscription = pendingSubscription(
-                Instant.now().minus(31, ChronoUnit.DAYS));
+        Subscription subscription = pendingSubscription(todayAtNoon());
         when(repositorySubscription.findAllByStatusAndCreatedAtBefore(
                 eq(SubscriptionStatus.PENDING_ACTIVATION), any()))
                 .thenReturn(List.of(subscription));
@@ -190,6 +203,21 @@ class SubscriptionReconciliationServiceTest {
         subscription.setBillingAmount(new BigDecimal("9.99"));
         subscription.setCreatedAt(createdAt);
         return subscription;
+    }
+
+    private Instant todayAtNoon() {
+        return LocalDate.now(ZoneId.of("America/El_Salvador"))
+                .atTime(12, 0)
+                .atZone(ZoneId.of("America/El_Salvador"))
+                .toInstant();
+    }
+
+    private Instant yesterdayAtNoon() {
+        return LocalDate.now(ZoneId.of("America/El_Salvador"))
+                .minusDays(1)
+                .atTime(12, 0)
+                .atZone(ZoneId.of("America/El_Salvador"))
+                .toInstant();
     }
 
     private WompiApiClient.SubscriberInfo subscriber(

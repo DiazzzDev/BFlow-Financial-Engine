@@ -52,6 +52,10 @@ public class SubscriptionReconciliationService {
         );
 
         for (Subscription subscription : stale) {
+            if (checkoutDayHasPassed(subscription)) {
+                expirePendingCheckout(subscription);
+                continue;
+            }
             if (subscription.getProviderLinkId() == null) {
                 log.warn(
                         "Subscription {} sin providerLinkId, no se puede "
@@ -70,18 +74,6 @@ public class SubscriptionReconciliationService {
      * @param subscription the pending subscription to reconcile
      */
     private void reconcileOne(final Subscription subscription) {
-        if (checkoutDayHasPassed(subscription)) {
-            deactivateExpiredEnrollment(subscription);
-            subscription.setStatus(SubscriptionStatus.EXPIRED);
-            repositorySubscription.save(subscription);
-            log.info(
-                    "Subscription {} marcada EXPIRED: checkout sin pago "
-                            + "confirmado al cierre del día",
-                    subscription.getId()
-            );
-            return;
-        }
-
         try {
             List<WompiApiClient.SubscriberInfo> subscribers =
                     wompiApiClient.getSubscribers(
@@ -143,6 +135,19 @@ public class SubscriptionReconciliationService {
                 .atZone(WOMPI_ZONE)
                 .toLocalDate();
         return LocalDate.now(WOMPI_ZONE).isAfter(checkoutDate);
+    }
+
+    private void expirePendingCheckout(final Subscription subscription) {
+        if (subscription.getProviderLinkId() != null) {
+            deactivateExpiredEnrollment(subscription);
+        }
+        subscription.setStatus(SubscriptionStatus.EXPIRED);
+        repositorySubscription.save(subscription);
+        log.info(
+                "Subscription {} marcada EXPIRED: checkout sin pago "
+                        + "confirmado al cierre del día",
+                subscription.getId()
+        );
     }
 
     private void deactivateExpiredEnrollment(
