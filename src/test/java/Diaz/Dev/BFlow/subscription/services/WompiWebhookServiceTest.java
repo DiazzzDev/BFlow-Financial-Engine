@@ -419,8 +419,9 @@ class WompiWebhookServiceTest {
         assertThat(previous.isAutoRenew()).isFalse();
         assertThat(previous.getNextBillingAt()).isNull();
         verify(wompiApiClient).deactivateRecurringLink("old-link");
-        verify(repositorySubscription).save(previous);
-        verify(repositorySubscription).save(current);
+        var persistence = inOrder(repositorySubscription);
+        persistence.verify(repositorySubscription).saveAndFlush(previous);
+        persistence.verify(repositorySubscription).save(current);
     }
 
     @Test

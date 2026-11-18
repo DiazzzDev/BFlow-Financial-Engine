@@ -245,7 +245,11 @@ public class WompiWebhookService {
         other.setAutoRenew(false);
         other.setEndsAt(Instant.now());
         other.setNextBillingAt(null);
-        repositorySubscription.save(other);
+        // PostgreSQL enforces the partial one-active-subscription index on each
+        // statement. Flush the cancellation before the incoming subscription is
+        // marked ACTIVE so Hibernate cannot batch the updates in the reverse
+        // order and reject an otherwise valid Wompi payment.
+        repositorySubscription.saveAndFlush(other);
         return renewalStart;
     }
 
