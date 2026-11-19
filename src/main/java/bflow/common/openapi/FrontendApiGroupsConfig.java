@@ -4,28 +4,21 @@ import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Adds a compact OpenAPI group for the app's day-to-day transaction flows. */
+/** Publishes the complete versioned API as a single frontend-facing catalog. */
 @Configuration
 public class FrontendApiGroupsConfig {
 
     /**
-     * Keeps transaction creation, receipt capture and file upload schemas
-     * together so frontend developers can inspect the primary input flows
-     * without navigating the complete API catalog.
+     * Includes every versioned API endpoint so frontend developers can inspect
+     * the full contract from one Swagger UI group.
      *
-     * @return the frontend transaction API group
+     * @return the complete frontend API group
      */
     @Bean
-    public GroupedOpenApi frontendTransactionsApi() {
+    public GroupedOpenApi frontendApi() {
         return GroupedOpenApi.builder()
-                .group("frontend-transactions")
-                .pathsToMatch(
-                        "/api/v1/expenses/**",
-                        "/api/v1/incomes/**",
-                        "/api/v1/recurring/**",
-                        "/api/v1/receipts/**",
-                        "/api/v1/quick-expenses/**",
-                        "/api/v1/files/**")
+                .group("frontend-api")
+                .pathsToMatch("/api/v1/**")
                 .build();
     }
 }
