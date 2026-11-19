@@ -87,4 +87,4 @@ The list is representative, not exhaustive. The OpenAPI `ErrorCode` schema is th
 
 ## OpenAPI / Swagger
 
-Use the generated OpenAPI document (`/v3/api-docs`) as the machine-readable endpoint reference. Validation request constraints are documented from DTO schemas. Error responses use the `ApiResponse` envelope; field detail uses `FieldErrorResponse`.
+Use the Swagger UI at `/swagger-ui/index.html` and select the `frontend-api` group to browse every `/api/v1/**` endpoint in one catalog. Its machine-readable document is available at `/v3/api-docs/frontend-api`; the default document at `/v3/api-docs` remains available as well. Request bodies expose their DTO schemas and Bean Validation constraints. Error responses use the `ApiResponse` envelope; field detail uses `FieldErrorResponse`.
